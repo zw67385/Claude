@@ -841,8 +841,24 @@ static void pc_show(void)
 #define CULT_Z (-549357)
 
 /* per-sequence setup: flags, lighting state, spawn */
+/* save: the night reached, on the flashcart's SD card (silently skipped when there is no FAT) */
+#define SAVE_PATH "fat:/ironbark_lookout.sav"
+static int save_read(void)
+{
+    FILE *f = fopen(SAVE_PATH, "rb"); int n = 0;
+    if (f) { if (fread(&n, 4, 1, f) != 1 || n < 1 || n > 8) n = 0; fclose(f); }
+    return n;
+}
+static void save_write(int n)
+{
+    if (n <= save_read()) return;
+    FILE *f = fopen(SAVE_PATH, "wb");
+    if (f) { fwrite(&n, 4, 1, f); fclose(f); }
+}
+
 static void seq_start(int n, int *px, int *pz, int *fy, int *yaw)
 {
+    save_write(n);
     static const char *const s6[] = { "ep4_intro.Seq6Intro0\n", "ep4_intro.Seq6Intro1\n", "ep4_intro.Seq6Intro2", "ep4_intro.Seq6Intro3" };
     static const char *const s7[] = { "ep4_intro.Seq7Intro1", "ep4_intro.Seq7Intro2", "ep4_intro.Seq7Intro3", "ep4_intro.Seq7Intro4" };
     static const char *const s8[] = { "ep4_intro.Seq8Intro1", "ep4_intro.Seq8Intro2", "ep4_intro.Seq8Intro3", "ep4_intro.Seq8Intro4", "ep4_intro.Seq8Intro5" };
@@ -1179,17 +1195,21 @@ int main(void)
     { long sz; txt = (char *)load_file("nitro:/text.bin", &sz); ntxt = txt ? ((u32 *)txt)[1] : 0; }
     int sel = 0;
     for (;;) {
+        int saved = save_read();
         consoleClear();
-        printf("IRONBARK LOOKOUT (DS)\n\n%c New game\n%c Chapter select\n%c Read story nodes\n", sel == 0 ? '>' : ' ', sel == 1 ? '>' : ' ', sel == 2 ? '>' : ' ');
+        printf("FEARS TO FATHOM\nIRONBARK LOOKOUT (DS)\n\n%c New game\n%c Chapter select\n%c Read story nodes\n", sel == 0 ? '>' : ' ', sel == 1 ? '>' : ' ', sel == 2 ? '>' : ' ');
+        if (saved > 1) printf("%c Continue (Night %d)\n", sel == 3 ? '>' : ' ', saved);
+        int nsel = saved > 1 ? 4 : 3;
         do { swiWaitForVBlank(); scanKeys(); } while (!keysDown());
         u32 d = keysDown();
-        if (d & KEY_UP) sel = (sel + 2) % 3;
-        if (d & KEY_DOWN) sel = (sel + 1) % 3;
+        if (d & KEY_UP) sel = (sel + nsel - 1) % nsel;
+        if (d & KEY_DOWN) sel = (sel + 1) % nsel;
         if (d & KEY_A) {
             int start = 1;
             if (sel == 2) { story_reader(); continue; }
+            if (sel == 3) start = saved;
             if (sel == 1) {
-                start = 2;
+                start = saved > 1 ? saved : 2;
                 for (;;) {
                     consoleClear(); printf("CHAPTER SELECT\n\n  < Night %d >\n\nLeft/Right: pick  A: start  B: back\n", start);
                     do { swiWaitForVBlank(); scanKeys(); } while (!keysDown());
