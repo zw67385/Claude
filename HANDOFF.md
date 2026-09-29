@@ -59,3 +59,12 @@ A faithful 1:1 port is not possible (Unity HDRP game vs 4 MB RAM, 2048 polys/fra
 - `run_cabin()` now has interactables (`INTERACTS[]`, radio -> Radiostart) and a dialogue overlay on the sub-screen (`dlg_*`): A interact/advance, up/down + A pick options. Look = stylus or hold Y + D-pad. SetupName sets the speaker; other RUN_COMMANDs are still stubs.
 - Test recipe: focus click, `xdotool keydown a keydown Right` (0.15s), hold Up 3.5s, press x -> radio dialogue shows. Env vars (WONDERFUL_TOOLCHAIN/BLOCKSDS/PATH) must be re-exported per shell; desmume is /usr/games/desmume-cli.
 - Next: more interactables, sequence state machine, touch UI, audio.
+
+## Progress 4
+- Seq2–8 sequence engine (event queue, per-night objectives), chapter select (Night 1–8), prologue (diner/trail), campsite and ending vignettes, credits.
+- Audio: `tools/pack_audio.py` → `rom/audio/*.wav` (11 kHz 8-bit mono) + `rom/source/vo_map.h`; Maxmod soundbank in NitroFS, samples load on demand (radio VO one at a time, ambience loop per night, generator hum by distance, footsteps wood/grass, interaction SFX).
+- Hardware fog (offset 0x7C00, shift 4) tied to per-night sky colour; off in binoculars.
+- Save: night reached written to `fat:/ironbark_lookout.sav`; main menu shows Continue.
+- Frame pacing: vblank counter, fixed 20 fps. `make DEFINES=-DDEBUG_POS` shows position + poly/vtx/vblank stats (poly counters read 0 on desmume; check on hardware).
+- Test: `cd /tmp/claude-0/t && xvfb-run ./run.sh Down:0.6 x:0.6 x:0.6 ...` (Select = Shift_R).
+- Not yet play-tested end to end: each night's full objective chain (cooking, flare, Billy, gas can, photo/hide/run) and the ending.

@@ -43,7 +43,9 @@ static void gen_snd(int on, int vol)
 
 typedef struct { u32 w, h, col, flags, dlwords, paloff, texoff, dloff; } Group;
 
-static int stat_v, stat_p;
+static int stat_v, stat_p, stat_vb;
+static volatile int vb_count;
+static void on_vblank(void) { vb_count++; }
 typedef struct { s32 x0, x1, y0, y1, z0, z1; } Box;
 static Box *boxes; static int nboxes;
 static int skipbox = -1;   /* collider disabled this frame (open door) */
@@ -813,7 +815,7 @@ static void hud_draw(int px, int fy, int pz)
     printf("Pad: move  Y+pad/stylus: look\nR: run  X: flashlight %s\n", G.flash ? "(on)" : "");
     if (seq == 6 || seq == 8) printf("L: binoculars\n");
 #ifdef DEBUG_POS
-    printf("%d %d %d s%d m%d", px >> 8, fy >> 8, pz >> 8, seq, mode);
+    printf("%d %d %d s%d m%d\npoly %d vtx %d vb %d", px >> 8, fy >> 8, pz >> 8, seq, mode, stat_p, stat_v, stat_vb);
 #else
     (void)px; (void)fy; (void)pz;
 #endif
@@ -1104,11 +1106,16 @@ static void run_game(int start)
             if (L_door.data) draw_level_rot(&L_door, pass, G.door_ang);
             if (!pass) glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
         }
-        glFlush(0);
         while (GFX_STATUS & BIT(27)) ;
         stat_v = GFX_VERTEX_RAM_USAGE; stat_p = GFX_POLYGON_RAM_USAGE;
+        glFlush(0);
 
-        swiWaitForVBlank(); swiWaitForVBlank(); swiWaitForVBlank();
+        /* fixed 20 fps: frame work is absorbed into the 3-vblank budget instead of added to it */
+        stat_vb = vb_count; if (stat_vb < 3) { while (vb_count < 3) swiWaitForVBlank(); }
+        vb_count = 0;
+#ifdef DEBUG_POS
+        { static int t; if (++t >= 20) { t = 0; hud_dirty = 1; } }
+#endif
         if (hud_dirty && !dlg_active && (mode == M_WALK || mode == M_SEAT)) { hud_draw(px, fy, pz); hud_dirty = 0; }
         if (G.next && !dlg_active) {
             int nx = G.next;
@@ -1189,6 +1196,7 @@ static void story_reader(void)
 int main(void)
 {
     init_hw();
+    irqSet(IRQ_VBLANK, on_vblank); irqEnable(IRQ_VBLANK);
     if (!nitroFSInit(NULL)) { printf("nitroFS init failed\n"); while (1) swiWaitForVBlank(); }
     mmInitDefault("nitro:/soundbank.bin");
     if (!yarn_load("nitro:/story.bin")) { printf("story.bin missing\n"); while (1) swiWaitForVBlank(); }
