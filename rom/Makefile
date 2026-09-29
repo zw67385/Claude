@@ -33,7 +33,7 @@ SOURCEDIRS	:= source
 INCLUDEDIRS	:= source
 GFXDIRS		:=
 BINDIRS		:=
-AUDIODIRS	:=
+AUDIODIRS	:= audio
 # A single directory that is the root of NitroFS:
 NITROFSDIR	:= nitrofs
 
@@ -45,8 +45,8 @@ DEFINES		:=
 # Libraries
 # ---------
 
-LIBS		:= -lnds9 -lc
-LIBDIRS		:= $(BLOCKSDS)/libs/libnds
+LIBS		:= -lmm9 -lnds9 -lc
+LIBDIRS		:= $(BLOCKSDS)/libs/maxmod $(BLOCKSDS)/libs/libnds
 
 # Build artifacts
 # ---------------

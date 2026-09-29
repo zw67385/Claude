@@ -5,6 +5,41 @@
 #include <malloc.h>
 #include <string.h>
 #include "yarn.h"
+#include <maxmod9.h>
+#include "soundbank.h"
+#include "vo_map.h"
+
+/* ---- audio: samples live in NitroFS and are loaded into RAM only while needed ---- */
+static u8 sfx_loaded[MSL_NSAMPS];
+static int vo_cur = -1; static mm_sfxhand vo_h;
+static int amb_cur = -1; static mm_sfxhand amb_h;
+static int gen_on_snd; static mm_sfxhand gen_h;
+static mm_sfxhand sfx_play(int id, int vol)
+{
+    if (id < 0) return 0;
+    if (!sfx_loaded[id]) { mmLoadEffect(id); sfx_loaded[id] = 1; }
+    mm_sound_effect e = { { (mm_word)id }, 1024, 0, (mm_byte)vol, 128 };
+    return mmEffectEx(&e);
+}
+#define sfx(id) sfx_play((id), 255)
+static void sfx_free(int id) { if (id >= 0 && sfx_loaded[id]) { mmUnloadEffect(id); sfx_loaded[id] = 0; } }
+static void vo_play(int id)   /* one radio line at a time; the previous one is freed */
+{
+    if (vo_cur >= 0) { mmEffectCancel(vo_h); sfx_free(vo_cur); }
+    vo_cur = id; vo_h = id >= 0 ? sfx_play(id, 255) : 0;
+}
+static void amb_set(int id)
+{
+    if (id == amb_cur) return;
+    if (amb_cur >= 0) { mmEffectCancel(amb_h); sfx_free(amb_cur); }
+    amb_cur = id; amb_h = id >= 0 ? sfx_play(id, 150) : 0;
+}
+static void gen_snd(int on, int vol)
+{
+    if (on && !gen_on_snd) { gen_h = sfx_play(SFX_GEN_RUN, vol); gen_on_snd = 1; }
+    else if (!on && gen_on_snd) { mmEffectCancel(gen_h); gen_on_snd = 0; }
+    else if (on) mmEffectVolume(gen_h, vol);
+}
 
 typedef struct { u32 w, h, col, flags, dlwords, paloff, texoff, dloff; } Group;
 
@@ -205,8 +240,20 @@ static void dlg_advance(void)
                 { int n = 0; while (*a && n < (int)sizeof speaker - 1) { if (*a != '"') speaker[n++] = *a; a++; } speaker[n] = 0; }
             } else if (!strncmp(dev.text, "ExitRadio", 9)) exit_radio = 1;
             else if (!strncmp(dev.text, "HideName", 8)) speaker[0] = 0;
+            else if (!strncmp(dev.text, "VO_", 3)) {   /* VO_SEQn Tower <idx> */
+                static const struct { const char *k; const short *v; int n; } VS[] = {
+                    { "VO_SEQ1", VO_SEQ1, sizeof VO_SEQ1 / 2 }, { "VO_SEQ3", VO_SEQ3, sizeof VO_SEQ3 / 2 },
+                    { "VO_SEQ4", VO_SEQ4, sizeof VO_SEQ4 / 2 }, { "VO_SEQ5", VO_SEQ5, sizeof VO_SEQ5 / 2 },
+                    { "VO_SEQ6", VO_SEQ6, sizeof VO_SEQ6 / 2 }, { "VO_SEQ7", VO_SEQ7, sizeof VO_SEQ7 / 2 },
+                    { "VO_SEQ8", VO_SEQ8, sizeof VO_SEQ8 / 2 }, { "VO_HIKER", VO_HIKER, sizeof VO_HIKER / 2 } };
+                const char *sp = strchr(dev.text, ' '); int kl = sp ? sp - dev.text : (int)strlen(dev.text);
+                const char *ix = strrchr(dev.text, ' '); int i = ix ? atoi(ix + 1) : 0;
+                for (unsigned j = 0; j < sizeof VS / sizeof *VS; j++)
+                    if ((int)strlen(VS[j].k) == kl && !strncmp(VS[j].k, dev.text, kl) && i >= 0 && i < VS[j].n) vo_play(VS[j].v[i]);
+            }
+            else if (!strncmp(dev.text, "PlayStatic", 10)) sfx(SFX_RADIO_BEEP);
             else game_cmd(dev.text);
-            continue;   /* PlayStatic/StopStatic/PlaySFX/VO_*: audio, not ported yet */
+            continue;
         }
         dtype = t; dsel = 0; dlg_show(); return;
     }
@@ -359,7 +406,7 @@ static void game_cmd(const char *c)
 static void play_until_done(void);
 static void eat(void)
 {
-    fade(1);
+    sfx(SFX_EAT); fade(1);
     G.cass_hand = 0; G.eaten = 1; ctrl_hint = NULL;
     sub(S("EatingInBed"), 5);
     fade(0);
@@ -369,7 +416,15 @@ static void eat(void)
 static void use_spot(int id)
 {
     char b[64];
-    if (id >= I_BLIND) { G.blinds[id - I_BLIND] ^= 1; return; }
+    if (id >= I_BLIND) { sfx(SFX_BLIND); G.blinds[id - I_BLIND] ^= 1; return; }
+    {   /* interaction sound (the action itself may still refuse below) */
+        static const short SND[I_BLIND] = { SFX_GEN_ON, SFX_CLICK, SFX_CLICK, -2, SFX_WOOD, SFX_STOVE, -1, SFX_CLICK, SFX_MATCH, -1, -1,
+                                            SFX_PEE, SFX_DOOR_CLOSE, SFX_FRIDGE, SFX_PICKUP, SFX_OVEN, SFX_MICRO_END, SFX_PICKUP, SFX_GAS, SFX_SHUTTER };
+        int s = SND[id];
+        if (s == -2) s = G.locked ? SFX_CLICK : G.door_open ? SFX_DOOR_CLOSE : SFX_DOOR_OPEN;
+        if (id == I_GEN && G.gen && !(seq == 7 && G.power_out)) s = -1;
+        if (s >= 0) sfx(s);
+    }
     switch (id) {
     case I_GEN:
         if (seq == 7 && G.power_out) {
@@ -633,18 +688,18 @@ static void fire_event(int id, const char *s, int ok_walk, int *rearm)
     case EV_S5WALK: if (!ok_walk) { *rearm = 1; break; } G.cult_walk = 1; sub(S("Seq5VeryStrange"), 6); after(250, EV_S5GONE); break;
     case EV_S5GONE: G.cult_walk = 0; G.cult_gone = 1; sub(S("PresenceOutside"), 5); break;
     case EV_S5SUBS2: if (dlg_active) { *rearm = 1; break; } sub(S("ConnorDidntMakeSense"), 5); sub_after(55, "NotMuchElse"); break;
-    case EV_S6FLARE: G.flare = 20; after(40, EV_S6START); break;
+    case EV_S6FLARE: sfx(SFX_FLARE); G.flare = 20; after(40, EV_S6START); break;
     case EV_S6START: if (!ok_walk) { *rearm = 1; break; } G.standup1 = 1; dlg_begin("Seq6Start", NULL); break;
     case EV_ANXIOUS:
         if (!ok_walk && mode != M_SEAT) { *rearm = 1; break; }
         if (G.anxious == 1) { G.anxious = 2; dlg_begin("Anxious", NULL); }
         break;
-    case EV_KNOCK: if (G.knock && !G.door_open) { sub("*knock* *knock*", 2); *rearm = 1; } break;
+    case EV_KNOCK: if (G.knock && !G.door_open) { sfx(SFX_KNOCK); sub("*knock* *knock*", 2); *rearm = 1; } break;
     case EV_S6CONNORSU: if (!ok_walk) { *rearm = 1; break; } G.connor_su = 1; dlg_begin("Seq6ConnorStandUp", NULL); break;
     case EV_S7CONNOR: mode = M_SEAT; dlg_begin("Seq7Connor", NULL); after(250, EV_S7POWER); break;
     case EV_S7POWER:
         if (dlg_active) { *rearm = 1; break; }
-        G.power_out = 1; G.gen = 0; if (mode != M_WALK) mode = M_SEAT;
+        sfx(SFX_POWEROUT); G.power_out = 1; G.gen = 0; if (mode != M_WALK) mode = M_SEAT;
         sub(T("ep3_controls.PowerOut"), 3); sub_after(40, "Seq7PowerOut");
         break;
     case EV_S8STAND: if (!ok_walk) { *rearm = 1; break; } G.convo2 = 1; dlg_begin("Seq8StandUp", NULL); break;
@@ -910,6 +965,12 @@ static void run_game(int start)
                 else { px = ox; pz = oz; f = floor_at(px, pz, fy + STEPUP); }
             }
             if (f != NOFLOOR) { if (f > fy) fy = f; else { fy -= 800; if (fy < f) fy = f; } }
+            {   /* footsteps: one every ~0.7 m walked */
+                static int stepd, stepi;
+                stepd += abs(px - ox) + abs(pz - oz);
+                if (stepd > 2900) { stepd = 0; stepi = (stepi + 1) & 3; static const short W[] = { SFX_STEP_WOOD1, SFX_STEP_WOOD2, SFX_STEP_WOOD3, SFX_STEP_WOOD4 }, GR[] = { SFX_STEP_GRASS1, SFX_STEP_GRASS2, SFX_STEP_GRASS3, SFX_STEP_GRASS4 };
+                                     sfx_play(GROUND(fy) ? GR[stepi] : W[stepi], 110); }
+            }
             if (kd & KEY_SELECT) {   /* debug: cycle teleport spots */
                 /* generator, outside the door, inside the door, stove, desk, bed, thermometer */
                 static const int tp[][4] = {{-12970, 11000, 0, -50000}, {-17500, 4354, -8192, 0}, {-9000, 4354, 8192, 0}, {-10300, 5500, 0, 0},
@@ -960,7 +1021,7 @@ static void run_game(int start)
                 int dx = CULT_X - px, dz = CULT_Z - pz;
                 long long dot = (long long)dx * (-s) + (long long)dz * (-c);
                 long long len = (long long)(abs(dx) + abs(dz));
-                if (dot * 10 > len * 4096LL * 8) { G.cult_seen = 1; after(10, EV_S8SUBS); }
+                if (dot * 10 > len * 4096LL * 8) { sfx(SFX_SCARE); G.cult_seen = 1; after(10, EV_S8SUBS); }
             }
         }
         if ((k & KEY_TOUCH) && mode == M_WALK && !dlg_active) {
@@ -993,6 +1054,12 @@ static void run_game(int start)
         else glClearColor(2, 2, 3, 31);
         if (seq == 7) { sun = RGB15(4, 5, 8); amb = RGB15(3, 3, 5); }
         g_amb = cabin ? RGB15(13, 12, 10) : amb;
+        /* ambience loop + generator hum (louder when close to it) */
+        amb_set(seq == 3 ? SFX_AMB_EVENING : seq == 7 ? SFX_AMB_RAIN : seq == 8 && G.cult_seen ? SFX_AMB_DRONE : seq == 6 ? SFX_AMB_WIND : SFX_AMB_NIGHT);
+        {
+            int dx = (px + 12970) >> 12, dz = (pz - 11000) >> 12, d = abs(dx) + abs(dz) + (in ? 6 : 0);
+            gen_snd(G.gen, d > 40 ? 20 : 180 - d * 4);
+        }
         g_lights = POLY_FORMAT_LIGHT0 | (G.flash ? POLY_FORMAT_LIGHT1 : 0);
 
         glMatrixMode(GL_PROJECTION);
@@ -1024,7 +1091,7 @@ static void run_game(int start)
         if (hud_dirty && !dlg_active && (mode == M_WALK || mode == M_SEAT)) { hud_draw(px, fy, pz); hud_dirty = 0; }
         if (G.next && !dlg_active) {
             int nx = G.next;
-            fade(1);
+            fade(1); amb_set(-1); gen_snd(0, 0); vo_play(-1);
             if (nx == 4) campsite();
             if (nx == 9) { ending(); break; }
             setBrightness(3, 0);
@@ -1033,6 +1100,7 @@ static void run_game(int start)
         }
         if ((keysDown() & KEY_START) && !dlg_active) break;
     }
+    amb_set(-1); gen_snd(0, 0); vo_play(-1);
     setBrightness(3, 0);
 }
 
@@ -1101,6 +1169,7 @@ int main(void)
 {
     init_hw();
     if (!nitroFSInit(NULL)) { printf("nitroFS init failed\n"); while (1) swiWaitForVBlank(); }
+    mmInitDefault("nitro:/soundbank.bin");
     if (!yarn_load("nitro:/story.bin")) { printf("story.bin missing\n"); while (1) swiWaitForVBlank(); }
     { long sz; txt = (char *)load_file("nitro:/text.bin", &sz); ntxt = txt ? ((u32 *)txt)[1] : 0; }
     int sel = 0;
