@@ -12,7 +12,7 @@ def S(s):
 def clean(t):
     if isinstance(t, bool): return "yes" if t else "no"
     t = str(t)
-    t = re.sub(r"<[^>]+>", "", t)
+    t = t.replace("<br>", "\n"); t = re.sub(r"<[^>]+>", "", t); t = t.replace("[nomarkup]", "").replace("[/nomarkup]", "")
     for a, b in {"‘": "'", "’": "'", "“": '"', "”": '"', "—": "-", "–": "-", "…": "...", " ": " "}.items(): t = t.replace(a, b)
     return t.encode("ascii", "replace").decode()
 inst = []; nodes = []
@@ -22,7 +22,9 @@ for name, n in y.items():
     for i in n["ins"]:
         op = OPS.index(i["op"]); a = b = 0; args = i["args"]
         if i["op"] in ("RUN_LINE", "ADD_OPTION"):
-            a = S(clean(txt.get(args[0], "")))
+            tx = clean(txt.get(args[0], ""))
+            if i["op"] == "ADD_OPTION" and tx.endswith("Green"): tx = tx[:-5]
+            a = S(tx)
             if i["op"] == "ADD_OPTION": b = base + lab[args[1]]
         elif i["op"] == "JUMP_TO": a = base + lab[args[0]]
         elif i["op"] == "JUMP_IF_FALSE": a = base + lab[args[0]]

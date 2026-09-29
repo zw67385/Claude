@@ -53,3 +53,9 @@ A faithful 1:1 port is not possible (Unity HDRP game vs 4 MB RAM, 2048 polys/fra
 - `rom/source/main.c`: boot menu (Walk the cabin / Read story nodes). Cabin rebaked at BUDGET=2600 (1668 tris, under 2048 cap).
 - Emulator input injection WORKS: run desmume under xvfb, `xdotool mousemove 400 300 click 1` to focus, then `/tmp/press.sh Down x x` (keydown/sleep .25/keyup/sleep .5). Keys: x=A z=B s=X a=Y arrows, Return=Start. (Recreate press.sh if /tmp reset.) GFX poly/vert RAM counters read 0 in DeSmuME, so poly count must be computed offline.
 - Next: bottom-screen proper UI (replace console), commands handler (RUN_COMMAND names: PlaySFX1, SetupName, ExitRadio, VO_*...), sequence state machine, collision, per-sequence prop groups, audio.
+
+## Progress 3
+- Collision (tower.col AABBs), reversed winding fix, pack_story quirks (yes/no, floats) done.
+- `run_cabin()` now has interactables (`INTERACTS[]`, radio -> Radiostart) and a dialogue overlay on the sub-screen (`dlg_*`): A interact/advance, up/down + A pick options. Look = stylus or hold Y + D-pad. SetupName sets the speaker; other RUN_COMMANDs are still stubs.
+- Test recipe: focus click, `xdotool keydown a keydown Right` (0.15s), hold Up 3.5s, press x -> radio dialogue shows. Env vars (WONDERFUL_TOOLCHAIN/BLOCKSDS/PATH) must be re-exported per shell; desmume is /usr/games/desmume-cli.
+- Next: more interactables, sequence state machine, touch UI, audio.

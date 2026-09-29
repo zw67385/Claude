@@ -98,6 +98,63 @@ static void init_hw(void)
 
 }
 
+static void wrap_print(const char *t);
+
+typedef struct { const char *name, *node; int x, z; } Interact;
+static const Interact INTERACTS[] = {
+    { "Radio", "Radiostart", -2949, -10690 },
+};
+#define NINTERACT (int)(sizeof(INTERACTS) / sizeof(INTERACTS[0]))
+#define REACH (5325)   /* 1.3 m in 20.12 */
+
+static char speaker[24];
+static YarnEvent dev;
+static int dtype;     /* 0 = none, YE_LINE, YE_OPTIONS */
+static int dsel;
+
+static void dlg_show(void)
+{
+    consoleClear();
+    if (dtype == YE_LINE) {
+        if (speaker[0]) printf("[%s]\n", speaker);
+        wrap_print(dev.text);
+        printf("\n[A] next");
+    } else if (dtype == YE_OPTIONS) {
+        for (int i = 0; i < dev.nopt; i++) { printf("%c ", i == dsel ? '>' : ' '); wrap_print(dev.opt[i]); }
+    }
+}
+
+static void dlg_advance(void)
+{
+    for (;;) {
+        int t = yarn_step(&dev);
+        if (t == YE_DONE) { dtype = 0; consoleClear(); speaker[0] = 0; return; }
+        if (t == YE_COMMAND) {
+            /* SetupName <name> sets the speaker; other commands are stubs for now */
+            if (!strncmp(dev.text, "SetupName", 9)) {
+                const char *a = dev.text + 9; while (*a == ' ') a++;
+                while (*a && *a != ' ') a++;   /* skip the speaker object id */
+                while (*a == ' ') a++;
+                strncpy(speaker, a, sizeof speaker - 1); speaker[sizeof speaker - 1] = 0;
+            }
+            continue;
+        }
+        dtype = t; dsel = 0; dlg_show(); return;
+    }
+}
+
+static void dlg_begin(const char *node) { speaker[0] = 0; yarn_start(node); dlg_advance(); }
+
+static void dlg_input(u32 d)
+{
+    if (dtype == YE_LINE) { if (d & KEY_A) dlg_advance(); }
+    else if (dtype == YE_OPTIONS) {
+        if (d & KEY_UP) { dsel = (dsel + dev.nopt - 1) % dev.nopt; dlg_show(); }
+        else if (d & KEY_DOWN) { dsel = (dsel + 1) % dev.nopt; dlg_show(); }
+        else if (d & KEY_A) { yarn_choose(dsel); dlg_advance(); }
+    }
+}
+
 static void run_cabin(void)
 {
     if (!nboxes) load_col("nitro:/tower.col");
@@ -108,19 +165,33 @@ static void run_cabin(void)
 
     while (1) {
         scanKeys();
-        u32 k = keysHeld();
-        int sp = (k & KEY_R) ? 900 : 450;
-        int fwd = ((k & KEY_UP) ? 1 : 0) - ((k & KEY_DOWN) ? 1 : 0);
-        int str = ((k & KEY_RIGHT) ? 1 : 0) - ((k & KEY_LEFT) ? 1 : 0);
+        u32 k = keysHeld(), kd = keysDown();
         int s = sinLerp(yaw), c = cosLerp(yaw);
-        px += ((-s * fwd + c * str) * sp) >> 12;
-        pz += ((-c * fwd - s * str) * sp) >> 12;
-        collide(&px, &pz, py - 6200, py + 400);
-        if (k & KEY_Y) yaw += 500;
-        if (k & KEY_A) yaw -= 500;
-        if (k & KEY_X) pitch += 300;
-        if (k & KEY_B) pitch -= 300;
-        if (k & KEY_TOUCH) {
+        if (dtype) {
+            dlg_input(kd);
+        } else {
+            int sp = (k & KEY_R) ? 900 : 450;
+            int fwd = 0, str = 0;
+            if (k & KEY_Y) {   /* Y held + D-pad = look */
+                yaw += (((k & KEY_LEFT) ? 1 : 0) - ((k & KEY_RIGHT) ? 1 : 0)) * 500;
+                pitch += (((k & KEY_UP) ? 1 : 0) - ((k & KEY_DOWN) ? 1 : 0)) * 300;
+            } else {
+                fwd = ((k & KEY_UP) ? 1 : 0) - ((k & KEY_DOWN) ? 1 : 0);
+                str = ((k & KEY_RIGHT) ? 1 : 0) - ((k & KEY_LEFT) ? 1 : 0);
+            }
+            px += ((-s * fwd + c * str) * sp) >> 12;
+            pz += ((-c * fwd - s * str) * sp) >> 12;
+            collide(&px, &pz, py - 6200, py + 400);
+            if (kd & KEY_A) {
+                for (int i = 0; i < NINTERACT; i++) {
+                    long long dx = INTERACTS[i].x - px, dz = INTERACTS[i].z - pz;
+                    long long d2 = dx * dx + dz * dz;
+                    long long fdot = dx * (-s) + dz * (-c);   /* facing test */
+                    if (d2 < (long long)REACH * REACH && fdot > 0) { dlg_begin(INTERACTS[i].node); break; }
+                }
+            }
+        }
+        if ((k & KEY_TOUCH) && !dtype) {
             touchRead(&t1);
             if (wasTouch) { yaw -= (t1.px - t0.px) * 90; pitch += (t1.py - t0.py) * 70; }
             t0 = t1; wasTouch = 1;
@@ -145,7 +216,7 @@ static void run_cabin(void)
         frames++;
         swiWaitForVBlank(); swiWaitForVBlank(); swiWaitForVBlank();
         if (keysDown() & KEY_START) break;
-        if ((frames % 20) == 0) { consoleClear(); printf("frame %d\npos %d %d\nvtx %d poly %d\n", frames, px >> 8, pz >> 8, stat_v, stat_p); }
+        if (!dtype && (frames % 20) == 0) { consoleClear(); printf("A: interact  Y+pad: look\nStylus: look  R: run\npos %d %d yaw %d\n", px >> 8, pz >> 8, yaw); }
     }
 }
 
