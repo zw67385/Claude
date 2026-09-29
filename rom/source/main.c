@@ -150,6 +150,7 @@ static void init_hw(void)
 }
 
 static void wrap_print(const char *t);
+static void game_cmd(const char *c);
 
 /* ---- text pack: 'TXT1', u32 n, n x "table.key\0value\0" ---- */
 static char *txt; static int ntxt;
@@ -203,6 +204,8 @@ static void dlg_advance(void)
                 while (*a == ' ') a++;
                 { int n = 0; while (*a && n < (int)sizeof speaker - 1) { if (*a != '"') speaker[n++] = *a; a++; } speaker[n] = 0; }
             } else if (!strncmp(dev.text, "ExitRadio", 9)) exit_radio = 1;
+            else if (!strncmp(dev.text, "HideName", 8)) speaker[0] = 0;
+            else game_cmd(dev.text);
             continue;   /* PlayStatic/StopStatic/PlaySFX/VO_*: audio, not ported yet */
         }
         dtype = t; dsel = 0; dlg_show(); return;
@@ -229,7 +232,8 @@ static void fade(int out)
     for (int i = 0; i <= 16; i += 2) { setBrightness(3, out ? -i : -(16 - i)); swiWaitForVBlank(); }
 }
 
-/* ---- Seq1 state (names follow the original Seq1 manager) ---- */
+/* ---- game state (names follow the original WatchTowerManager) ---- */
+static int seq;   /* 1..8 */
 static struct {
     int gen, shed, locked, door_open, door_ang, light, flash;
     int stove_open, wood_hand, wood_in_stove, can_pick_wood, fire;
@@ -237,19 +241,34 @@ static struct {
     int connor_started, radio_hint, inside_first, sleep;
     int blinds[11];
     int temp10, wind;
+    /* Seq2..8 */
+    int peed, convo1, convo2, standup1, standup2, campers, checkcampers;
+    int ingr_hand, ingr_in, cass_hand, cass_cooked, cass_where, cook_t, eaten, oven_open, cass_first;
+    int cult_walk, cult_gone, skull, flare, anxious, knock, billy, badguy, connor_su, connor_c, bino_used;
+    int power_out, gas_hand, gas_filled, update_done, cult_seen, flash_off, hidden, run, ground_first;
+    int next;   /* pending sequence change (0 none, 9 = ending) */
 } G;
 enum { M_WALK, M_SEAT, M_PC, M_FORM };
 static int mode;
+enum { CW_NONE, CW_OVEN, CW_MICRO };   /* where the casserole is cooking */
 
-enum { EV_LONGHIKE = 1, EV_HOME, EV_CONNOR, EV_STOVECONVO, EV_SMOKE, EV_REPORTDONE2, EV_RADIOHINT };
-static struct { int t, id; } evq[8];
+enum { EV_LONGHIKE = 1, EV_HOME, EV_CONNOR, EV_STOVECONVO, EV_SMOKE, EV_REPORTDONE2, EV_RADIOHINT,
+       EV_SUB, EV_S2SUBS, EV_S3CONVO, EV_S3CONFIRM, EV_S4STAND, EV_S5WALK, EV_S5GONE, EV_S5SUBS2, EV_S6FLARE,
+       EV_S6START, EV_ANXIOUS, EV_KNOCK, EV_S6CONNORSU, EV_S7CONNOR, EV_S7POWER, EV_S8STAND, EV_S8SUBS, EV_S8COME,
+       EV_S8LEAVE };
+static struct { int t, id; const char *s; } evq[12];
 static void after(int tenths, int id)
 {
-    for (int i = 0; i < 8; i++) if (!evq[i].id) { evq[i].t = tenths * 2; evq[i].id = id; return; }
+    for (int i = 0; i < 12; i++) if (!evq[i].id) { evq[i].t = tenths * 2; evq[i].id = id; evq[i].s = NULL; return; }
+}
+static void sub_after(int tenths, const char *key)   /* delayed subtitle (ep4_subs key) */
+{
+    for (int i = 0; i < 12; i++) if (!evq[i].id) { evq[i].t = tenths * 2; evq[i].id = EV_SUB; evq[i].s = key; return; }
 }
 
 /* interactables (DS frame, 20.12) */
-enum { I_GEN, I_SHED, I_SWITCH, I_DOOR, I_WOOD, I_STOVE, I_BED, I_DESK, I_MATCH, I_THERMO, I_ANEMO, I_BLIND };
+enum { I_GEN, I_SHED, I_SWITCH, I_DOOR, I_WOOD, I_STOVE, I_BED, I_DESK, I_MATCH, I_THERMO, I_ANEMO,
+       I_PEE2, I_POTTY, I_FRIDGE, I_CASS, I_OVEN, I_MICRO, I_SKULL, I_GAS, I_MOUNT, I_BLIND };
 typedef struct { int id, x, y, z; } Spot;
 static const Spot SPOTS[] = {
     { I_GEN, -12970, -67336, 6715 }, { I_SHED, -37669, -68183, 91559 }, { I_SWITCH, -12165, -326, 2064 },
@@ -257,6 +276,9 @@ static const Spot SPOTS[] = {
     { I_BED, 9113, -5374, 6612 }, { I_DESK, 9570, -964, -4823 }, { I_DESK, 8781, -4538, -5106 },
     { I_DESK, 5653, -4229, -5459 }, { I_DESK, 9064, -1796, -7854 }, { I_MATCH, -10268, -2818, 8620 },
     { I_THERMO, 2256, -596, -12504 }, { I_ANEMO, -552, -2117, -11100 },
+    { I_PEE2, -20047, -2670, -18190 }, { I_POTTY, -20652, -66990, -2695 }, { I_FRIDGE, -10916, -4378, 412 },
+    { I_CASS, -9655, -2502, -10147 }, { I_OVEN, -9114, -5254, -2965 }, { I_MICRO, -10382, -2961, 1595 },
+    { I_SKULL, -18853, -4100, 4059 }, { I_GAS, -33346, -73023, 101099 }, { I_MOUNT, -16412, -4135, -15544 },
     { I_BLIND + 0, -6579, 4210, -13067 }, { I_BLIND + 1, 3057, 4210, -13073 }, { I_BLIND + 2, 10207, 4210, -13080 },
     { I_BLIND + 3, 12612, 4210, 10014 }, { I_BLIND + 4, 6237, 4210, 12359 }, { I_BLIND + 5, -10499, 4210, 12338 },
     { I_BLIND + 6, -3400, 4210, 12353 }, { I_BLIND + 7, -12921, 4210, 8438 }, { I_BLIND + 8, -12921, 4210, -10707 },
@@ -267,22 +289,57 @@ static const Spot SPOTS[] = {
 #define DOOR_BOX 261
 #define DOOR_CLOSED 280      /* ~+3 deg: door.bin is baked 3 deg ajar */
 #define DOOR_OPEN (-8200)
+static const char *INGR[] = { "", "cheese", "tomatoes", "sauce", "pasta", "pepperoni" };
+
+static int all_blinds(void) { int a = 1; for (int i = 0; i < 11; i++) a &= G.blinds[i]; return a; }
+static int food_seq(void) { return seq == 4 || seq == 6; }
 
 static const char *spot_label(int id)
 {
+    static char b[40];
     if (id >= I_BLIND) return G.blinds[id - I_BLIND] ? "Open shutter" : "Close shutter";
     switch (id) {
-    case I_GEN: return G.gen ? NULL : "Start generator";
+    case I_GEN:
+        if (seq == 7 && G.power_out) return G.gas_hand ? "Fill the generator" : "Start generator";
+        return G.gen ? NULL : "Start generator";
     case I_SHED: return "Light switch";
     case I_SWITCH: return "Light switch";
     case I_DOOR: return G.locked ? "Unlock door" : G.door_open ? "Close door" : "Open door";
     case I_WOOD: return G.can_pick_wood && !G.wood_hand && !G.wood_in_stove ? "Pick up firewood" : NULL;
     case I_STOVE: return G.stove_open && G.wood_hand ? "Place wood in stove" : G.stove_open ? "Close stove" : "Open stove";
-    case I_BED: return "Sleep";
+    case I_BED:
+        if (G.cass_hand && G.cass_cooked) return "Eat in bed";
+        if (seq == 8 && G.flash_off && !G.hidden) return "Hide under the bed";
+        return "Sleep";
     case I_DESK: return "Sit down";
     case I_MATCH: return G.wood_in_stove && !G.fire ? "Light the stove" : NULL;
     case I_THERMO: return "Check thermometer";
     case I_ANEMO: return "Check anemometer";
+    case I_PEE2: return seq == 2 && !G.peed ? "Pee" : NULL;
+    case I_POTTY: return seq == 7 && G.gas_filled && !G.peed ? "Use the porta potty" : NULL;
+    case I_FRIDGE:
+        if (!food_seq() || G.eaten || G.cass_hand || G.ingr_hand) return NULL;
+        if (seq == 6) return G.cass_where || G.cass_cooked ? NULL : "Take the casserole";
+        if (G.ingr_in >= 5) return NULL;
+        snprintf(b, sizeof b, "Take %s", INGR[G.ingr_in + 1]); return b;
+    case I_CASS:
+        if (seq != 4 || G.eaten || G.cass_where || G.cass_cooked) return NULL;
+        if (G.ingr_hand) { snprintf(b, sizeof b, "Add %s", INGR[G.ingr_hand]); return b; }
+        if (G.ingr_in >= 5 && !G.cass_hand) return "Pick up the casserole";
+        return G.ingr_in ? NULL : "Casserole dish";
+    case I_OVEN:
+        if (seq != 4) return NULL;
+        if (G.cass_hand && !G.cass_cooked) return "Put it in the oven";
+        if (G.cass_where == CW_OVEN) return G.cook_t ? "Check the oven" : "Take the casserole out";
+        return NULL;
+    case I_MICRO:
+        if (seq != 6) return NULL;
+        if (G.cass_hand && !G.cass_cooked) return "Heat it in the microwave";
+        if (G.cass_where == CW_MICRO) return G.cook_t ? "Check the microwave" : "Take the casserole out";
+        return NULL;
+    case I_SKULL: return seq == 5 && G.cult_gone && !G.skull ? "What is that?" : NULL;
+    case I_GAS: return seq == 7 && G.power_out && !G.gas_hand && !G.gas_filled ? "Take the gas can" : NULL;
+    case I_MOUNT: return seq == 8 && G.cult_seen && !G.flash_off ? "Take a photo" : NULL;
     }
     return NULL;
 }
@@ -292,62 +349,219 @@ static void on_radiostart_done(void) { G.first_radio_done = 1; yarn_set("firstRa
 static void on_firewood_done(void) { }
 static void on_smoke_done(void) { G.ask_report = 1; }
 
+/* yarn commands with game-side effects */
+static void game_cmd(const char *c)
+{
+    if (!strncmp(c, "AnxiousConvo", 12)) { G.anxious = 1; after(200, EV_ANXIOUS); }
+    else if (!strncmp(c, "StartKnocking", 13)) { G.knock = 1; after(30, EV_KNOCK); }
+}
+
+static void play_until_done(void);
+static void eat(void)
+{
+    fade(1);
+    G.cass_hand = 0; G.eaten = 1; ctrl_hint = NULL;
+    sub(S("EatingInBed"), 5);
+    fade(0);
+    if (seq == 4 && !G.standup1) after(80, EV_S4STAND);
+}
+
 static void use_spot(int id)
 {
     char b[64];
     if (id >= I_BLIND) { G.blinds[id - I_BLIND] ^= 1; return; }
     switch (id) {
-    case I_GEN: fade(1); G.gen = 1; G.shed = 1; fade(0); break;
+    case I_GEN:
+        if (seq == 7 && G.power_out) {
+            if (!G.gas_hand) { sub(S("Seq7NeededGas"), 5); break; }
+            fade(1); G.gas_hand = 0; G.gas_filled = 1; G.power_out = 0; G.gen = 1; G.light = 1; ctrl_hint = NULL;
+            sub(T("ep3_controls.PowerBack"), 3); fade(0);
+            sub_after(40, "Seq7Drenched");
+            break;
+        }
+        fade(1); G.gen = 1; G.shed = 1; fade(0); break;
     case I_SHED: if (G.gen) G.shed ^= 1; break;
-    case I_SWITCH: if (G.gen) G.light ^= 1; else sub(S("GeneratorOn"), 4); break;
+    case I_SWITCH: if (G.gen) G.light ^= 1; else sub(S(seq == 7 ? "Seq7PowerOut" : "GeneratorOn"), 4); break;
     case I_DOOR:
         if (G.locked) { G.locked = 0; sub("*click* the door unlocked", 3); }
-        else G.door_open ^= 1;
+        else {
+            if (!G.door_open && seq == 5 && G.cult_walk) { sub(S("NotComfortableOpenDoor"), 4); break; }
+            G.door_open ^= 1;
+            if (G.door_open && seq == 6 && G.knock && !G.billy) {
+                G.billy = 1; G.knock = 0;
+                dlg_begin("Seq6Billy", NULL); play_until_done();
+                dlg_begin("Seq6Billy2", NULL);
+            }
+        }
         break;
     case I_WOOD: G.wood_hand = 1; ctrl_hint = "A: place in stove (open it)"; break;
     case I_STOVE:
         if (G.stove_open && G.wood_hand) { G.wood_hand = 0; G.wood_in_stove = 1; ctrl_hint = NULL; break; }
-        if (G.to_trigger_stove && !G.stove_done) {
+        if (seq == 1 && G.to_trigger_stove && !G.stove_done) {
             sub(S("NoFirewood"), 4); G.stove_done = 1; G.repeat_stove = 0; after(40, EV_STOVECONVO);
+        } else if (food_seq() && !G.fire && !G.wood_in_stove && !G.can_pick_wood) {
+            sub(S("NoFirewood"), 4);
         }
         G.stove_open ^= 1;
         break;
     case I_BED:
-        if (!G.report_done) sub(S("ReportTonight"), 4);
-        else if (!G.fire) sub(S("GettingCold"), 4);
-        else {
-            int all = 1; for (int i = 0; i < 11; i++) all &= G.blinds[i];
-            if (!all) sub(S("CloseBoards"), 5);
+        if (G.cass_hand && G.cass_cooked) { eat(); break; }
+        switch (seq) {
+        case 1:
+            if (!G.report_done) sub(S("ReportTonight"), 4);
+            else if (!G.fire) sub(S("GettingCold"), 4);
+            else if (!all_blinds()) sub(S("CloseBoards"), 5);
             else if (G.door_open) sub(S("CloseDoor"), 5);
-            else G.sleep = 1;
+            else G.next = 2;
+            break;
+        case 2:
+            if (!G.peed) sub(S("StillPee"), 4);
+            else if (G.door_open) sub(S("CloseDoor"), 4);
+            else G.next = 3;
+            break;
+        case 3: sub(S("ReportTonight"), 4); break;
+        case 4:
+            if (!G.convo1) sub(S("Seq4Connor"), 4);
+            else if (!G.eaten) sub(S("Seq4Hungry"), 4);
+            else if (!G.fire) sub(S("Seq4LightFire"), 4);
+            else if (!G.report_done) sub(S("Seq4Report"), 4);
+            else if (!all_blinds()) sub(S("CloseBoards"), 5);
+            else if (G.door_open) sub(S("CloseDoor"), 4);
+            else G.next = 5;
+            break;
+        case 5:
+            if (!G.cult_gone || !G.skull) sub(S(rand() & 1 ? "BeingWatched" : "PresenceOutside"), 4);
+            else if (!G.convo1) sub(S("Seq5Connor"), 4);
+            else if (G.door_open) sub(S("CloseDoor"), 4);
+            else G.next = 6;
+            break;
+        case 6:
+            if (!G.eaten) sub(S("Seq4Hungry"), 4);
+            else if (!G.report_done) sub(S("Seq4Report"), 4);
+            else if (!G.fire) sub(S("Seq4LightFire"), 4);
+            else if (G.door_open) sub(S("CloseDoor"), 4);
+            else if (!G.connor_c) sub(S("Seq6ConnnorOnLine"), 4);
+            else G.next = 7;
+            break;
+        case 7: sub(S(G.gas_filled ? "StillPee" : "Seq7PowerOut"), 4); break;
+        case 8:
+            if (!G.flash_off) sub(S("Seq8CheckCamp"), 4);
+            else if (!G.hidden) {   /* hide under the bed until it leaves */
+                G.hidden = 1; fade(1); consoleClear(); setBrightness(1, -16);
+                printf("\n\n\n   (under the bed)\n\n"); wrap_print(T("ep3_controls.Hide"));
+                for (int i = 0; i < 60 * 6; i++) swiWaitForVBlank();
+                wrap_print(S("Seq5VeryStrange"));
+                for (int i = 0; i < 60 * 5; i++) swiWaitForVBlank();
+                setBrightness(3, 0); fade(0);
+                G.run = 1; sub(S("Seq8MakeARun"), 6); ctrl_hint = "R: sprint";
+            } else sub(S("Seq8MakeARun"), 4);
+            break;
         }
         break;
     case I_DESK:
         fade(1); mode = M_SEAT; hud_dirty = 1;
-        if (!G.radio_hint) { G.radio_hint = 1; after(10, EV_RADIOHINT); }
+        if (seq == 1 && !G.radio_hint) { G.radio_hint = 1; after(10, EV_RADIOHINT); }
         fade(0);
         break;
-    case I_MATCH: G.fire = 1; G.stove_open = 0; yarn_set("fireLit", 100); after(50, EV_SMOKE); break;
+    case I_MATCH:
+        G.fire = 1; G.stove_open = 0; yarn_set("fireLit", 100);
+        if (seq == 1) after(50, EV_SMOKE);
+        if (seq == 6 && G.badguy && !G.connor_su) after(60, EV_S6CONNORSU);
+        break;
     case I_THERMO: snprintf(b, sizeof b, "%s %d.%d F", S("CheckTemp"), G.temp10 / 10, G.temp10 % 10); sub(b, 5); break;
     case I_ANEMO: snprintf(b, sizeof b, "the wind speed was %d mph", G.wind); sub(b, 5); break;
+    case I_PEE2: fade(1); G.peed = 1; fade(0); sub(S("pee"), 4); break;
+    case I_POTTY:
+        fade(1); G.peed = 1; fade(0);
+        G.next = 8; break;
+    case I_FRIDGE:
+        if (seq == 6) { G.cass_hand = 1; sub(S("ColdFood"), 4); ctrl_hint = "Heat it in the microwave"; break; }
+        G.ingr_hand = G.ingr_in + 1;
+        if (!G.cass_first) { G.cass_first = 1; sub(S("Starving"), 4); sub_after(50, "Recipe"); }
+        snprintf(b, sizeof b, "Holding: %s", INGR[G.ingr_hand]); ctrl_hint = NULL; sub(b, 2);
+        break;
+    case I_CASS:
+        if (G.ingr_hand) {
+            if (!G.convo1) { sub(S("HungryButReport"), 5); break; }
+            G.ingr_hand = 0; G.ingr_in++;
+            if (G.ingr_in == 5) sub("The casserole is ready for the oven.", 4);
+        } else if (G.ingr_in >= 5) { G.cass_hand = 1; ctrl_hint = "Holding: casserole"; }
+        else sub(S("MissingIngredient1"), 5);
+        break;
+    case I_OVEN: case I_MICRO:
+        if (G.cass_hand) {
+            G.cass_hand = 0; G.cass_where = id == I_OVEN ? CW_OVEN : CW_MICRO; G.cook_t = id == I_OVEN ? 20 * 40 : 20 * 15;
+            ctrl_hint = NULL; if (id == I_OVEN) sub(S("ReportMeantime"), 5);
+        } else if (G.cook_t) sub(S(id == I_OVEN ? "CheckingOven" : "Seq6FoodHeating"), 4);
+        else { G.cass_where = CW_NONE; G.cass_hand = 1; G.cass_cooked = 1; ctrl_hint = "Holding: casserole (eat in bed)"; }
+        break;
+    case I_SKULL:
+        G.skull = 1; sub(S("WhatToMake"), 5); sub_after(55, "ContactConnor"); break;
+    case I_GAS: G.gas_hand = 1; ctrl_hint = "Holding: gas can"; break;
+    case I_MOUNT:
+        fade(1); setBrightness(3, 16); for (int i = 0; i < 6; i++) swiWaitForVBlank(); fade(0);
+        G.flash_off = 1; sub("*FLASH*", 2); after(30, EV_S8COME);
+        break;
     }
     hud_dirty = 1;
 }
 
 static void start_radio(void)
 {
-    if (!G.gen) { sub(S("GeneratorOn"), 4); return; }
-    if (!G.first_radio_done) { sub(S("ConnorOnRadio"), 3); return; }
-    if (G.stove_done && !G.fire && !G.firewood_once) {
-        G.firewood_once = 1; G.can_pick_wood = 1; dlg_begin("Firewood", on_firewood_done);
-    } else if (G.ask_report) dlg_begin(G.report_done ? "ReportDone" : "Report", NULL);
-    else if (G.repeat_stove) dlg_begin("Stove", NULL);
-    else dlg_begin("Nothing", NULL);
+    if (!G.gen) { sub(S(seq == 7 ? "Seq7PowerOut" : "GeneratorOn"), 4); return; }
+    switch (seq) {
+    case 1:
+        if (!G.first_radio_done) { sub(S("ConnorOnRadio"), 3); return; }
+        if (G.stove_done && !G.fire && !G.firewood_once) {
+            G.firewood_once = 1; G.can_pick_wood = 1; dlg_begin("Firewood", on_firewood_done);
+        } else if (G.ask_report) { G.ask_report = 0; dlg_begin(G.report_done ? "ReportDone" : "Report", NULL); }
+        else if (G.repeat_stove) dlg_begin("Stove", NULL);
+        else dlg_begin("Nothing", NULL);
+        return;
+    case 2:
+        if (!G.convo1) { G.convo1 = 1; dlg_begin("ConnorCheck", NULL); } else dlg_begin("Nothing", NULL);
+        return;
+    case 3:
+        if (G.standup1 && !G.campers) { G.campers = 1; dlg_begin("Campers", NULL); sub_after(30, "SmokeCampfire"); after(80, EV_S3CONFIRM); }
+        else if (G.standup2 && !G.checkcampers) { G.checkcampers = 1; dlg_begin("CheckCampers", NULL); }
+        else dlg_begin("Nothing", NULL);
+        return;
+    case 4:
+        if (!G.convo1) { G.convo1 = 1; dlg_begin("Seq4Start", NULL); G.can_pick_wood = 1; }
+        else if (G.standup1 && !G.convo2) { G.convo2 = 1; dlg_begin(G.report_done ? "Seq4LastReportDone" : "Seq4Last", NULL); }
+        else dlg_begin("Nothing", NULL);
+        return;
+    case 5:
+        if (!G.convo1 && G.cult_gone && G.skull) { G.convo1 = 1; dlg_begin("Seq5Start", NULL); after(20, EV_S5SUBS2); }
+        else dlg_begin("Nothing", NULL);
+        return;
+    case 6:
+        if (!G.convo1 && G.standup1) { G.convo1 = 1; dlg_begin("Hiker1", NULL); }
+        else if (G.convo1 && G.anxious == 2) { G.anxious = 0; dlg_begin("Hiker2", NULL); }
+        else if (G.connor_su && !G.connor_c) { G.connor_c = 1; dlg_begin("Seq6Connor", NULL); }
+        else dlg_begin("Nothing", NULL);
+        return;
+    case 7:
+        if (!G.update_done && G.gas_filled) { G.update_done = 1; dlg_begin("Seq7Update", NULL); }
+        else if (!G.update_done) dlg_begin("Seq7AskAgain", NULL);
+        else dlg_begin("Nothing", NULL);
+        return;
+    case 8:
+        if (!G.convo1) { G.convo1 = 1; dlg_begin("Seq8SitDown", NULL); after(300, EV_S8STAND); }
+        else if (!G.convo2) dlg_begin("Seq8SitDownLoop", NULL);
+        else dlg_begin("Nothing", NULL);
+        return;
+    }
 }
 
 /* ---- computer: service report form (sub screen, D-pad edited) ---- */
 static const char *WEATHER[] = { "Cloud", "Mist", "Clear", "Wind", "Rain", "Heat Waves", "Blizzard", "Thunderstorm", "Dust Storm" };
 static int f_row, f_temp, f_wind, f_weather, f_campers;
+static const char *seq_time(void)
+{
+    static const char *t[] = { "", "11:32 PM", "3:26 AM", "7:04 PM", "11:15 PM", "3:10 AM", "4:30 PM", "9:18 PM", "10:05 PM" };
+    return t[seq];
+}
 static void form_show(void)
 {
     consoleClear();
@@ -357,7 +571,7 @@ static void form_show(void)
         printf("%c %-12s", r == f_row ? '>' : ' ', lab[r]);
         switch (r) {
         case 0: printf("Tower 11"); break;
-        case 1: printf("%s", T("ep4_intro.Night1")); break;
+        case 1: printf("%s", seq_time()); break;
         case 2: if (f_temp < 0) printf("--.-"); else printf("%d.%d F", f_temp / 10, f_temp % 10); break;
         case 3: if (f_wind < 0) printf("--"); else printf("%d", f_wind); break;
         case 4: printf("%s", WEATHER[f_weather]); break;
@@ -382,22 +596,26 @@ static void form_input(u32 d, u32 held)
         case 5: f_campers = (f_campers < 0 ? 0 : f_campers + dv); if (f_campers < 0) f_campers = 0; if (f_campers > 20) f_campers = 20; break;
     }
     if (d & KEY_A) {
-        if (f_temp != G.temp10 || f_wind != G.wind) sub(S("MistakeReport"), 4);
-        else if (f_weather != 2) sub(S("RightWeatherCondition"), 4);
+        int want_w = seq == 6 ? 2 : 2;
+        if (G.report_done) { sub("Report already submitted.", 3); mode = M_SEAT; }
+        else if (f_temp != G.temp10 || f_wind != G.wind) sub(S("MistakeReport"), 4);
+        else if (f_weather != want_w) sub(S("RightWeatherCondition"), 4);
         else if (f_campers < 0) sub(S("MistakeReport"), 4);
         else {
             G.report_done = 1; yarn_set("reportDone", 100);
             sub("Report submitted.", 3); mode = M_SEAT;
-            if (G.fire) after(30, EV_REPORTDONE2);
+            if (seq == 1 && G.fire) after(30, EV_REPORTDONE2);
         }
     }
     if (d & KEY_B) mode = M_PC;
     hud_dirty = 1;
 }
 
-static void fire_event(int id, int ok_walk, int *rearm)
+/* returns 1 when handled; *rearm asks to retry shortly (player busy / not inside) */
+static void fire_event(int id, const char *s, int ok_walk, int *rearm)
 {
     switch (id) {
+    case EV_SUB: sub(S(s), 5); break;
     case EV_LONGHIKE: sub(S("Seq1LongHike"), 6); break;
     case EV_HOME: sub(S("Seq1Home"), 6); break;
     case EV_RADIOHINT: sub(S("Seq1Radio"), 7); break;
@@ -408,38 +626,124 @@ static void fire_event(int id, int ok_walk, int *rearm)
     case EV_STOVECONVO: if (!ok_walk) { *rearm = 1; break; } dlg_begin("Stove", stove_convo_done); break;
     case EV_SMOKE: if (!ok_walk) { *rearm = 1; break; } dlg_begin("Smoke", on_smoke_done); break;
     case EV_REPORTDONE2: dlg_begin("ReportDone2", NULL); break;
+    case EV_S2SUBS: sub(S("Seq2FirstNight"), 5); sub_after(60, "Seq2LeftAlone"); break;
+    case EV_S3CONVO: if (!ok_walk) { *rearm = 1; break; } G.standup1 = 1; dlg_begin("Seq3Start", NULL); break;
+    case EV_S3CONFIRM: if (!ok_walk) { *rearm = 1; break; } G.standup2 = 1; dlg_begin("Confirm", NULL); break;
+    case EV_S4STAND: if (!ok_walk) { *rearm = 1; break; } G.standup1 = 1; dlg_begin("Seq4StandUp", NULL); break;
+    case EV_S5WALK: if (!ok_walk) { *rearm = 1; break; } G.cult_walk = 1; sub(S("Seq5VeryStrange"), 6); after(250, EV_S5GONE); break;
+    case EV_S5GONE: G.cult_walk = 0; G.cult_gone = 1; sub(S("PresenceOutside"), 5); break;
+    case EV_S5SUBS2: if (dlg_active) { *rearm = 1; break; } sub(S("ConnorDidntMakeSense"), 5); sub_after(55, "NotMuchElse"); break;
+    case EV_S6FLARE: G.flare = 20; after(40, EV_S6START); break;
+    case EV_S6START: if (!ok_walk) { *rearm = 1; break; } G.standup1 = 1; dlg_begin("Seq6Start", NULL); break;
+    case EV_ANXIOUS:
+        if (!ok_walk && mode != M_SEAT) { *rearm = 1; break; }
+        if (G.anxious == 1) { G.anxious = 2; dlg_begin("Anxious", NULL); }
+        break;
+    case EV_KNOCK: if (G.knock && !G.door_open) { sub("*knock* *knock*", 2); *rearm = 1; } break;
+    case EV_S6CONNORSU: if (!ok_walk) { *rearm = 1; break; } G.connor_su = 1; dlg_begin("Seq6ConnorStandUp", NULL); break;
+    case EV_S7CONNOR: mode = M_SEAT; dlg_begin("Seq7Connor", NULL); after(250, EV_S7POWER); break;
+    case EV_S7POWER:
+        if (dlg_active) { *rearm = 1; break; }
+        G.power_out = 1; G.gen = 0; if (mode != M_WALK) mode = M_SEAT;
+        sub(T("ep3_controls.PowerOut"), 3); sub_after(40, "Seq7PowerOut");
+        break;
+    case EV_S8STAND: if (!ok_walk) { *rearm = 1; break; } G.convo2 = 1; dlg_begin("Seq8StandUp", NULL); break;
+    case EV_S8SUBS: sub(S("Seq8DidntKnow"), 5); sub_after(55, "Seq8TakeEvidence"); break;
+    case EV_S8COME: sub(S("BeingWatched"), 5); break;
     }
+}
+
+static int typed(const char *t)   /* typewriter text on the sub screen; 1 = Start pressed (skip) */
+{
+    int n = strlen(t);
+    for (int c = 1; c <= n; c++) {
+        char b[200]; int m = c < 199 ? c : 199; memcpy(b, t, m); b[m] = 0;
+        consoleClear(); printf("\n\n"); wrap_print(b);
+        swiWaitForVBlank(); swiWaitForVBlank(); scanKeys();
+        if (keysDown() & KEY_A) break;
+        if (keysDown() & KEY_START) return 1;
+    }
+    consoleClear(); printf("\n\n"); wrap_print(t); printf("\n\n            [A]");
+    do { swiWaitForVBlank(); scanKeys(); } while (!(keysDown() & (KEY_A | KEY_START)));
+    return (keysDown() & KEY_START) != 0;
+}
+static void story(const char *const *keys, int n)
+{
+    setBrightness(1, -16); setBrightness(2, 0);
+    for (int i = 0; i < n; i++) if (typed(T(keys[i]))) break;
+}
+static void card(const char *a, const char *b)
+{
+    setBrightness(1, -16); setBrightness(2, 0);
+    consoleClear();
+    printf("\n\n\n\n\n\n     %s\n\n     %s\n", a, b);
+    for (int i = 0; i < 150; i++) swiWaitForVBlank();
+    consoleClear();
 }
 
 static void intro(void)
 {
+    char k[40];
     setBrightness(1, -16);
     for (int i = 1; i <= 17; i++) {
-        char k[32]; snprintf(k, sizeof k, "ep4_intro.IntroText%d", i);
-        const char *t = T(k); int n = strlen(t);
-        for (int c = 1; c <= n; c++) {   /* typed out */
-            char b[200]; int m = c < 199 ? c : 199; memcpy(b, t, m); b[m] = 0;
-            consoleClear(); printf("\n\n"); wrap_print(b);
-            swiWaitForVBlank(); swiWaitForVBlank(); scanKeys();
-            if (keysDown() & KEY_A) break;
-            if (keysDown() & KEY_START) goto skip;
-        }
-        consoleClear(); printf("\n\n"); wrap_print(t); printf("\n\n            [A]");
-        do { swiWaitForVBlank(); scanKeys(); } while (!(keysDown() & (KEY_A | KEY_START)));
-        if (keysDown() & KEY_START) break;
+        snprintf(k, sizeof k, "ep4_intro.IntroText%d", i);
+        if (typed(T(k))) break;
     }
-skip:
     consoleClear();
-    printf("\n\n\n\n\n     %s\n\n     %s\n\n     %s\n", T("ep4_intro.IronbarkLookout"), T("ep3_controls.FirstNight"), T("ep4_intro.Night1"));
-    for (int i = 0; i < 120; i++) swiWaitForVBlank();
+    printf("\n\n\n\n\n     %s\n\n     %s\n", T("ep4_intro.ni"), T("ep4_intro.IronbarkLookout"));
+    for (int i = 0; i < 150; i++) swiWaitForVBlank();
+}
+
+/* blocking dialogue on the sub screen (vignettes, back-to-back conversations) */
+static void play_until_done(void)
+{
+    while (dlg_active) { swiWaitForVBlank(); scanKeys(); dlg_input(keysDown()); }
+}
+static void vignette(const char *title, const char *const *nodes, int n)
+{
+    card(title, "");
+    for (int i = 0; i < n; i++) { dlg_begin(nodes[i], NULL); play_until_done(); }
+}
+static void prologue(void)
+{
+    static const char *const diner[] = { "DinerStart", "DinerOrder", "AfterEating", "Check", "AfterCheck", "Bad_Guy", "ParkingLotGuy" };
+    static const char *const trail[] = { "TrailStart", "RangerKeys", "RangerAfterKeys", "RangerFlashLight", "RangerAfterFlashLight", "RangerAfterEnd" };
+    vignette("Rosebourg Diner", diner, 7);
+    vignette("Ironbark Trail", trail, 6);
+}
+static void campsite(void)
+{
+    static const char *const s4[] = { "ep4_intro.Seq4Intro0\n", "ep4_intro.Seq4Intro1", "ep4_intro.Seq4Intro2", "ep4_intro.Seq4Intro3",
+                                      "ep4_intro.Seq4Intro4", "ep4_intro.Seq4Intro5", "ep4_intro.Seq4Intro6" };
+    static const char *const camp[] = { "Campfire" };
+    card(T("ep3_controls.SmokeWoods"), "Lacey Trail");
+    typed(S("ScentWoodFire")); typed(S("CheckSource"));
+    vignette("the campsite", camp, 1);
+    typed(S("PutOutCampfire"));
+    story(s4, 7);
+}
+static void ending(void)
+{
+    char k[40];
+    card("Trail End", "");
+    typed(S("Seq8MakeARun"));
+    for (int i = 1; i <= 15; i++) { snprintf(k, sizeof k, "ep4_intro.Seq8Outro%d", i); if (typed(T(k))) break; }
+    typed(T("ep4_intro.PleaseBeSafe"));
     consoleClear();
-    setBrightness(1, 0);
+    printf("\n\n\n\n\n     %s\n\n     %s\n\n\n   Thanks for playing.\n\n   Press A", T("ep4_intro.ni"), T("ep4_intro.IronbarkLookout"));
+    do { swiWaitForVBlank(); scanKeys(); } while (!(keysDown() & KEY_A));
+}
+
+static const char *chapter(void)
+{
+    static const char *k[] = { "", "FirstNight", "FirstNight", "SmokeWoods", "ReportCampsite", "SomethingStrange", "LostHiker", "PowerOut", "Abandoned" };
+    static char b[40]; snprintf(b, sizeof b, "ep3_controls.%s", k[seq]); return T(b);
 }
 
 static void hud_draw(int px, int fy, int pz)
 {
     consoleClear();
-    printf("%s  %s\n", T("ep3_controls.FirstNight"), T("ep4_intro.Night1"));
+    printf("%s  %s\n", chapter(), seq_time());
     printf("--------------------------------\n\n");
     if (sub_t > 0) wrap_print(subbuf);
     printf("\x1b[12;0H");
@@ -448,8 +752,9 @@ static void hud_draw(int px, int fy, int pz)
     printf("\x1b[18;0H");
     if (ctrl_hint) printf("%s\n", ctrl_hint);
     printf("Pad: move  Y+pad/stylus: look\nR: run  X: flashlight %s\n", G.flash ? "(on)" : "");
-#if 1
-    printf("%d %d %d g%d m%d", px >> 8, fy >> 8, pz >> 8, G.gen, mode);
+    if (seq == 6 || seq == 8) printf("L: binoculars\n");
+#ifdef DEBUG_POS
+    printf("%d %d %d s%d m%d", px >> 8, fy >> 8, pz >> 8, seq, mode);
 #else
     (void)px; (void)fy; (void)pz;
 #endif
@@ -472,22 +777,90 @@ static void pc_show(void)
 #define SEAT_Y (-1400)
 #define SEAT_Z (-5544)
 #define SEAT_YAW (-9100)
-static void run_seq1(void)
+#define GROUND(fy) ((fy) < -40000)
+#define CULT_X 9515        /* Seq 8 cult camp (north, ~134 m) */
+#define CULT_Z (-549357)
+
+/* per-sequence setup: flags, lighting state, spawn */
+static void seq_start(int n, int *px, int *pz, int *fy, int *yaw)
+{
+    static const char *const s6[] = { "ep4_intro.Seq6Intro0\n", "ep4_intro.Seq6Intro1\n", "ep4_intro.Seq6Intro2", "ep4_intro.Seq6Intro3" };
+    static const char *const s7[] = { "ep4_intro.Seq7Intro1", "ep4_intro.Seq7Intro2", "ep4_intro.Seq7Intro3", "ep4_intro.Seq7Intro4" };
+    static const char *const s8[] = { "ep4_intro.Seq8Intro1", "ep4_intro.Seq8Intro2", "ep4_intro.Seq8Intro3", "ep4_intro.Seq8Intro4", "ep4_intro.Seq8Intro5" };
+    seq = n;
+    memset(&G, 0, sizeof G); memset(evq, 0, sizeof evq);
+    G.temp10 = 440 + rand() % 31; G.wind = 17 + rand() % 4; G.flash = 1; G.door_ang = DOOR_CLOSED;
+    f_row = 0; f_temp = -1; f_wind = -1; f_weather = 0; f_campers = -1;
+    mode = M_WALK; ctrl_hint = NULL; subbuf[0] = 0; sub_t = 0;
+    if (n > 1) { G.gen = G.shed = 1; G.fire = G.wood_in_stove = 1; G.report_done = 1; G.first_radio_done = 1; G.light = 1; }
+    int lim = 0;
+    *yaw = 0;
+    switch (n) {
+    case 1:
+        intro(); prologue();
+        card(T("ep3_controls.FirstNight"), T("ep4_intro.Night1"));
+        G.locked = 1; after(50, EV_LONGHIKE);
+        *px = -14 * 4096; *pz = -10 * 4096; *yaw = -11378; lim = 0x7FFFFFF;   /* end of the trail, facing the tower */
+        break;
+    case 2:
+        card(T("ep4_intro.Night2"), T("ep4_intro.TimeIntro2"));
+        for (int i = 0; i < 11; i++) G.blinds[i] = 1;
+        G.light = 0;
+        *px = 5440; *pz = 8353;
+        dlg_begin("Unintellegible", NULL); after(20, EV_S2SUBS);
+        break;
+    case 3:
+        card(T("ep3_controls.SmokeWoods"), seq_time());
+        G.light = 0; G.report_done = 0;
+        *px = -17709; *pz = -16729; *yaw = 8192;
+        sub_after(50, "TimeMelts"); after(150, EV_S3CONVO);
+        break;
+    case 4:
+        card(T("ep3_controls.ReportCampsite"), seq_time());
+        G.fire = G.wood_in_stove = 0; G.report_done = 0; G.light = 1;
+        *px = -12970; *pz = 11000; lim = -50000;
+        sub(S("ConnorReportCampsite"), 6);
+        break;
+    case 5:
+        card(T("ep3_controls.SomethingStrange"), seq_time());
+        for (int i = 0; i < 11; i++) G.blinds[i] = 1;
+        G.light = 0;
+        *px = 5440; *pz = 8353; *yaw = 8192;
+        sub(S("EyesOpen"), 5); after(120, EV_S5WALK);
+        break;
+    case 6:
+        story(s6, 4);
+        card(T("ep3_controls.LostHiker"), seq_time());
+        G.fire = G.wood_in_stove = 0; G.report_done = 0;
+        *px = -17709; *pz = 16038; *yaw = 8192;
+        break;
+    case 7:
+        story(s7, 4);
+        card(T("ep4_intro.2NightsLater"), T("ep4_intro.Seq7Time"));
+        mode = M_SEAT; *px = 5600; *pz = -3000; *yaw = SEAT_YAW;
+        after(10, EV_S7CONNOR);
+        break;
+    case 8:
+        story(s8, 5);
+        card(T("ep3_controls.Abandoned"), seq_time());
+        for (int i = 0; i < 11; i++) G.blinds[i] = 1;
+        *px = 5440; *pz = 8353;
+        dlg_begin("Seq8Connor", NULL);
+        break;
+    }
+    *fy = floor_at(*px, *pz, lim);
+    if (*fy == NOFLOOR) *fy = lim ? -60000 : -5800;
+    setBrightness(1, 0);
+    hud_dirty = 1;
+}
+
+static void run_game(int start)
 {
     if (!nboxes) load_col("nitro:/tower.col");
     if (!flr) load_floor("nitro:/tower.flr");
-    memset(&G, 0, sizeof G); memset(evq, 0, sizeof evq);
-    intro();
     srand(REG_VCOUNT ^ (TIMER0_DATA << 3));
-    G.temp10 = 440 + rand() % 31; G.wind = 17 + rand() % 4; G.locked = 1; G.flash = 1; G.door_ang = DOOR_CLOSED;
-    f_row = 0; f_temp = -1; f_wind = -1; f_weather = 0; f_campers = -1;
-    mode = M_WALK; ctrl_hint = NULL; subbuf[0] = 0; sub_t = 0;
-    after(50, EV_LONGHIKE);
-
-    int px = -14 * 4096, pz = -10 * 4096;   /* end of the trail, facing the tower */
-    int fy = floor_at(px, pz, 0x7FFFFFF);
-    if (fy == NOFLOOR) fy = -60000;
-    int py, yaw = -11378, pitch = 0, frames = 0;
+    int px, pz, fy, py, yaw, pitch = 0;
+    seq_start(start, &px, &pz, &fy, &yaw);
     touchPosition t0, t1; int wasTouch = 0;
     const char *last_prompt = NULL;
 
@@ -496,6 +869,7 @@ static void run_seq1(void)
         u32 k = keysHeld(), kd = keysDown();
         int s = sinLerp(yaw), c = cosLerp(yaw);
         int in = INSIDE(px, fy, pz);
+        int bino = (seq == 6 || seq == 8) && mode == M_WALK && !dlg_active && (k & KEY_L);
         if (dlg_active) {
             dlg_input(kd);
             if (exit_radio) { exit_radio = 0; }
@@ -505,19 +879,19 @@ static void run_seq1(void)
         } else if (mode == M_PC) {
             if (kd & KEY_A) {
                 mode = M_FORM; hud_dirty = 1;
-                if (!G.connor_started) { G.connor_started = 1; after(50, EV_CONNOR); }
+                if (seq == 1 && !G.connor_started) { G.connor_started = 1; after(50, EV_CONNOR); }
             } else if (kd & KEY_B) { mode = M_SEAT; hud_dirty = 1; }
             else if (hud_dirty) { pc_show(); hud_dirty = 0; }
         } else if (mode == M_SEAT) {
-            if (kd & KEY_A) { if (G.gen) { mode = M_PC; hud_dirty = 1; } else sub(S("GeneratorOn"), 4); }
+            if (kd & KEY_A) { if (G.gen) { mode = M_PC; hud_dirty = 1; } else sub(S(seq == 7 ? "Seq7PowerOut" : "GeneratorOn"), 4); }
             else if (kd & KEY_X) start_radio();
             else if (kd & KEY_B) { fade(1); mode = M_WALK; px = 5600; pz = -3000; yaw = SEAT_YAW; hud_dirty = 1; fade(0); }
         } else {
             int sp = (k & KEY_R) ? 900 : 450;
-            int fwd = 0, str = 0;
-            if (k & KEY_Y) {   /* Y held + D-pad = look */
-                yaw += (((k & KEY_LEFT) ? 1 : 0) - ((k & KEY_RIGHT) ? 1 : 0)) * 500;
-                pitch += (((k & KEY_DOWN) ? 1 : 0) - ((k & KEY_UP) ? 1 : 0)) * 300;
+            int fwd = 0, str = 0, lk = bino ? 120 : 500;
+            if (k & KEY_Y || bino) {   /* Y held + D-pad = look (binoculars: pad looks, slowly) */
+                yaw += (((k & KEY_LEFT) ? 1 : 0) - ((k & KEY_RIGHT) ? 1 : 0)) * lk;
+                pitch += (((k & KEY_DOWN) ? 1 : 0) - ((k & KEY_UP) ? 1 : 0)) * (lk * 3 / 5);
             } else {
                 fwd = ((k & KEY_UP) ? 1 : 0) - ((k & KEY_DOWN) ? 1 : 0);
                 str = ((k & KEY_RIGHT) ? 1 : 0) - ((k & KEY_LEFT) ? 1 : 0);
@@ -536,13 +910,14 @@ static void run_seq1(void)
                 else { px = ox; pz = oz; f = floor_at(px, pz, fy + STEPUP); }
             }
             if (f != NOFLOOR) { if (f > fy) fy = f; else { fy -= 800; if (fy < f) fy = f; } }
-            if (kd & (KEY_SELECT | KEY_L)) {   /* debug: cycle teleport spots */
+            if (kd & KEY_SELECT) {   /* debug: cycle teleport spots */
                 /* generator, outside the door, inside the door, stove, desk, bed, thermometer */
                 static const int tp[][4] = {{-12970, 11000, 0, -50000}, {-17500, 4354, -8192, 0}, {-9000, 4354, 8192, 0}, {-10300, 5500, 0, 0},
                                             {6000, -2000, 0, 0}, {6500, 6612, -8192, 0}, {2256, -8500, 0, 0}};
                 static int ti = 0;
-                px = tp[ti][0]; pz = tp[ti][1]; yaw = tp[ti][2]; ti = (ti + 1) % 7;
-                fy = floor_at(px, pz, tp[(ti + 6) % 7][3]); if (fy == NOFLOOR) fy = -5800;
+                px = tp[ti][0]; pz = tp[ti][1]; yaw = tp[ti][2];
+                fy = floor_at(px, pz, tp[ti][3]); if (fy == NOFLOOR) fy = -5800;
+                ti = (ti + 1) % 7;
                 hud_dirty = 1;
             }
             if (kd & KEY_X) { G.flash ^= 1; hud_dirty = 1; }
@@ -557,37 +932,72 @@ static void run_seq1(void)
                 best = i; bd = d2;
             }
             prompt = best >= 0 ? spot_label(SPOTS[best].id) : NULL;
+            /* whole-area actions on the ground below the tower */
+            int area = 0;
+            if (best < 0 && GROUND(fy)) {
+                if (seq == 3 && G.checkcampers) { prompt = "Hike to the smoke"; area = 1; }
+                else if (seq == 8 && G.run) { prompt = "Run for the truck"; area = 2; }
+            }
             if (prompt != last_prompt) { last_prompt = prompt; hud_dirty = 1; }
             if ((kd & KEY_A) && best >= 0) use_spot(SPOTS[best].id);
-            if (in && !G.inside_first) { G.inside_first = 1; sub(S("Seq1Cabin"), 6); after(60, EV_HOME); }
+            else if ((kd & KEY_A) && area) G.next = area == 1 ? 4 : 9;
+            if (in && !G.inside_first) {
+                G.inside_first = 1;
+                if (seq == 1) { sub(S("Seq1Cabin"), 6); after(60, EV_HOME); }
+            }
+            if (GROUND(fy) && !G.ground_first) {
+                G.ground_first = 1;
+                if (seq == 6 && G.eaten && G.report_done && !G.badguy) {
+                    G.badguy = 1; G.can_pick_wood = 1;
+                    dlg_begin("Seq6BadGuy", NULL); sub_after(10, "CreepyVibes");
+                    if (G.fire) after(60, EV_S6CONNORSU);
+                } else if (seq == 6 && !G.eaten) sub(S("Seq6Hungry"), 4);
+                else if (seq == 6 && !G.report_done) sub(S("Seq6Report"), 4);
+            }
+            if (!GROUND(fy)) G.ground_first = 0;
+            if (seq == 6 && bino && !G.bino_used) { G.bino_used = 1; after(50, EV_S6FLARE); }
+            if (seq == 8 && bino && G.convo2 && !G.cult_seen) {   /* looking north at the cult camp */
+                int dx = CULT_X - px, dz = CULT_Z - pz;
+                long long dot = (long long)dx * (-s) + (long long)dz * (-c);
+                long long len = (long long)(abs(dx) + abs(dz));
+                if (dot * 10 > len * 4096LL * 8) { G.cult_seen = 1; after(10, EV_S8SUBS); }
+            }
         }
         if ((k & KEY_TOUCH) && mode == M_WALK && !dlg_active) {
             touchRead(&t1);
-            if (wasTouch) { yaw -= (t1.px - t0.px) * 90; pitch += (t1.py - t0.py) * 70; }
+            if (wasTouch) { yaw -= (t1.px - t0.px) * (bino ? 25 : 90); pitch += (t1.py - t0.py) * (bino ? 20 : 70); }
             t0 = t1; wasTouch = 1;
         } else wasTouch = 0;
         if (pitch > 4000) pitch = 4000; if (pitch < -4000) pitch = -4000;
 
         /* timers */
         if (sub_t > 0 && --sub_t == 0) hud_dirty = 1;
+        if (G.cook_t && --G.cook_t == 0) sub(S(G.cass_where == CW_OVEN ? "SmellsGood" : "Seq6FoodHeating"), 4);
+        if (G.flare) G.flare--;
         int ok_walk = in && mode == M_WALK && !dlg_active;
-        for (int i = 0; i < 8; i++) if (evq[i].id && --evq[i].t <= 0) {
-            int id = evq[i].id, rearm = 0; evq[i].id = 0;
-            if (dlg_active && id != EV_LONGHIKE && id != EV_HOME && id != EV_RADIOHINT) rearm = 1;
-            else fire_event(id, ok_walk, &rearm);
-            if (rearm) { evq[i].id = id; evq[i].t = 10; }
+        for (int i = 0; i < 12; i++) if (evq[i].id && --evq[i].t <= 0) {
+            int id = evq[i].id, rearm = 0; const char *es = evq[i].s; evq[i].id = 0;
+            if (dlg_active && id != EV_SUB && id != EV_LONGHIKE && id != EV_HOME && id != EV_RADIOHINT && id != EV_KNOCK) rearm = 1;
+            else fire_event(id, es, ok_walk, &rearm);
+            if (rearm) { evq[i].id = id; evq[i].s = es; evq[i].t = id == EV_KNOCK ? 50 : 10; }
         }
         int target = G.door_open ? DOOR_OPEN : DOOR_CLOSED;   /* 0.5 s swing */
         if (G.door_ang != target) { int d = target - G.door_ang, st = 850; G.door_ang += d > st ? st : d < -st ? -st : d; }
 
-        /* lighting: night outside, flashlight as a view-space light, cabin light when powered */
+        /* lighting per time of day; flashlight is a view-space light; cabin light when powered */
         int cabin = in && G.gen && G.light;
-        g_amb = cabin ? RGB15(13, 12, 10) : RGB15(4, 4, 6);
+        u32 sun = RGB15(6, 7, 11), amb = RGB15(4, 4, 6);
+        if (seq == 3) { sun = RGB15(28, 19, 11); amb = RGB15(11, 8, 7); glClearColor(20, 12, 8, 31); }
+        else if (seq == 6) { sun = RGB15(28, 28, 25); amb = RGB15(13, 13, 13); glClearColor(15, 20, 27, 31); }
+        else if (G.flare) { sun = RGB15(31, 8, 6); amb = RGB15(12, 3, 3); glClearColor(14, 3, 2, 31); }
+        else glClearColor(2, 2, 3, 31);
+        if (seq == 7) { sun = RGB15(4, 5, 8); amb = RGB15(3, 3, 5); }
+        g_amb = cabin ? RGB15(13, 12, 10) : amb;
         g_lights = POLY_FORMAT_LIGHT0 | (G.flash ? POLY_FORMAT_LIGHT1 : 0);
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        gluPerspective(70, 256.0 / 192.0, 0.05, 80);
+        gluPerspective(bino ? 14 : 70, 256.0 / 192.0, 0.05, bino ? 200 : 80);
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
         glLight(1, RGB15(22, 21, 17), 0, 0, floattov10(-0.99));
@@ -597,7 +1007,7 @@ static void run_seq1(void)
         glRotateYi(-cyaw);
         py = mode != M_WALK ? SEAT_Y : fy + EYE;
         glTranslatef32(-cx, -py, -cz);
-        glLight(0, cabin ? RGB15(31, 29, 24) : RGB15(6, 7, 11), floattov10(0.4), floattov10(-0.8), floattov10(-0.3));
+        glLight(0, cabin ? RGB15(31, 29, 24) : sun, floattov10(0.4), floattov10(-0.8), floattov10(-0.3));
         glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
         in = INSIDE(cx, py - EYE, cz);
         for (int pass = 0; pass < 2; pass++) {
@@ -610,16 +1020,18 @@ static void run_seq1(void)
         while (GFX_STATUS & BIT(27)) ;
         stat_v = GFX_VERTEX_RAM_USAGE; stat_p = GFX_POLYGON_RAM_USAGE;
 
-        frames++;
         swiWaitForVBlank(); swiWaitForVBlank(); swiWaitForVBlank();
         if (hud_dirty && !dlg_active && (mode == M_WALK || mode == M_SEAT)) { hud_draw(px, fy, pz); hud_dirty = 0; }
-        if (G.sleep) {
-            fade(1); consoleClear();
-            printf("\n\n\n\n     %s\n\n     %s\n\n  (Seq2 not ported yet)\n", T("ep4_intro.Night2"), T("ep4_intro.TimeIntro2"));
-            for (int i = 0; i < 180; i++) swiWaitForVBlank();
-            fade(0); break;
+        if (G.next && !dlg_active) {
+            int nx = G.next;
+            fade(1);
+            if (nx == 4) campsite();
+            if (nx == 9) { ending(); break; }
+            setBrightness(3, 0);
+            seq_start(nx, &px, &pz, &fy, &yaw); pitch = 0; last_prompt = NULL;
+            fade(0);
         }
-        if (keysDown() & KEY_START) break;
+        if ((keysDown() & KEY_START) && !dlg_active) break;
     }
     setBrightness(3, 0);
 }
@@ -694,13 +1106,30 @@ int main(void)
     int sel = 0;
     for (;;) {
         consoleClear();
-        printf("IRONBARK LOOKOUT (DS)\n\n%c New game\n%c Read story nodes\n", sel == 0 ? '>' : ' ', sel == 1 ? '>' : ' ');
+        printf("IRONBARK LOOKOUT (DS)\n\n%c New game\n%c Chapter select\n%c Read story nodes\n", sel == 0 ? '>' : ' ', sel == 1 ? '>' : ' ', sel == 2 ? '>' : ' ');
         do { swiWaitForVBlank(); scanKeys(); } while (!keysDown());
         u32 d = keysDown();
-        if (d & (KEY_UP | KEY_DOWN)) sel ^= 1;
+        if (d & KEY_UP) sel = (sel + 2) % 3;
+        if (d & KEY_DOWN) sel = (sel + 1) % 3;
         if (d & KEY_A) {
-            if (sel == 0) { if (!L_in.data && (!load_level(&L_in, "nitro:/tower.bin") || !load_level(&L_out, "nitro:/outside.bin"))) { printf("no level\n"); continue; } if (!L_door.data) load_level(&L_door, "nitro:/door.bin"); run_seq1(); }
-            else story_reader();
+            int start = 1;
+            if (sel == 2) { story_reader(); continue; }
+            if (sel == 1) {
+                start = 2;
+                for (;;) {
+                    consoleClear(); printf("CHAPTER SELECT\n\n  < Night %d >\n\nLeft/Right: pick  A: start  B: back\n", start);
+                    do { swiWaitForVBlank(); scanKeys(); } while (!keysDown());
+                    u32 e = keysDown();
+                    if (e & KEY_LEFT) start = start > 1 ? start - 1 : 8;
+                    if (e & KEY_RIGHT) start = start < 8 ? start + 1 : 1;
+                    if (e & KEY_B) { start = 0; break; }
+                    if (e & KEY_A) break;
+                }
+                if (!start) continue;
+            }
+            if (!L_in.data && (!load_level(&L_in, "nitro:/tower.bin") || !load_level(&L_out, "nitro:/outside.bin"))) { printf("no level\n"); continue; }
+            if (!L_door.data) load_level(&L_door, "nitro:/door.bin");
+            run_game(start);
         }
     }
 }
