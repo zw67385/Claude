@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
+#include <string.h>
+#include "yarn.h"
 
 typedef struct { u32 w, h, col, flags, dlwords, paloff, texoff, dloff; } Group;
 
@@ -54,7 +56,7 @@ static void draw_level(void)
     }
 }
 
-int main(void)
+static void init_hw(void)
 {
     videoSetMode(MODE_0_3D);
     videoSetModeSub(MODE_0_2D);
@@ -71,12 +73,10 @@ int main(void)
     glClearDepth(0x7FFF);
     glViewport(0, 0, 255, 191);
 
-    int fs = nitroFSInit(NULL);
-    printf("nitrofs: %d\n", fs);
-    int ok = fs && load_level("nitro:/tower.bin");
-    printf("level: %d groups %lu\n", ok, (unsigned long)ngrp);
-    if (!ok) { while (1) swiWaitForVBlank(); }
+}
 
+static void run_cabin(void)
+{
     int px = 0, py = 0, pz = 0;          // 20.12
     int yaw = 0, pitch = 0;              // 15-bit angle
     int frames = 0;
@@ -124,5 +124,84 @@ int main(void)
         if (keysDown() & KEY_START) break;
         if ((frames % 20) == 0) { consoleClear(); printf("frame %d\npos %d %d\nvtx %d poly %d\n", frames, px >> 8, pz >> 8, stat_v, stat_p); }
     }
-    return 0;
+}
+
+static void wrap_print(const char *t)
+{
+    int col = 0; char word[64];
+    while (*t) {
+        int n = 0;
+        while (*t && *t != ' ' && *t != '\n' && n < 60) word[n++] = *t++;
+        word[n] = 0;
+        if (col + n > 31) { putchar('\n'); col = 0; }
+        fputs(word, stdout); col += n;
+        if (*t == ' ') { if (col < 31) { putchar(' '); col++; } t++; }
+        else if (*t == '\n') { putchar('\n'); col = 0; t++; }
+    }
+    putchar('\n');
+}
+
+static void story_reader(void)
+{
+    int sel = 0, nn = yarn_node_count();
+    while (1) {
+        consoleClear();
+        printf("STORY NODES (up/down, A play, B back)\n\n");
+        int top = sel - 8; if (top < 0) top = 0;
+        for (int i = top; i < nn && i < top + 20; i++) printf("%c%s\n", i == sel ? '>' : ' ', yarn_node_name(i));
+        while (1) {
+            swiWaitForVBlank(); scanKeys(); u32 d = keysDown();
+            if (d & KEY_UP) { sel = (sel + nn - 1) % nn; break; }
+            if (d & KEY_DOWN) { sel = (sel + 1) % nn; break; }
+            if (d & KEY_B) return;
+            if (d & KEY_A) goto play;
+        }
+        continue;
+    play:
+        yarn_start(yarn_node_name(sel));
+        YarnEvent e; int choice;
+        for (;;) {
+            int t = yarn_step(&e);
+            if (t == YE_DONE) break;
+            if (t == YE_COMMAND) continue;
+            consoleClear();
+            if (t == YE_LINE) {
+                wrap_print(e.text);
+                printf("\n[A]");
+                do { swiWaitForVBlank(); scanKeys(); } while (!(keysDown() & (KEY_A | KEY_B)));
+                if (keysDown() & KEY_B) break;
+            } else {
+                choice = 0;
+                for (;;) {
+                    consoleClear();
+                    for (int i = 0; i < e.nopt; i++) { printf("%c ", i == choice ? '>' : ' '); wrap_print(e.opt[i]); }
+                    do { swiWaitForVBlank(); scanKeys(); } while (!(keysDown() & (KEY_A | KEY_UP | KEY_DOWN)));
+                    u32 d = keysDown();
+                    if (d & KEY_UP) choice = (choice + e.nopt - 1) % e.nopt;
+                    else if (d & KEY_DOWN) choice = (choice + 1) % e.nopt;
+                    else break;
+                }
+                yarn_choose(choice);
+            }
+        }
+    }
+}
+
+int main(void)
+{
+    init_hw();
+    if (!nitroFSInit(NULL)) { printf("nitroFS init failed\n"); while (1) swiWaitForVBlank(); }
+    if (!yarn_load("nitro:/story.bin")) { printf("story.bin missing\n"); while (1) swiWaitForVBlank(); }
+    int sel = 0;
+    for (;;) {
+        consoleClear();
+        printf("IRONBARK LOOKOUT (DS)\n\n%c Walk the cabin\n%c Read story nodes\n", sel == 0 ? '>' : ' ', sel == 1 ? '>' : ' ');
+        do { swiWaitForVBlank(); scanKeys(); } while (!keysDown());
+        u32 d = keysDown();
+        if (d & (KEY_UP | KEY_DOWN)) sel ^= 1;
+        if (d & KEY_A) {
+            if (sel == 0) { if (!lvl && !load_level("nitro:/tower.bin")) { printf("no level\n"); continue; } run_cabin(); }
+            else story_reader();
+        }
+    }
 }

@@ -47,3 +47,9 @@ A faithful 1:1 port is not possible (Unity HDRP game vs 4 MB RAM, 2048 polys/fra
 - `rom/source/main.c` (plain libnds, Nitro Engine no longer compiled in): loads `nitro:/tower.bin`, uploads textures, renders with light, D-pad move, stylus/face-button look. Verified in DeSmuME: `docs/slice1_cabin.png` shows a recognisable textured cabin interior. NitroFS reads work.
 - Build: `cd rom && WONDERFUL_TOOLCHAIN=/opt/wonderful BLOCKSDS=/opt/wonderful/thirdparty/blocksds/core PATH=/opt/wonderful/bin:$PATH make`; regenerate data with `/tmp/venv/bin/python tools/bake_level.py ... /tmp/bake1 64 && cp /tmp/bake1/level.bin rom/nitrofs/tower.bin`.
 - Next: per-sequence object groups (toggle by seq), BoxCollider collision, fps/poly measurement, texture-VRAM budget check, bottom-screen UI, Yarn VM + text, then sequences.
+
+## Progress 2
+- `tools/pack_story.py` -> `rom/nitrofs/story.bin` (74 KB, 64 nodes, 843 strings; YAML "yes/no" localized values fixed to strings). `rom/source/yarn.c` = Yarn VM (lines, options, commands, vars, Number/Bool funcs, RUN_NODE). Verified on emulator: story reader plays the Campfire node with real options.
+- `rom/source/main.c`: boot menu (Walk the cabin / Read story nodes). Cabin rebaked at BUDGET=2600 (1668 tris, under 2048 cap).
+- Emulator input injection WORKS: run desmume under xvfb, `xdotool mousemove 400 300 click 1` to focus, then `/tmp/press.sh Down x x` (keydown/sleep .25/keyup/sleep .5). Keys: x=A z=B s=X a=Y arrows, Return=Start. (Recreate press.sh if /tmp reset.) GFX poly/vert RAM counters read 0 in DeSmuME, so poly count must be computed offline.
+- Next: bottom-screen proper UI (replace console), commands handler (RUN_COMMAND names: PlaySFX1, SetupName, ExitRadio, VO_*...), sequence state machine, collision, per-sequence prop groups, audio.
