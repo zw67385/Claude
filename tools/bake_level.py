@@ -89,7 +89,9 @@ def obbify(tp, uv, minlen, ratio=3.0):
         def P(t, u, v): return mu + a0 * t + a1 * u + a2 * v
         t0, t1 = lo_[0], hi_[0]
         # 4 sides around the long axis; each face: corners in order giving outward normal with cross(b-a,c-a)
-        for (u, v, du, dv) in ((hi_[1], None, 0, 1), (lo_[1], None, 0, -1), (None, hi_[2], 1, 0), (None, lo_[2], -1, 0)):
+        sides = ((hi_[1], None, 0, 1), (lo_[1], None, 0, -1), (None, hi_[2], 1, 0), (None, lo_[2], -1, 0))
+        if e[2] < 0.3 * e[1]: sides = sides[2:]     # flat plank: only its two broad faces
+        for (u, v, du, dv) in sides:
             if v is None:   # face normal +-a1, spans a0 x a2
                 n = a1 * dv; c0 = [P(t0, u, lo_[2]), P(t1, u, lo_[2]), P(t1, u, hi_[2]), P(t0, u, hi_[2])]; wdt = e[2]
             else:
@@ -101,6 +103,25 @@ def obbify(tp, uv, minlen, ratio=3.0):
             quv.append([[0, 0], [L, 0], [L, W], [0, W]])
     return tp[keep], uv[keep], np.array(quads).reshape(-1, 4, 3), np.array(quv, float).reshape(-1, 4, 2)
 
+def cablify(tp, nseg=8, width=0.05):
+    """sagging cable/wire mesh -> nseg thin double-sided strips along its centre line: quads (m,4,3), uv (m,4,2)"""
+    p = tp.reshape(-1, 3); mu = p.mean(0)
+    w, V = np.linalg.eigh(np.cov((p - mu).T)); a0 = V[:, -1]
+    t = (p - mu) @ a0; edges = np.linspace(t.min(), t.max(), nseg + 1)
+    ctr = []
+    for i in range(nseg + 1):
+        m = np.abs(t - edges[i]) <= (edges[1] - edges[0]) * 0.5
+        ctr.append(p[m].mean(0) if m.any() else mu + a0 * edges[i])
+    ctr = np.array(ctr); quads = []
+    side = np.cross(a0, [0, 1, 0]); side = side / (np.linalg.norm(side) + 1e-9) * width / 2
+    up = np.cross(side, a0); up = up / (np.linalg.norm(up) + 1e-9) * width / 2
+    for i in range(nseg):
+        a, b = ctr[i], ctr[i + 1]
+        for d in (side, up):
+            q = np.array([a - d, b - d, b + d, a + d]); quads += [q, q[::-1]]
+    quads = np.array(quads)
+    return quads, np.zeros((len(quads), 4, 2))
+
 def alpha31(mat):
     """31 = opaque, else DS polygon alpha for transparent (fade/transparent/URP surface) materials"""
     if not mat: return 31
@@ -109,6 +130,14 @@ def alpha31(mat):
     if not tr: return 31
     return int(min(12, max(4, round(mat["col"][3] * 16))))
 
+def cutout(mat):
+    """alpha-tested material (texture alpha = holes) as opposed to alpha used as smoothness/mask"""
+    if not mat: return False
+    f = mat["floats"]
+    return (f.get("_AlphaClip", 0) == 1 or f.get("_Mode", 0) == 1 or "_ALPHATEST_ON" in mat["kw"]
+            or 2450 <= mat["queue"] < 2900 or f.get("_Cutoff", 0) > 0 and f.get("_AlphaClip", 1) != 0 and mat["queue"] >= 2450)
+
+NAMES = []   # GameObject name of each collected item (debug / filters)
 def collect(scene, lo, hi):
     """All active renderer triangles with centroid inside [lo,hi]: list of (key, tris (n,3,3) world, uv (n,3,2))."""
     meshc = {}
@@ -152,8 +181,8 @@ def collect(scene, lo, hi):
             if not keep.any(): continue
             uv = m.uv[t] if m.uv is not None else np.zeros((len(t), 3, 2))
             uv = uv * np.array(tile) + np.array(off)
-            key = (tg, tuple(np.round(col[:3], 2)), alpha31(mat))
-            items.append((key, tp[keep], uv[keep])); used = True
+            key = (tg, tuple(np.round(col[:3], 2)), alpha31(mat), cutout(mat))
+            items.append((key, tp[keep], uv[keep])); used = True; NAMES.append(g["name"])
         nrend += used
     return items, nrend
 
@@ -173,6 +202,21 @@ def main():
             c = tpk.mean(axis=1); ok = ~np.all((c >= elo) & (c <= ehi), axis=1)
             if ok.any(): items2.append((key, tpk[ok], uvk[ok]))
         items = items2
+    if os.environ.get("TERRAIN"):
+        # ground decals (roads, paths) lying on the terrain: the terrain splat already paints them, drop them
+        import terrain; nd = 0; items2 = []
+        for key, tpk, uvk in items:
+            on = np.all(np.abs(tpk[:, :, 1] - terrain.height(tpk[:, :, 0], tpk[:, :, 2])) < 0.3, axis=1)
+            nd += on.sum()
+            if (~on).any(): items2.append((key, tpk[~on], uvk[~on]))
+        items = items2; print("dropped ground decal tris", nd)
+    items2 = []
+    for key, tpk, uvk in items:
+        p = tpk.reshape(-1, 3); e = np.sort(np.linalg.eigvalsh(np.cov(p.T))) if len(tpk) >= 20 else None
+        if e is not None and e[2] > 25 and e[0] < 0.1 and e[2] > 20 * e[1]:    # long (>~15 m), thin, only sagging: a cable
+            qp, qu = cablify(tpk); buckets[key][2].append(qp); buckets[key][3].append(qu); print("cable", len(tpk), "->", len(qp))
+        else: items2.append((key, tpk, uvk))
+    items = items2
     BUDGET = int(os.environ.get("BUDGET", 3500))
     # share the budget by sqrt(tri count) weighted by physical size (big structures keep their shape)
     SIZEW = float(os.environ.get("SIZEW", 0))
@@ -202,7 +246,7 @@ def main():
     if os.environ.get("TERRAIN"):
         import terrain
         for tg, t, uv in terrain.terrain_tris(lo[0], hi[0], lo[2], hi[2], float(os.environ["TERRAIN"])):
-            key = (tg, (1.0, 1.0, 1.0), 31); buckets[key][0].append(t); buckets[key][1].append(uv)
+            key = (tg, (1.0, 1.0, 1.0), 31, False); buckets[key][0].append(t); buckets[key][1].append(uv)
     print("renderers used", nrend, "items", len(items), "buckets", len(buckets))
     os.makedirs(out, exist_ok=True)
     tex_list = []; blob = bytearray(); groups = []
@@ -215,7 +259,7 @@ def main():
         # flipping z reverses winding relative to unity; unity is CW front, flip restores CCW
         tp = tp.astype(np.float64)
         uv = uv.copy(); uv[:, :, 1] = 1 - uv[:, :, 1]
-        tex = conv_tex(key[0], tsize if len(tp) + len(qp) > 150 else max(16, tsize // 2), key[2] == 31) if key[0] else None
+        tex = conv_tex(key[0], tsize if len(tp) + len(qp) > 150 else max(16, tsize // 2), key[2] == 31 and key[3]) if key[0] else None
         # degenerate removal
         e1 = tp[:, 1] - tp[:, 0]; e2 = tp[:, 2] - tp[:, 0]
         area = np.linalg.norm(np.cross(e1, e2), axis=1)
@@ -223,6 +267,7 @@ def main():
         tp, uv = tp[ok], uv[ok]
         total += len(tp) + len(qp)
         groups.append((key, tex, tp, uv, qp, qu))
+    print("cutout:", sorted({g[1]["name"] for g in groups if g[1] and g[1]["cut"]}))
     print("total tris", total, "textures", len([g for g in groups if g[1]]))
     for key, tex, tp, uv, qp, qu in groups[:20]:
         print(len(tp), len(qp), key[0][:8] if key[0] else None, tex["name"] if tex else "-")

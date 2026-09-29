@@ -183,7 +183,7 @@ ifneq ($(SOURCES_AUDIO),)
 endif
 
 # Make the NDS ROM depend on the filesystem only if it is needed
-$(ROM): $(NITROFSDIR)
+$(ROM): $(NITROFSDIR) $(shell find $(NITROFSDIR) -type f)
 endif
 
 # Combine the title strings

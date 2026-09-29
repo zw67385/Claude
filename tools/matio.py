@@ -24,7 +24,7 @@ def load(guid):
         sp = m.get("m_SavedProperties", {})
         r = {"name": m.get("m_Name", ""), "tex": None, "col": (1, 1, 1, 1), "tile": (1, 1), "off": (0, 0),
              "emis": None, "queue": m.get("m_CustomRenderQueue", -1),
-             "kw": (m.get("m_ValidKeywords") or []), "shader": m.get("m_Shader", {}).get("guid"),
+             "kw": (m.get("m_ValidKeywords") or []) + str(m.get("m_ShaderKeywords") or "").split(), "shader": m.get("m_Shader", {}).get("guid"),
              "floats": dict(_items(sp.get("m_Floats")))}
         for k, v in _items(sp.get("m_TexEnvs")):
             if k in TEXKEYS and v["m_Texture"].get("guid") and r["tex"] is None:
@@ -48,5 +48,6 @@ def load(guid):
         for k, v in _items(sp.get("m_Colors")):
             if k in COLKEYS: r["col"] = (v["r"], v["g"], v["b"], v["a"])
             if k == "_EmissionColor": r["emis"] = (v["r"], v["g"], v["b"], v["a"])
+        if r["tex"] and max(r["col"][:3]) < 0.02: r["col"] = (1, 1, 1, r["col"][3])   # unused black tint of a custom shader
     _cache[guid] = r
     return r

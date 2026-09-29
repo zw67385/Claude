@@ -228,7 +228,7 @@ static void run_cabin(void)
             int fwd = 0, str = 0;
             if (k & KEY_Y) {   /* Y held + D-pad = look */
                 yaw += (((k & KEY_LEFT) ? 1 : 0) - ((k & KEY_RIGHT) ? 1 : 0)) * 500;
-                pitch += (((k & KEY_UP) ? 1 : 0) - ((k & KEY_DOWN) ? 1 : 0)) * 300;
+                pitch += (((k & KEY_DOWN) ? 1 : 0) - ((k & KEY_UP) ? 1 : 0)) * 300;
             } else {
                 fwd = ((k & KEY_UP) ? 1 : 0) - ((k & KEY_DOWN) ? 1 : 0);
                 str = ((k & KEY_RIGHT) ? 1 : 0) - ((k & KEY_LEFT) ? 1 : 0);
@@ -246,6 +246,12 @@ static void run_cabin(void)
                 else { px = ox; pz = oz; f = floor_at(px, pz, fy + STEPUP); }
             }
             if (f != NOFLOOR) { if (f > fy) fy = f; else { fy -= 800; if (fy < f) fy = f; } }
+            if (kd & (KEY_SELECT | KEY_L)) {   /* debug: cycle teleport spots */
+                static const int tp[][2] = {{-3 * 4096, 12 * 4096}, {-9830, 4550}, {8 * 4096, 20 * 4096}, {5 * 4096, -5 * 4096}};
+                static int ti = 0;
+                px = tp[ti][0]; pz = tp[ti][1]; ti = (ti + 1) & 3;
+                fy = floor_at(px, pz, 0x7FFFFFF); if (fy == NOFLOOR) fy = -5800;
+            }
             if (kd & KEY_A) {
                 for (int i = 0; i < NINTERACT; i++) {
                     long long dx = INTERACTS[i].x - px, dz = INTERACTS[i].z - pz;

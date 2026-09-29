@@ -47,6 +47,15 @@ def height(x, z):
     b = H[iz + 1, ix] * (1 - tx) + H[iz + 1, ix + 1] * tx
     return a * (1 - tz) + b * tz
 
+def coarse_height(x, z, x0, z0, step):
+    """height of the triangulated terrain_tris(x0,..,step) mesh at x,z"""
+    fx = (x - x0) / step; fz = (z - z0) / step
+    ix = np.floor(fx); iz = np.floor(fz); tx = fx - ix; tz = fz - iz
+    X0 = x0 + ix * step; Z0 = z0 + iz * step
+    ha = height(X0, Z0); hb = height(X0 + step, Z0); hc = height(X0, Z0 + step); hd = height(X0 + step, Z0 + step)
+    lo = tx + tz <= 1          # triangle a,b,c else b,c,d
+    return np.where(lo, ha + (hb - ha) * tx + (hc - ha) * tz, hd + (hc - hd) * (1 - tx) + (hb - hd) * (1 - tz))
+
 def layer_at(x, z):
     n = DOM.shape[0]; size = SCALE[0] * (RES - 1)
     ix = np.clip((x / size * n).astype(int), 0, n - 1); iz = np.clip((z / size * n).astype(int), 0, n - 1)
