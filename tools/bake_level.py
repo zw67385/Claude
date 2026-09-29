@@ -143,8 +143,13 @@ def collect(scene, lo, hi):
     meshc = {}
     nrend = 0
     items = []
+    only = [x for x in os.environ.get("ONLY", "").split(",") if x]; skip = [x for x in os.environ.get("SKIP", "").split(",") if x]
     for gf, g in scene.go.items():
         if "tf" not in g or not scene.active_in_hierarchy(gf): continue
+        if only or skip:
+            pth = scene.path(gf)
+            if only and not any(o in pth for o in only): continue
+            if any(o in pth for o in skip): continue
         mf = scene.comps(gf, 33); mr = scene.comps(gf, 23)
         if not mf or not mr: continue
         r = mr[0][2]
@@ -191,6 +196,7 @@ def main():
     tsize = int(sys.argv[9]) if len(sys.argv) > 9 else 64
     lo = np.array([float(x0), float(y0), float(z0)]); hi = np.array([float(x1), float(y1), float(z1)])
     ctr = (lo + hi) / 2
+    if os.environ.get("PIVOT"): ctr = np.array([float(v) for v in os.environ["PIVOT"].split(",")])
     scene = unity.Scene(scn)
     buckets = collections.defaultdict(lambda: ([], [], [], []))  # key -> (tri lists of (3,3) pos, uv (3,2))
     items, nrend = collect(scene, lo, hi)

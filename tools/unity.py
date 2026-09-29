@@ -134,7 +134,7 @@ class Scene:
         cur = self.go[go_fid].get("tf")
         while cur:
             g = self.tf[cur]["go"]
-            names.append(self.go[g]["name"] if g in self.go else "?")
+            names.append(str(self.go[g]["name"]) if g in self.go else "?")
             cur = self.tf[cur]["parent"]
             if cur not in self.tf:
                 break
