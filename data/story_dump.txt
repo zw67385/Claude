@@ -1,0 +1,4634 @@
+=== NODE Campfire ===
+      0 SAY   '...'
+      1 OPT   "who's there?" -> L2shortcutoption_Campfire_1
+      2 OPT   'step out here' -> L3shortcutoption_Campfire_2
+      3 SHOW_OPTIONS 
+      4 JUMP 
+  L2shortcutoption_Campfire_1:
+      5 JUMP_TO 'L1group_end'
+  L3shortcutoption_Campfire_2:
+      6 JUMP_TO 'L1group_end'
+  L1group_end:
+      7 POP 
+      8 CMD   <<PlayMid Cultist>>
+      9 SAY   '...'
+     10 OPT   '...' -> L5shortcutoption_Campfire_1
+     11 SHOW_OPTIONS 
+     12 JUMP 
+  L5shortcutoption_Campfire_1:
+     13 JUMP_TO 'L4group_end'
+  L4group_end:
+     14 POP 
+     15 SAY   '...'
+     16 OPT   '...' -> L7shortcutoption_Campfire_1
+     17 SHOW_OPTIONS 
+     18 JUMP 
+  L7shortcutoption_Campfire_1:
+     19 JUMP_TO 'L6group_end'
+  L6group_end:
+     20 POP 
+     21 SAY   '...'
+     22 OPT   'anybody there?' -> L9shortcutoption_Campfire_1
+     23 OPT   'show yourself' -> L10shortcutoption_Campfire_2
+     24 SHOW_OPTIONS 
+     25 JUMP 
+  L9shortcutoption_Campfire_1:
+     26 JUMP_TO 'L8group_end'
+  L10shortcutoption_Campfire_2:
+     27 JUMP_TO 'L8group_end'
+  L8group_end:
+     28 POP 
+     29 SAY   '...'
+     30 OPT   '...' -> L12shortcutoption_Campfire_1
+     31 SHOW_OPTIONS 
+     32 JUMP 
+  L12shortcutoption_Campfire_1:
+     33 JUMP_TO 'L11group_end'
+  L11group_end:
+     34 POP 
+     35 SAY   '...'
+     36 OPT   '...' -> L14shortcutoption_Campfire_1
+     37 SHOW_OPTIONS 
+     38 JUMP 
+  L14shortcutoption_Campfire_1:
+     39 JUMP_TO 'L13group_end'
+  L13group_end:
+     40 POP 
+     41 CMD   <<ExitConversationCamp CampfireManager>>
+     42 STOP 
+=== NODE DinerStart ===
+      0 SAY   'Welcome to twin river diner, how are you doing today?'
+      1 OPT   'good, how about you?' -> L2shortcutoption_DinerStart_1
+      2 OPT   'not too bad' -> L3shortcutoption_DinerStart_2
+      3 SHOW_OPTIONS 
+      4 JUMP 
+  L2shortcutoption_DinerStart_1:
+      5 JUMP_TO 'L1group_end'
+  L3shortcutoption_DinerStart_2:
+      6 JUMP_TO 'L1group_end'
+  L1group_end:
+      7 POP 
+      8 SAY   "Feel free to take any seat you like and I'll be right with you!"
+      9 OPT   'alright, thank you' -> L5shortcutoption_DinerStart_1
+     10 SHOW_OPTIONS 
+     11 JUMP 
+  L5shortcutoption_DinerStart_1:
+     12 JUMP_TO 'L4group_end'
+  L4group_end:
+     13 POP 
+     14 CMD   <<ExitConversation Waitress>>
+     15 STOP 
+=== NODE DinerOrder ===
+      0 SAY   "Good evening. I'm Barbara, are you ready to order?"
+      1 OPT   True -> L8shortcutoption_DinerOrder_1
+      2 OPT   False -> L9shortcutoption_DinerOrder_2
+      3 SHOW_OPTIONS 
+      4 JUMP 
+  L8shortcutoption_DinerOrder_1:
+      5 PUSH_BOOL True
+      6 STORE_VARIABLE '$take_order'
+      7 POP 
+      8 JUMP_TO 'L7group_end'
+  L9shortcutoption_DinerOrder_2:
+      9 PUSH_BOOL False
+     10 STORE_VARIABLE '$take_order'
+     11 POP 
+     12 JUMP_TO 'L7group_end'
+  L7group_end:
+     13 POP 
+     14 PUSH_VARIABLE '$take_order'
+     15 PUSH_BOOL False
+     16 PUSH_FLOAT 2.0
+     17 CALL_FUNC 'Bool.EqualTo'
+     18 JUMP_IF_FALSE 'L11skipclause'
+     19 SAY   "Okay, take your time sir. I'll be right back."
+     20 OPT   'thanks' -> L13shortcutoption_DinerOrder_1
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L13shortcutoption_DinerOrder_1:
+     23 CMD   <<ExitConversation Waitress take_order>>
+     24 JUMP_TO 'L12group_end'
+  L12group_end:
+     25 POP 
+     26 JUMP_TO 'L10endif'
+  L11skipclause:
+     27 POP 
+  L10endif:
+     28 SAY   'So what can I get for you today?'
+     29 OPT   'cheeseburger with fries' -> L15shortcutoption_DinerOrder_1
+     30 OPT   'grilled cheese sandwich with onion rings' -> L16shortcutoption_DinerOrder_2
+     31 OPT   'Meatball sub with chicken nuggets' -> L17shortcutoption_DinerOrder_3
+     32 SHOW_OPTIONS 
+     33 JUMP 
+  L15shortcutoption_DinerOrder_1:
+     34 PUSH_FLOAT 1.0
+     35 STORE_VARIABLE '$food_order'
+     36 POP 
+     37 PUSH_FLOAT 5.099999904632568
+     38 STORE_VARIABLE '$check'
+     39 POP 
+     40 JUMP_TO 'L14group_end'
+  L16shortcutoption_DinerOrder_2:
+     41 PUSH_FLOAT 2.0
+     42 STORE_VARIABLE '$food_order'
+     43 POP 
+     44 PUSH_FLOAT 5.099999904632568
+     45 STORE_VARIABLE '$check'
+     46 POP 
+     47 JUMP_TO 'L14group_end'
+  L17shortcutoption_DinerOrder_3:
+     48 PUSH_FLOAT 3.0
+     49 STORE_VARIABLE '$food_order'
+     50 POP 
+     51 PUSH_FLOAT 5.099999904632568
+     52 STORE_VARIABLE '$check'
+     53 POP 
+     54 JUMP_TO 'L14group_end'
+  L14group_end:
+     55 POP 
+     56 PUSH_VARIABLE '$food_order'
+     57 PUSH_FLOAT 1.0
+     58 PUSH_FLOAT 2.0
+     59 CALL_FUNC 'Number.EqualTo'
+     60 JUMP_IF_FALSE 'L19skipclause'
+     61 SAY   'Aha, our burger is the best in the west! <br>would you like anything to drink?'
+     62 JUMP_TO 'L18endif'
+  L19skipclause:
+     63 POP 
+     64 PUSH_VARIABLE '$food_order'
+     65 PUSH_FLOAT 2.0
+     66 PUSH_FLOAT 2.0
+     67 CALL_FUNC 'Number.EqualTo'
+     68 JUMP_IF_FALSE 'L20skipclause'
+     69 SAY   'Would you like anything to drink?'
+     70 JUMP_TO 'L18endif'
+  L20skipclause:
+     71 POP 
+     72 PUSH_VARIABLE '$food_order'
+     73 PUSH_FLOAT 3.0
+     74 PUSH_FLOAT 2.0
+     75 CALL_FUNC 'Number.EqualTo'
+     76 JUMP_IF_FALSE 'L21skipclause'
+     77 SAY   'Very well. would you like anything to drink?'
+     78 JUMP_TO 'L18endif'
+  L21skipclause:
+     79 POP 
+  L18endif:
+     80 OPT   'large coke' -> L23shortcutoption_DinerOrder_1
+     81 OPT   'coffee' -> L24shortcutoption_DinerOrder_2
+     82 OPT   'Strawberry Slush' -> L25shortcutoption_DinerOrder_3
+     83 SHOW_OPTIONS 
+     84 JUMP 
+  L23shortcutoption_DinerOrder_1:
+     85 PUSH_FLOAT 1.0
+     86 STORE_VARIABLE '$drink_order'
+     87 POP 
+     88 PUSH_VARIABLE '$check'
+     89 PUSH_FLOAT 0.8999999761581421
+     90 PUSH_FLOAT 2.0
+     91 CALL_FUNC 'Number.Add'
+     92 STORE_VARIABLE '$total_check'
+     93 POP 
+     94 JUMP_TO 'L22group_end'
+  L24shortcutoption_DinerOrder_2:
+     95 PUSH_FLOAT 2.0
+     96 STORE_VARIABLE '$drink_order'
+     97 POP 
+     98 PUSH_VARIABLE '$check'
+     99 PUSH_FLOAT 1.5
+    100 PUSH_FLOAT 2.0
+    101 CALL_FUNC 'Number.Add'
+    102 STORE_VARIABLE '$total_check'
+    103 POP 
+    104 JUMP_TO 'L22group_end'
+  L25shortcutoption_DinerOrder_3:
+    105 PUSH_FLOAT 3.0
+    106 STORE_VARIABLE '$drink_order'
+    107 POP 
+    108 PUSH_VARIABLE '$check'
+    109 PUSH_FLOAT 2.5
+    110 PUSH_FLOAT 2.0
+    111 CALL_FUNC 'Number.Add'
+    112 STORE_VARIABLE '$total_check'
+    113 POP 
+    114 JUMP_TO 'L22group_end'
+  L22group_end:
+    115 POP 
+    116 CMD   <<SetOrder Diner>>
+    117 SAY   'Perfect. anything else?'
+    118 OPT   'that will be all, thank you' -> L27shortcutoption_DinerOrder_1
+    119 OPT   'that’s it' -> L28shortcutoption_DinerOrder_2
+    120 OPT   False -> L29shortcutoption_DinerOrder_3
+    121 SHOW_OPTIONS 
+    122 JUMP 
+  L27shortcutoption_DinerOrder_1:
+    123 JUMP_TO 'L26group_end'
+  L28shortcutoption_DinerOrder_2:
+    124 JUMP_TO 'L26group_end'
+  L29shortcutoption_DinerOrder_3:
+    125 JUMP_TO 'L26group_end'
+  L26group_end:
+    126 POP 
+    127 SAY   "Great, I'll bring the food out as soon as it’s done! just let me know if you need anything else."
+    128 OPT   'will do' -> L31shortcutoption_DinerOrder_1
+    129 OPT   'sounds good, appreciate it' -> L32shortcutoption_DinerOrder_2
+    130 SHOW_OPTIONS 
+    131 JUMP 
+  L31shortcutoption_DinerOrder_1:
+    132 JUMP_TO 'L30group_end'
+  L32shortcutoption_DinerOrder_2:
+    133 JUMP_TO 'L30group_end'
+  L30group_end:
+    134 POP 
+    135 CMD   <<ExitConversation Waitress kitchen>>
+    136 STOP 
+=== NODE General ===
+      0 SAY   "Please take a seat, I'll be right with you"
+      1 OPT   "isn't it pretty quite in here" -> L35shortcutoption_General_1
+      2 OPT   'Could you point me to the restroom?' -> L36shortcutoption_General_2
+      3 SHOW_OPTIONS 
+      4 JUMP 
+  L35shortcutoption_General_1:
+      5 PUSH_STRING 'Pretty'
+      6 RUN_NODE 
+      7 JUMP_TO 'L34group_end'
+  L36shortcutoption_General_2:
+      8 PUSH_STRING 'Washroom'
+      9 RUN_NODE 
+     10 JUMP_TO 'L34group_end'
+  L34group_end:
+     11 POP 
+     12 STOP 
+=== NODE Exit ===
+      0 SAY   '...'
+      1 OPT   '^exit+' -> L39shortcutoption_Exit_1
+      2 SHOW_OPTIONS 
+      3 JUMP 
+  L39shortcutoption_Exit_1:
+      4 JUMP_TO 'L38group_end'
+  L38group_end:
+      5 POP 
+      6 CMD   <<ExitConversation Waitress>>
+      7 STOP 
+=== NODE Pretty ===
+      0 SAY   "Yeah, it's been like that for a while now. Ever since the highway bypassed this town, things have been pretty slow."
+      1 OPT   "That's a shame. It seems like a nice place" -> L42shortcutoption_Pretty_1
+      2 SHOW_OPTIONS 
+      3 JUMP 
+  L42shortcutoption_Pretty_1:
+      4 JUMP_TO 'L41group_end'
+  L41group_end:
+      5 POP 
+      6 SAY   'It used to be. But times change, I suppose.'
+      7 OPT   'Could you point me to the restroom?' -> L44shortcutoption_Pretty_1
+      8 OPT   '^exit+' -> L45shortcutoption_Pretty_2
+      9 SHOW_OPTIONS 
+     10 JUMP 
+  L44shortcutoption_Pretty_1:
+     11 PUSH_STRING 'Washroom'
+     12 RUN_NODE 
+     13 JUMP_TO 'L43group_end'
+  L45shortcutoption_Pretty_2:
+     14 CMD   <<ExitConversation Waitress>>
+     15 JUMP_TO 'L43group_end'
+  L43group_end:
+     16 POP 
+     17 STOP 
+=== NODE Washroom ===
+      0 CMD   <<WaitressPoint Waitress>>
+      1 SAY   "it's right over there"
+      2 OPT   '...' -> L48shortcutoption_Washroom_1
+      3 OPT   'Thank you' -> L49shortcutoption_Washroom_2
+      4 OPT   '^exit+' -> L50shortcutoption_Washroom_3
+      5 SHOW_OPTIONS 
+      6 JUMP 
+  L48shortcutoption_Washroom_1:
+      7 JUMP_TO 'L47group_end'
+  L49shortcutoption_Washroom_2:
+      8 JUMP_TO 'L47group_end'
+  L50shortcutoption_Washroom_3:
+      9 JUMP_TO 'L47group_end'
+  L47group_end:
+     10 POP 
+     11 CMD   <<ExitConversation Waitress>>
+     12 STOP 
+=== NODE AfterEating ===
+      0 SAY   'Did you enjoy the food?'
+      1 OPT   'yeah it was great' -> L53shortcutoption_AfterEating_1
+      2 SHOW_OPTIONS 
+      3 JUMP 
+  L53shortcutoption_AfterEating_1:
+      4 JUMP_TO 'L52group_end'
+  L52group_end:
+      5 POP 
+      6 SAY   'would you like to have anything else or should I get the check?'
+      7 OPT   'check please' -> L55shortcutoption_AfterEating_1
+      8 SHOW_OPTIONS 
+      9 JUMP 
+  L55shortcutoption_AfterEating_1:
+     10 JUMP_TO 'L54group_end'
+  L54group_end:
+     11 POP 
+     12 SAY   "Okay, I'll be right back."
+     13 OPT   'thanks' -> L57shortcutoption_AfterEating_1
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L57shortcutoption_AfterEating_1:
+     16 JUMP_TO 'L56group_end'
+  L56group_end:
+     17 POP 
+     18 CMD   <<ExitConversation Waitress get_check>>
+     19 STOP 
+=== NODE Check ===
+      0 PUSH_VARIABLE '$total_check'
+      1 SAY   "Here's the check, your total is {0}$"
+      2 PUSH_VARIABLE '$total_check'
+      3 OPT   '[PAY {0}$]' -> L60shortcutoption_Check_1
+      4 PUSH_VARIABLE '$total_check'
+      5 OPT   '[PAY {0}$ and 15% TIP]' -> L61shortcutoption_Check_2
+      6 PUSH_VARIABLE '$total_check'
+      7 OPT   '[PAY {0}$ and 50% TIP]' -> L62shortcutoption_Check_3
+      8 SHOW_OPTIONS 
+      9 JUMP 
+  L60shortcutoption_Check_1:
+     10 PUSH_FLOAT 1.0
+     11 STORE_VARIABLE '$tip'
+     12 POP 
+     13 JUMP_TO 'L59group_end'
+  L61shortcutoption_Check_2:
+     14 PUSH_FLOAT 2.0
+     15 STORE_VARIABLE '$tip'
+     16 POP 
+     17 JUMP_TO 'L59group_end'
+  L62shortcutoption_Check_3:
+     18 CMD   <<Generous SteamManager>>
+     19 PUSH_FLOAT 3.0
+     20 STORE_VARIABLE '$tip'
+     21 POP 
+     22 JUMP_TO 'L59group_end'
+  L59group_end:
+     23 POP 
+     24 CMD   <<PayCheck Waitress>>
+     25 STOP 
+=== NODE AfterCheck ===
+      0 PUSH_VARIABLE '$tip'
+      1 PUSH_FLOAT 1.0
+      2 PUSH_FLOAT 2.0
+      3 CALL_FUNC 'Number.EqualTo'
+      4 JUMP_IF_FALSE 'L65skipclause'
+      5 SAY   '...'
+      6 OPT   '^exit+' -> L67shortcutoption_AfterCheck_1
+      7 SHOW_OPTIONS 
+      8 JUMP 
+  L67shortcutoption_AfterCheck_1:
+      9 JUMP_TO 'L66group_end'
+  L66group_end:
+     10 POP 
+     11 JUMP_TO 'L64endif'
+  L65skipclause:
+     12 POP 
+     13 PUSH_VARIABLE '$tip'
+     14 PUSH_FLOAT 2.0
+     15 PUSH_FLOAT 2.0
+     16 CALL_FUNC 'Number.EqualTo'
+     17 JUMP_IF_FALSE 'L68skipclause'
+     18 SAY   'Hope you enjoy the rest of your ride!'
+     19 OPT   'Thanks' -> L70shortcutoption_AfterCheck_1
+     20 SHOW_OPTIONS 
+     21 JUMP 
+  L70shortcutoption_AfterCheck_1:
+     22 JUMP_TO 'L69group_end'
+  L69group_end:
+     23 POP 
+     24 JUMP_TO 'L64endif'
+  L68skipclause:
+     25 POP 
+     26 PUSH_VARIABLE '$tip'
+     27 PUSH_FLOAT 3.0
+     28 PUSH_FLOAT 2.0
+     29 CALL_FUNC 'Number.EqualTo'
+     30 JUMP_IF_FALSE 'L71skipclause'
+     31 SAY   'Thanks for the generous tip!'
+     32 OPT   'Yeah!' -> L73shortcutoption_AfterCheck_1
+     33 SHOW_OPTIONS 
+     34 JUMP 
+  L73shortcutoption_AfterCheck_1:
+     35 JUMP_TO 'L72group_end'
+  L72group_end:
+     36 POP 
+     37 JUMP_TO 'L64endif'
+  L71skipclause:
+     38 POP 
+  L64endif:
+     39 CMD   <<ExitConversation Waitress Check_paid>>
+     40 STOP 
+=== NODE SuitGuy_1 ===
+      0 SAY   'You look a little lost'
+      1 OPT   'Just tired' -> L76shortcutoption_SuitGuy_1_1
+      2 OPT   "I'm just passing through" -> L77shortcutoption_SuitGuy_1_2
+      3 SHOW_OPTIONS 
+      4 JUMP 
+  L76shortcutoption_SuitGuy_1_1:
+      5 SAY   "This place has some great coffee, if you're in the mood for one"
+      6 OPT   '...' -> L79shortcutoption_SuitGuy_1_1
+      7 SHOW_OPTIONS 
+      8 JUMP 
+  L79shortcutoption_SuitGuy_1_1:
+      9 SAY   'as you can see, I usually go for vanilla latte'
+     10 OPT   '...' -> L81shortcutoption_SuitGuy_1_1
+     11 SHOW_OPTIONS 
+     12 JUMP 
+  L81shortcutoption_SuitGuy_1_1:
+     13 PUSH_STRING 'SuitGuy_2'
+     14 RUN_NODE 
+     15 JUMP_TO 'L80group_end'
+  L80group_end:
+     16 POP 
+     17 JUMP_TO 'L78group_end'
+  L78group_end:
+     18 POP 
+     19 JUMP_TO 'L75group_end'
+  L77shortcutoption_SuitGuy_1_2:
+     20 PUSH_STRING 'SuitGuy_2'
+     21 RUN_NODE 
+     22 JUMP_TO 'L75group_end'
+  L75group_end:
+     23 POP 
+     24 STOP 
+=== NODE SuitGuy_2 ===
+      0 SAY   'so where are you headed?'
+      1 OPT   'starting my new job at a nearby state park' -> L84shortcutoption_SuitGuy_2_1
+      2 OPT   "that's none of your business" -> L85shortcutoption_SuitGuy_2_2
+      3 SHOW_OPTIONS 
+      4 JUMP 
+  L84shortcutoption_SuitGuy_2_1:
+      5 SAY   "Ah that's great, I didn't know these jobs still existed"
+      6 OPT   'What do you do?' -> L87shortcutoption_SuitGuy_2_1
+      7 OPT   '^exit+' -> L88shortcutoption_SuitGuy_2_2
+      8 SHOW_OPTIONS 
+      9 JUMP 
+  L87shortcutoption_SuitGuy_2_1:
+     10 PUSH_STRING 'SuitGuy_3'
+     11 RUN_NODE 
+     12 JUMP_TO 'L86group_end'
+  L88shortcutoption_SuitGuy_2_2:
+     13 CMD   <<ExitConversationNPC SuitGuy>>
+     14 JUMP_TO 'L86group_end'
+  L86group_end:
+     15 POP 
+     16 JUMP_TO 'L83group_end'
+  L85shortcutoption_SuitGuy_2_2:
+     17 SAY   'I guess not'
+     18 OPT   '^exit+' -> L90shortcutoption_SuitGuy_2_1
+     19 SHOW_OPTIONS 
+     20 JUMP 
+  L90shortcutoption_SuitGuy_2_1:
+     21 CMD   <<ExitConversationNPC SuitGuy>>
+     22 JUMP_TO 'L89group_end'
+  L89group_end:
+     23 POP 
+     24 JUMP_TO 'L83group_end'
+  L83group_end:
+     25 POP 
+     26 STOP 
+=== NODE SuitGuy_3 ===
+      0 SAY   "I work in finance. I'm a financial analyst for a big firm downtown."
+      1 OPT   'That sounds interesting' -> L93shortcutoption_SuitGuy_3_1
+      2 OPT   'Do you like your job?' -> L94shortcutoption_SuitGuy_3_2
+      3 SHOW_OPTIONS 
+      4 JUMP 
+  L93shortcutoption_SuitGuy_3_1:
+      5 JUMP_TO 'L92group_end'
+  L94shortcutoption_SuitGuy_3_2:
+      6 JUMP_TO 'L92group_end'
+  L92group_end:
+      7 POP 
+      8 SAY   "Yeah, it's challenging but I enjoy it. It keeps me busy, that's for sure."
+      9 OPT   "That's impressive" -> L96shortcutoption_SuitGuy_3_1
+     10 OPT   "I don't think I could handle a job like that" -> L97shortcutoption_SuitGuy_3_2
+     11 SHOW_OPTIONS 
+     12 JUMP 
+  L96shortcutoption_SuitGuy_3_1:
+     13 SAY   "Yeah, I guess so, I can be a bit of a rollercoaster sometimes, but I don't hate what I do"
+     14 OPT   '^exit+' -> L99shortcutoption_SuitGuy_3_1
+     15 SHOW_OPTIONS 
+     16 JUMP 
+  L99shortcutoption_SuitGuy_3_1:
+     17 CMD   <<ExitConversationNPC SuitGuy>>
+     18 JUMP_TO 'L98group_end'
+  L98group_end:
+     19 POP 
+     20 JUMP_TO 'L95group_end'
+  L97shortcutoption_SuitGuy_3_2:
+     21 SAY   "It's not for everyone, that's for sure. But I find it very fulfilling."
+     22 OPT   '^exit+' -> L101shortcutoption_SuitGuy_3_1
+     23 SHOW_OPTIONS 
+     24 JUMP 
+  L101shortcutoption_SuitGuy_3_1:
+     25 CMD   <<ExitConversationNPC SuitGuy>>
+     26 JUMP_TO 'L100group_end'
+  L100group_end:
+     27 POP 
+     28 JUMP_TO 'L95group_end'
+  L95group_end:
+     29 POP 
+     30 STOP 
+=== NODE Trucker1_1 ===
+      0 SAY   'Long day of driving huh?'
+      1 OPT   'Where are you headed?' -> L104shortcutoption_Trucker1_1_1
+      2 SHOW_OPTIONS 
+      3 JUMP 
+  L104shortcutoption_Trucker1_1_1:
+      4 JUMP_TO 'L103group_end'
+  L103group_end:
+      5 POP 
+      6 SAY   "I'm heading up north to make a delivery. What about you?"
+      7 OPT   "I'm a staffer at ironbark state park" -> L106shortcutoption_Trucker1_1_1
+      8 OPT   'just down the road' -> L107shortcutoption_Trucker1_1_2
+      9 SHOW_OPTIONS 
+     10 JUMP 
+  L106shortcutoption_Trucker1_1_1:
+     11 SAY   'so is it true?'
+     12 OPT   '...' -> L109shortcutoption_Trucker1_1_1
+     13 SHOW_OPTIONS 
+     14 JUMP 
+  L109shortcutoption_Trucker1_1_1:
+     15 PUSH_STRING 'Trucker1_2'
+     16 RUN_NODE 
+     17 JUMP_TO 'L108group_end'
+  L108group_end:
+     18 POP 
+     19 JUMP_TO 'L105group_end'
+  L107shortcutoption_Trucker1_1_2:
+     20 SAY   '...'
+     21 OPT   '...' -> L111shortcutoption_Trucker1_1_1
+     22 SHOW_OPTIONS 
+     23 JUMP 
+  L111shortcutoption_Trucker1_1_1:
+     24 CMD   <<ExitConversationNPC Trucker1>>
+     25 JUMP_TO 'L110group_end'
+  L110group_end:
+     26 POP 
+     27 JUMP_TO 'L105group_end'
+  L105group_end:
+     28 POP 
+     29 STOP 
+=== NODE Trucker1_2 ===
+      0 SAY   'whatever they say happened to those kids the other day?'
+      1 OPT   'possibly' -> L114shortcutoption_Trucker1_2_1
+      2 OPT   'we cant say' -> L115shortcutoption_Trucker1_2_2
+      3 OPT   'what?' -> L116shortcutoption_Trucker1_2_3
+      4 SHOW_OPTIONS 
+      5 JUMP 
+  L114shortcutoption_Trucker1_2_1:
+      6 SAY   "I can't even imagine what the parents must be going through. It's every parent's worst nightmare."
+      7 OPT   '...' -> L118shortcutoption_Trucker1_2_1
+      8 SHOW_OPTIONS 
+      9 JUMP 
+  L118shortcutoption_Trucker1_2_1:
+     10 CMD   <<ExitConversationNPC Trucker1>>
+     11 JUMP_TO 'L117group_end'
+  L117group_end:
+     12 POP 
+     13 JUMP_TO 'L113group_end'
+  L115shortcutoption_Trucker1_2_2:
+     14 SAY   "I can't even imagine what the parents must be going through. It's every parent's worst nightmare."
+     15 OPT   '...' -> L120shortcutoption_Trucker1_2_1
+     16 SHOW_OPTIONS 
+     17 JUMP 
+  L120shortcutoption_Trucker1_2_1:
+     18 CMD   <<ExitConversationNPC Trucker1>>
+     19 JUMP_TO 'L119group_end'
+  L119group_end:
+     20 POP 
+     21 JUMP_TO 'L113group_end'
+  L116shortcutoption_Trucker1_2_3:
+     22 SAY   'I need to go'
+     23 OPT   '...' -> L122shortcutoption_Trucker1_2_1
+     24 SHOW_OPTIONS 
+     25 JUMP 
+  L122shortcutoption_Trucker1_2_1:
+     26 CMD   <<ExitConversationNPC Trucker1>>
+     27 JUMP_TO 'L121group_end'
+  L121group_end:
+     28 POP 
+     29 JUMP_TO 'L113group_end'
+  L113group_end:
+     30 POP 
+     31 STOP 
+=== NODE Trucker2_1 ===
+      0 SAY   'Please leave me alone'
+      1 OPT   '...' -> L125shortcutoption_Trucker2_1_1
+      2 SHOW_OPTIONS 
+      3 JUMP 
+  L125shortcutoption_Trucker2_1_1:
+      4 JUMP_TO 'L124group_end'
+  L124group_end:
+      5 POP 
+      6 CMD   <<ExitConversationNPC Trucker2>>
+      7 STOP 
+=== NODE Bad_Guy ===
+      0 SAY   '...'
+      1 OPT   "How's the food?" -> L128shortcutoption_Bad_Guy_1
+      2 OPT   'do you mind if I join you?' -> L129shortcutoption_Bad_Guy_2
+      3 OPT   'Pretty long day at work huh?' -> L130shortcutoption_Bad_Guy_3
+      4 SHOW_OPTIONS 
+      5 JUMP 
+  L128shortcutoption_Bad_Guy_1:
+      6 JUMP_TO 'L127group_end'
+  L129shortcutoption_Bad_Guy_2:
+      7 JUMP_TO 'L127group_end'
+  L130shortcutoption_Bad_Guy_3:
+      8 JUMP_TO 'L127group_end'
+  L127group_end:
+      9 POP 
+     10 CMD   <<HeStared BadGuy>>
+     11 SAY   '...'
+     12 OPT   '...' -> L132shortcutoption_Bad_Guy_1
+     13 SHOW_OPTIONS 
+     14 JUMP 
+  L132shortcutoption_Bad_Guy_1:
+     15 JUMP_TO 'L131group_end'
+  L131group_end:
+     16 POP 
+     17 CMD   <<ExitConversationBG BadGuy>>
+     18 STOP 
+=== NODE ParkingLotGuy ===
+      0 SAY   '...'
+      1 OPT   "How's that burger?" -> L135shortcutoption_ParkingLotGuy_1
+      2 OPT   'Where are you headed?' -> L136shortcutoption_ParkingLotGuy_2
+      3 SHOW_OPTIONS 
+      4 JUMP 
+  L135shortcutoption_ParkingLotGuy_1:
+      5 SAY   'This little piece of heaven? This place is pretty much my weekend spot'
+      6 OPT   '...' -> L138shortcutoption_ParkingLotGuy_1
+      7 SHOW_OPTIONS 
+      8 JUMP 
+  L138shortcutoption_ParkingLotGuy_1:
+      9 JUMP_TO 'L137group_end'
+  L137group_end:
+     10 POP 
+     11 SAY   'You new around here?'
+     12 OPT   'Just passing through' -> L140shortcutoption_ParkingLotGuy_1
+     13 OPT   "I'm a new staffer at ironbark state park" -> L141shortcutoption_ParkingLotGuy_2
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L140shortcutoption_ParkingLotGuy_1:
+     16 SAY   'Have a safe journey!'
+     17 OPT   '...' -> L143shortcutoption_ParkingLotGuy_1
+     18 SHOW_OPTIONS 
+     19 JUMP 
+  L143shortcutoption_ParkingLotGuy_1:
+     20 CMD   <<ExitConversationNPC ParkingLotGuy>>
+     21 JUMP_TO 'L142group_end'
+  L142group_end:
+     22 POP 
+     23 JUMP_TO 'L139group_end'
+  L141shortcutoption_ParkingLotGuy_2:
+     24 PUSH_STRING 'ParkingLotGuy_1'
+     25 RUN_NODE 
+     26 JUMP_TO 'L139group_end'
+  L139group_end:
+     27 POP 
+     28 JUMP_TO 'L134group_end'
+  L136shortcutoption_ParkingLotGuy_2:
+     29 SAY   "I'm from roseburg, this place is pretty much my weekend spot"
+     30 OPT   '...' -> L145shortcutoption_ParkingLotGuy_1
+     31 SHOW_OPTIONS 
+     32 JUMP 
+  L145shortcutoption_ParkingLotGuy_1:
+     33 JUMP_TO 'L144group_end'
+  L144group_end:
+     34 POP 
+     35 JUMP_TO 'L134group_end'
+  L134group_end:
+     36 POP 
+     37 SAY   'What about yourself?'
+     38 OPT   'Just passing through' -> L147shortcutoption_ParkingLotGuy_1
+     39 OPT   "I'm a new staffer at ironbark state park" -> L148shortcutoption_ParkingLotGuy_2
+     40 SHOW_OPTIONS 
+     41 JUMP 
+  L147shortcutoption_ParkingLotGuy_1:
+     42 SAY   'Have a safe journey!'
+     43 OPT   '...' -> L150shortcutoption_ParkingLotGuy_1
+     44 SHOW_OPTIONS 
+     45 JUMP 
+  L150shortcutoption_ParkingLotGuy_1:
+     46 CMD   <<ExitConversationNPC ParkingLotGuy>>
+     47 JUMP_TO 'L149group_end'
+  L149group_end:
+     48 POP 
+     49 JUMP_TO 'L146group_end'
+  L148shortcutoption_ParkingLotGuy_2:
+     50 PUSH_STRING 'ParkingLotGuy_1'
+     51 RUN_NODE 
+     52 JUMP_TO 'L146group_end'
+  L146group_end:
+     53 POP 
+     54 STOP 
+=== NODE ParkingLotGuy_1 ===
+      0 SAY   'You must have heard the news then?'
+      1 OPT   'What news?' -> L153shortcutoption_ParkingLotGuy_1_1
+      2 SHOW_OPTIONS 
+      3 JUMP 
+  L153shortcutoption_ParkingLotGuy_1_1:
+      4 JUMP_TO 'L152group_end'
+  L152group_end:
+      5 POP 
+      6 SAY   "Well, a few weeks ago, three kids went missing in the park. It's been all over the news."
+      7 OPT   'what happened to them?' -> L155shortcutoption_ParkingLotGuy_1_1
+      8 SHOW_OPTIONS 
+      9 JUMP 
+  L155shortcutoption_ParkingLotGuy_1_1:
+     10 JUMP_TO 'L154group_end'
+  L154group_end:
+     11 POP 
+     12 SAY   'No one knows...'
+     13 OPT   '...' -> L157shortcutoption_ParkingLotGuy_1_1
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L157shortcutoption_ParkingLotGuy_1_1:
+     16 JUMP_TO 'L156group_end'
+  L156group_end:
+     17 POP 
+     18 SAY   'The official report says they got lost, but a lot of people around here think something else happened.'
+     19 OPT   '...' -> L159shortcutoption_ParkingLotGuy_1_1
+     20 OPT   'Something else?' -> L160shortcutoption_ParkingLotGuy_1_2
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L159shortcutoption_ParkingLotGuy_1_1:
+     23 JUMP_TO 'L158group_end'
+  L160shortcutoption_ParkingLotGuy_1_2:
+     24 JUMP_TO 'L158group_end'
+  L158group_end:
+     25 POP 
+     26 SAY   "There's a rumor going around that a creature got them."
+     27 OPT   '...' -> L162shortcutoption_ParkingLotGuy_1_1
+     28 OPT   'a creature?' -> L163shortcutoption_ParkingLotGuy_1_2
+     29 SHOW_OPTIONS 
+     30 JUMP 
+  L162shortcutoption_ParkingLotGuy_1_1:
+     31 JUMP_TO 'L161group_end'
+  L163shortcutoption_ParkingLotGuy_1_2:
+     32 JUMP_TO 'L161group_end'
+  L161group_end:
+     33 POP 
+     34 SAY   "Yeah, you know, like Bigfoot or a goatman. People say there's something like that living in that forest."
+     35 OPT   'do you believe it?' -> L165shortcutoption_ParkingLotGuy_1_1
+     36 OPT   '^exit+ I should go' -> L166shortcutoption_ParkingLotGuy_1_2
+     37 SHOW_OPTIONS 
+     38 JUMP 
+  L165shortcutoption_ParkingLotGuy_1_1:
+     39 JUMP_TO 'L164group_end'
+  L166shortcutoption_ParkingLotGuy_1_2:
+     40 CMD   <<ExitConversationNPC ParkingLotGuy>>
+     41 JUMP_TO 'L164group_end'
+  L164group_end:
+     42 POP 
+     43 SAY   'A lot of hikers and campers go missing in that forest'
+     44 OPT   '...' -> L168shortcutoption_ParkingLotGuy_1_1
+     45 SHOW_OPTIONS 
+     46 JUMP 
+  L168shortcutoption_ParkingLotGuy_1_1:
+     47 JUMP_TO 'L167group_end'
+  L167group_end:
+     48 POP 
+     49 SAY   'Some of them come back with stories you would not believe'
+     50 OPT   '...' -> L170shortcutoption_ParkingLotGuy_1_1
+     51 SHOW_OPTIONS 
+     52 JUMP 
+  L170shortcutoption_ParkingLotGuy_1_1:
+     53 JUMP_TO 'L169group_end'
+  L169group_end:
+     54 POP 
+     55 CMD   <<PlayCreepySFX ParkingLotGuy>>
+     56 CMD   <<Talkative SteamManager>>
+     57 SAY   'Some of them never come back'
+     58 OPT   '^exit+' -> L172shortcutoption_ParkingLotGuy_1_1
+     59 SHOW_OPTIONS 
+     60 JUMP 
+  L172shortcutoption_ParkingLotGuy_1_1:
+     61 JUMP_TO 'L171group_end'
+  L171group_end:
+     62 POP 
+     63 CMD   <<ExitConversationNPC ParkingLotGuy>>
+     64 STOP 
+=== NODE Radiostart ===
+      0 CMD   <<SetupName UIManager ???>>
+      1 CMD   <<PlayStatic Tower>>
+      2 CMD   <<PlaySFX2 Tower>>
+      3 SAY   '[nomarkup][STATIC][/nomarkup]'
+      4 OPT   '...Green' -> L2shortcutoption_Radiostart_1
+      5 SHOW_OPTIONS 
+      6 JUMP 
+  L2shortcutoption_Radiostart_1:
+      7 JUMP_TO 'L1group_end'
+  L1group_end:
+      8 POP 
+      9 SAY   '[nomarkup][STATIC][/nomarkup]'
+     10 OPT   '...Green' -> L4shortcutoption_Radiostart_1
+     11 SHOW_OPTIONS 
+     12 JUMP 
+  L4shortcutoption_Radiostart_1:
+     13 JUMP_TO 'L3group_end'
+  L3group_end:
+     14 POP 
+     15 CMD   <<StopStatic Tower>>
+     16 CMD   <<PlaySFX1 Tower>>
+     17 CMD   <<VO_SEQ1 Tower 0>>
+     18 SAY   "New guy, I haven't gotten your name yet, what is it again?"
+     19 OPT   'Who is this?Green' -> L6shortcutoption_Radiostart_1
+     20 OPT   "I'm JackGreen" -> L7shortcutoption_Radiostart_2
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L6shortcutoption_Radiostart_1:
+     23 PUSH_STRING 'Alone'
+     24 RUN_NODE 
+     25 JUMP_TO 'L5group_end'
+  L7shortcutoption_Radiostart_2:
+     26 CMD   <<PlaySFX1 Tower>>
+     27 CMD   <<VO_SEQ1 Tower 1>>
+     28 SAY   'I saw your light turn on. I gotta say, it’s refreshing to see tower 11 alive again'
+     29 OPT   'who is this?Green' -> L9shortcutoption_Radiostart_1
+     30 OPT   'you were watching?Green' -> L10shortcutoption_Radiostart_2
+     31 SHOW_OPTIONS 
+     32 JUMP 
+  L9shortcutoption_Radiostart_1:
+     33 CMD   <<SetupName UIManager "Connor Hawkins">>
+     34 CMD   <<PlaySFX1 Tower>>
+     35 CMD   <<VO_SEQ1 Tower 2>>
+     36 SAY   "I'm Connor. Fire tower 12"
+     37 OPT   'you were watching?Green' -> L12shortcutoption_Radiostart_1
+     38 SHOW_OPTIONS 
+     39 JUMP 
+  L12shortcutoption_Radiostart_1:
+     40 CMD   <<VO_SEQ1 Tower 3>>
+     41 SAY   "isn't that the job? I've had to cover your area until you arrived."
+     42 CMD   <<PlaySFX1 Tower>>
+     43 OPT   '...Green' -> L14shortcutoption_Radiostart_1
+     44 SHOW_OPTIONS 
+     45 JUMP 
+  L14shortcutoption_Radiostart_1:
+     46 PUSH_STRING 'Paradise'
+     47 RUN_NODE 
+     48 JUMP_TO 'L13group_end'
+  L13group_end:
+     49 POP 
+     50 JUMP_TO 'L11group_end'
+  L11group_end:
+     51 POP 
+     52 JUMP_TO 'L8group_end'
+  L10shortcutoption_Radiostart_2:
+     53 CMD   <<SetupName UIManager "Connor Hawkins">>
+     54 CMD   <<PlaySFX1 Tower>>
+     55 CMD   <<VO_SEQ1 Tower 4>>
+     56 SAY   "isn't that the job? I've had to cover your area until you arrived. I'm Connor. Fire tower 12."
+     57 OPT   '...Green' -> L16shortcutoption_Radiostart_1
+     58 SHOW_OPTIONS 
+     59 JUMP 
+  L16shortcutoption_Radiostart_1:
+     60 PUSH_STRING 'Paradise'
+     61 RUN_NODE 
+     62 JUMP_TO 'L15group_end'
+  L15group_end:
+     63 POP 
+     64 JUMP_TO 'L8group_end'
+  L8group_end:
+     65 POP 
+     66 JUMP_TO 'L5group_end'
+  L5group_end:
+     67 POP 
+     68 STOP 
+=== NODE Alone ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX1 Tower>>
+      2 CMD   <<VO_SEQ1 Tower 5>>
+      3 SAY   "I'm Connor. Fire tower 12. I saw your light turn on"
+      4 OPT   'thought i was going to be alone out hereGreen' -> L19shortcutoption_Alone_1
+      5 OPT   'you were watching?Green' -> L20shortcutoption_Alone_2
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L19shortcutoption_Alone_1:
+      8 JUMP_TO 'L18group_end'
+  L20shortcutoption_Alone_2:
+      9 CMD   <<PlaySFX1 Tower>>
+     10 CMD   <<VO_SEQ1 Tower 3>>
+     11 SAY   "isn't that the job? I've had to cover your area until you arrived."
+     12 OPT   '...Green' -> L22shortcutoption_Alone_1
+     13 SHOW_OPTIONS 
+     14 JUMP 
+  L22shortcutoption_Alone_1:
+     15 PUSH_STRING 'Paradise'
+     16 RUN_NODE 
+     17 JUMP_TO 'L21group_end'
+  L21group_end:
+     18 POP 
+     19 JUMP_TO 'L18group_end'
+  L18group_end:
+     20 POP 
+     21 CMD   <<PlaySFX1 Tower>>
+     22 CMD   <<VO_SEQ1 Tower 6>>
+     23 SAY   "you're never alone in these woods, I've had to cover your area until you arrived."
+     24 OPT   'thank you, I suppose?Green' -> L24shortcutoption_Alone_1
+     25 SHOW_OPTIONS 
+     26 JUMP 
+  L24shortcutoption_Alone_1:
+     27 JUMP_TO 'L23group_end'
+  L23group_end:
+     28 POP 
+     29 CMD   <<PlaySFX1 Tower>>
+     30 CMD   <<VO_SEQ1 Tower 7>>
+     31 SAY   'so what is it?'
+     32 OPT   'what?Green' -> L26shortcutoption_Alone_1
+     33 SHOW_OPTIONS 
+     34 JUMP 
+  L26shortcutoption_Alone_1:
+     35 JUMP_TO 'L25group_end'
+  L25group_end:
+     36 POP 
+     37 CMD   <<PlaySFX1 Tower>>
+     38 CMD   <<VO_SEQ1 Tower 8>>
+     39 SAY   'your name?'
+     40 OPT   "oh it's jack, jack nelsonGreen" -> L28shortcutoption_Alone_1
+     41 SHOW_OPTIONS 
+     42 JUMP 
+  L28shortcutoption_Alone_1:
+     43 PUSH_STRING 'Paradise'
+     44 RUN_NODE 
+     45 JUMP_TO 'L27group_end'
+  L27group_end:
+     46 POP 
+     47 STOP 
+=== NODE Paradise ===
+      0 CMD   <<PlaySFX1 Tower>>
+      1 CMD   <<VO_SEQ1 Tower 9>>
+      2 SAY   'Anyways, what brings you to this towering paradise of ours?'
+      3 OPT   'Just looking for a changeGreen' -> L31shortcutoption_Paradise_1
+      4 OPT   "I'm really tiredGreen" -> L32shortcutoption_Paradise_2
+      5 SHOW_OPTIONS 
+      6 JUMP 
+  L31shortcutoption_Paradise_1:
+      7 CMD   <<PlaySFX1 Tower>>
+      8 SAY   '...'
+      9 OPT   '...' -> L34shortcutoption_Paradise_1
+     10 SHOW_OPTIONS 
+     11 JUMP 
+  L34shortcutoption_Paradise_1:
+     12 CMD   <<PlaySFX1 Tower>>
+     13 SAY   '...'
+     14 OPT   "I'm a transfer, from IronHorseGreen" -> L36shortcutoption_Paradise_1
+     15 SHOW_OPTIONS 
+     16 JUMP 
+  L36shortcutoption_Paradise_1:
+     17 CMD   <<PlaySFX1 Tower>>
+     18 CMD   <<VO_SEQ1 Tower 10>>
+     19 SAY   'an experienced comrade. I can see why mitch picked you'
+     20 OPT   "I'm really tiredGreen" -> L38shortcutoption_Paradise_1
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L38shortcutoption_Paradise_1:
+     23 PUSH_STRING 'Fire'
+     24 RUN_NODE 
+     25 JUMP_TO 'L37group_end'
+  L37group_end:
+     26 POP 
+     27 JUMP_TO 'L35group_end'
+  L35group_end:
+     28 POP 
+     29 JUMP_TO 'L33group_end'
+  L33group_end:
+     30 POP 
+     31 JUMP_TO 'L30group_end'
+  L32shortcutoption_Paradise_2:
+     32 PUSH_STRING 'Fire'
+     33 RUN_NODE 
+     34 JUMP_TO 'L30group_end'
+  L30group_end:
+     35 POP 
+     36 STOP 
+=== NODE Fire ===
+      0 CMD   <<PlaySFX1 Tower>>
+      1 CMD   <<VO_SEQ1 Tower 11>>
+      2 SAY   'you got a fire going?'
+      3 OPT   '...Green' -> L41shortcutoption_Fire_1
+      4 OPT   'NoGreen' -> L42shortcutoption_Fire_2
+      5 SHOW_OPTIONS 
+      6 JUMP 
+  L41shortcutoption_Fire_1:
+      7 JUMP_TO 'L40group_end'
+  L42shortcutoption_Fire_2:
+      8 JUMP_TO 'L40group_end'
+  L40group_end:
+      9 POP 
+     10 CMD   <<PlaySFX1 Tower>>
+     11 CMD   <<VO_SEQ1 Tower 12>>
+     12 SAY   'Get her lit. The temperature is about to plummet. You don’t want to sit through the storm shivering.'
+     13 OPT   'got it, thanksGreen' -> L44shortcutoption_Fire_1
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L44shortcutoption_Fire_1:
+     16 CMD   <<ExitRadio Tower>>
+     17 JUMP_TO 'L43group_end'
+  L43group_end:
+     18 POP 
+     19 STOP 
+=== NODE Stove ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 CMD   <<VO_SEQ1 Tower 13>>
+      4 SAY   "I don't see the smoke, did you light it up yet?"
+      5 OPT   '...Green' -> L47shortcutoption_Stove_1
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L47shortcutoption_Stove_1:
+      8 JUMP_TO 'L46group_end'
+  L46group_end:
+      9 POP 
+     10 CMD   <<PlaySFX1 Tower>>
+     11 CMD   <<VO_SEQ1 Tower 14>>
+     12 SAY   'wood stove should be around the entrance, Get her lit.'
+     13 OPT   '...Green' -> L49shortcutoption_Stove_1
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L49shortcutoption_Stove_1:
+     16 CMD   <<ExitRadio Tower>>
+     17 JUMP_TO 'L48group_end'
+  L48group_end:
+     18 POP 
+     19 STOP 
+=== NODE Firewood ===
+      0 CMD   <<PlaySFX2 Tower>>
+      1 CMD   <<PlaySFX1 Tower>>
+      2 SAY   '...'
+      3 OPT   "there's no firewoodGreen" -> L52shortcutoption_Firewood_1
+      4 SHOW_OPTIONS 
+      5 JUMP 
+  L52shortcutoption_Firewood_1:
+      6 JUMP_TO 'L51group_end'
+  L51group_end:
+      7 POP 
+      8 CMD   <<PlaySFX1 Tower>>
+      9 CMD   <<VO_SEQ1 Tower 15>>
+     10 SAY   "No firewood? there must be plenty in the shack, that's all Marley did"
+     11 OPT   '...Green' -> L54shortcutoption_Firewood_1
+     12 OPT   'Marley?Green' -> L55shortcutoption_Firewood_2
+     13 SHOW_OPTIONS 
+     14 JUMP 
+  L54shortcutoption_Firewood_1:
+     15 CMD   <<PlaySFX1 Tower>>
+     16 CMD   <<VO_SEQ1 Tower 16>>
+     17 SAY   'Gasoline must be in your cabin, but if not, you can always grab your supplies from the storage shack'
+     18 OPT   '...Green' -> L57shortcutoption_Firewood_1
+     19 SHOW_OPTIONS 
+     20 JUMP 
+  L57shortcutoption_Firewood_1:
+     21 CMD   <<ExitRadio Tower>>
+     22 JUMP_TO 'L56group_end'
+  L56group_end:
+     23 POP 
+     24 JUMP_TO 'L53group_end'
+  L55shortcutoption_Firewood_2:
+     25 CMD   <<PlaySFX1 Tower>>
+     26 CMD   <<VO_SEQ1 Tower 17>>
+     27 SAY   'The staffer who was in the lookout before you.'
+     28 OPT   '...Green' -> L59shortcutoption_Firewood_1
+     29 SHOW_OPTIONS 
+     30 JUMP 
+  L59shortcutoption_Firewood_1:
+     31 CMD   <<PlaySFX1 Tower>>
+     32 CMD   <<VO_SEQ1 Tower 18>>
+     33 SAY   'She was one gritty woman.'
+     34 OPT   '...Green' -> L61shortcutoption_Firewood_1
+     35 SHOW_OPTIONS 
+     36 JUMP 
+  L61shortcutoption_Firewood_1:
+     37 CMD   <<PlaySFX1 Tower>>
+     38 CMD   <<VO_SEQ1 Tower 19>>
+     39 SAY   'Anyways, you better get that fire going you don’t want to sit through the storm.'
+     40 OPT   '...Green' -> L63shortcutoption_Firewood_1
+     41 SHOW_OPTIONS 
+     42 JUMP 
+  L63shortcutoption_Firewood_1:
+     43 CMD   <<PlaySFX1 Tower>>
+     44 CMD   <<VO_SEQ1 Tower 16>>
+     45 SAY   'gasoline must be in your cabin, but if not, you can always grab your supplies from the storage shack'
+     46 OPT   '...Green' -> L65shortcutoption_Firewood_1
+     47 SHOW_OPTIONS 
+     48 JUMP 
+  L65shortcutoption_Firewood_1:
+     49 CMD   <<ExitRadio Tower>>
+     50 JUMP_TO 'L64group_end'
+  L64group_end:
+     51 POP 
+     52 JUMP_TO 'L62group_end'
+  L62group_end:
+     53 POP 
+     54 JUMP_TO 'L60group_end'
+  L60group_end:
+     55 POP 
+     56 JUMP_TO 'L58group_end'
+  L58group_end:
+     57 POP 
+     58 JUMP_TO 'L53group_end'
+  L53group_end:
+     59 POP 
+     60 STOP 
+=== NODE Smoke ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 CMD   <<VO_SEQ1 Tower 28>>
+      4 SAY   'Aha! I see it. I see the smoke.'
+      5 OPT   '...Green' -> L68shortcutoption_Smoke_1
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L68shortcutoption_Smoke_1:
+      8 JUMP_TO 'L67group_end'
+  L67group_end:
+      9 POP 
+     10 CMD   <<PlaySFX1 Tower>>
+     11 CMD   <<VO_SEQ1 Tower 29>>
+     12 SAY   "it's nice to see tower 11 alive again"
+     13 OPT   '...Green' -> L70shortcutoption_Smoke_1
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L70shortcutoption_Smoke_1:
+     16 JUMP_TO 'L69group_end'
+  L69group_end:
+     17 POP 
+     18 CMD   <<PlaySFX1 Tower>>
+     19 CMD   <<VO_SEQ1 Tower 20>>
+     20 SAY   'did you report for the night yet?'
+     21 OPT   '...Green' -> L72shortcutoption_Smoke_1
+     22 SHOW_OPTIONS 
+     23 JUMP 
+  L72shortcutoption_Smoke_1:
+     24 JUMP_TO 'L71group_end'
+  L71group_end:
+     25 POP 
+     26 CMD   <<Blink Tower>>
+     27 CMD   <<ExitRadio Tower>>
+     28 STOP 
+=== NODE ReportDone ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 CMD   <<VO_SEQ1 Tower 20>>
+      4 SAY   'Did you report for the night yet?'
+      5 OPT   'Yeah its doneGreen' -> L75shortcutoption_ReportDone_1
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L75shortcutoption_ReportDone_1:
+      8 CMD   <<PlaySFX1 Tower>>
+      9 CMD   <<VO_SEQ1 Tower 23>>
+     10 SAY   "Very well, Anyways, I think I'm gonna sign off for the day"
+     11 OPT   '...Green' -> L77shortcutoption_ReportDone_1
+     12 SHOW_OPTIONS 
+     13 JUMP 
+  L77shortcutoption_ReportDone_1:
+     14 CMD   <<PlaySFX1 Tower>>
+     15 CMD   <<VO_SEQ1 Tower 24>>
+     16 SAY   'Tower 12 signing off. <br>You have a good night, new guy.'
+     17 OPT   '...Green' -> L79shortcutoption_ReportDone_1
+     18 SHOW_OPTIONS 
+     19 JUMP 
+  L79shortcutoption_ReportDone_1:
+     20 CMD   <<PlaySFX1 Tower>>
+     21 CMD   <<VO_SEQ1 Tower 25>>
+     22 SAY   "Don't let the bedbugs bite"
+     23 OPT   '[EXIT] goodnight, Connor. talk to you tomorrowGreen' -> L81shortcutoption_ReportDone_1
+     24 OPT   '[EXIT] Goodnight. Over and out.Green' -> L82shortcutoption_ReportDone_2
+     25 SHOW_OPTIONS 
+     26 JUMP 
+  L81shortcutoption_ReportDone_1:
+     27 JUMP_TO 'L80group_end'
+  L82shortcutoption_ReportDone_2:
+     28 JUMP_TO 'L80group_end'
+  L80group_end:
+     29 POP 
+     30 JUMP_TO 'L78group_end'
+  L78group_end:
+     31 POP 
+     32 JUMP_TO 'L76group_end'
+  L76group_end:
+     33 POP 
+     34 JUMP_TO 'L74group_end'
+  L74group_end:
+     35 POP 
+     36 CMD   <<ExitRadio Tower>>
+     37 STOP 
+=== NODE Report ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 CMD   <<VO_SEQ1 Tower 20>>
+      4 SAY   'Did you report for the night yet?'
+      5 OPT   'No, let me me get to itGreen' -> L85shortcutoption_Report_1
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L85shortcutoption_Report_1:
+      8 CMD   <<PlaySFX1 Tower>>
+      9 CMD   <<VO_SEQ1 Tower 21>>
+     10 SAY   'You better get to it then, here at ironbark you are REQUIRED to report every night before signing off'
+     11 OPT   '...Green' -> L87shortcutoption_Report_1
+     12 SHOW_OPTIONS 
+     13 JUMP 
+  L87shortcutoption_Report_1:
+     14 CMD   <<PlaySFX1 Tower>>
+     15 CMD   <<VO_SEQ1 Tower 22>>
+     16 SAY   "You don't wanna disappoint mitch on your first night"
+     17 OPT   '...Green' -> L89shortcutoption_Report_1
+     18 SHOW_OPTIONS 
+     19 JUMP 
+  L89shortcutoption_Report_1:
+     20 JUMP_TO 'L88group_end'
+  L88group_end:
+     21 POP 
+     22 JUMP_TO 'L86group_end'
+  L86group_end:
+     23 POP 
+     24 JUMP_TO 'L84group_end'
+  L84group_end:
+     25 POP 
+     26 CMD   <<ExitRadio Tower>>
+     27 STOP 
+=== NODE Unintellegible ===
+      0 CMD   <<SetupName UIManager ???>>
+      1 CMD   <<PlayStatic Tower>>
+      2 CMD   <<PlaySFX2 Tower>>
+      3 SAY   '[nomarkup][Unintellegible][/nomarkup]'
+      4 OPT   '...Green' -> L92shortcutoption_Unintellegible_1
+      5 SHOW_OPTIONS 
+      6 JUMP 
+  L92shortcutoption_Unintellegible_1:
+      7 JUMP_TO 'L91group_end'
+  L91group_end:
+      8 POP 
+      9 SAY   '[nomarkup][Unintellegible][/nomarkup]'
+     10 OPT   '...Green' -> L94shortcutoption_Unintellegible_1
+     11 SHOW_OPTIONS 
+     12 JUMP 
+  L94shortcutoption_Unintellegible_1:
+     13 JUMP_TO 'L93group_end'
+  L93group_end:
+     14 POP 
+     15 SAY   '[nomarkup][Unintellegible][/nomarkup]'
+     16 OPT   '...Green' -> L96shortcutoption_Unintellegible_1
+     17 SHOW_OPTIONS 
+     18 JUMP 
+  L96shortcutoption_Unintellegible_1:
+     19 CMD   <<StopStatic Tower>>
+     20 JUMP_TO 'L95group_end'
+  L95group_end:
+     21 POP 
+     22 CMD   <<Blink Tower>>
+     23 CMD   <<StopUnintellegible Tower>>
+     24 CMD   <<ExitRadio Tower>>
+     25 STOP 
+=== NODE ConnorCheck ===
+      0 CMD   <<HideName UIManager>>
+      1 CMD   <<PlayStatic Tower>>
+      2 CMD   <<PlaySFX2 Tower>>
+      3 CMD   <<PlaySFX1 Tower>>
+      4 SAY   '[nomarkup][STATIC][/nomarkup]'
+      5 OPT   '...Green' -> L99shortcutoption_ConnorCheck_1
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L99shortcutoption_ConnorCheck_1:
+      8 JUMP_TO 'L98group_end'
+  L98group_end:
+      9 POP 
+     10 CMD   <<PlaySFX1 Tower>>
+     11 SAY   '...'
+     12 OPT   'connor?Green' -> L101shortcutoption_ConnorCheck_1
+     13 SHOW_OPTIONS 
+     14 JUMP 
+  L101shortcutoption_ConnorCheck_1:
+     15 JUMP_TO 'L100group_end'
+  L100group_end:
+     16 POP 
+     17 CMD   <<PlaySFX1 Tower>>
+     18 SAY   '...'
+     19 OPT   '...' -> L103shortcutoption_ConnorCheck_1
+     20 SHOW_OPTIONS 
+     21 JUMP 
+  L103shortcutoption_ConnorCheck_1:
+     22 JUMP_TO 'L102group_end'
+  L102group_end:
+     23 POP 
+     24 CMD   <<ExitRadio Tower>>
+     25 STOP 
+=== NODE ReportDone2 ===
+      0 CMD   <<PlaySFX2 Tower>>
+      1 CMD   <<PlaySFX1 Tower>>
+      2 CMD   <<VO_SEQ1 Tower 26>>
+      3 SAY   'Do you copy, new guy?'
+      4 OPT   'right hereGreen' -> L106shortcutoption_ReportDone2_1
+      5 OPT   'Tower 11, Copy' -> L107shortcutoption_ReportDone2_2
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L106shortcutoption_ReportDone2_1:
+      8 JUMP_TO 'L105group_end'
+  L107shortcutoption_ReportDone2_2:
+      9 JUMP_TO 'L105group_end'
+  L105group_end:
+     10 POP 
+     11 CMD   <<PlaySFX1 Tower>>
+     12 CMD   <<VO_SEQ1 Tower 27>>
+     13 SAY   "I think I'm gonna sign off for the day"
+     14 OPT   '...Green' -> L109shortcutoption_ReportDone2_1
+     15 SHOW_OPTIONS 
+     16 JUMP 
+  L109shortcutoption_ReportDone2_1:
+     17 CMD   <<PlaySFX1 Tower>>
+     18 CMD   <<VO_SEQ1 Tower 24>>
+     19 SAY   'Tower 12 signing off. <br>You have a good night, new guy.'
+     20 OPT   '...Green' -> L111shortcutoption_ReportDone2_1
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L111shortcutoption_ReportDone2_1:
+     23 CMD   <<PlaySFX1 Tower>>
+     24 CMD   <<VO_SEQ1 Tower 25>>
+     25 SAY   "Don't let the bedbugs bite"
+     26 OPT   '[EXIT] goodnight, Connor. talk to you tomorrowGreen' -> L113shortcutoption_ReportDone2_1
+     27 OPT   '[EXIT] Goodnight. Over and out.Green' -> L114shortcutoption_ReportDone2_2
+     28 SHOW_OPTIONS 
+     29 JUMP 
+  L113shortcutoption_ReportDone2_1:
+     30 JUMP_TO 'L112group_end'
+  L114shortcutoption_ReportDone2_2:
+     31 JUMP_TO 'L112group_end'
+  L112group_end:
+     32 POP 
+     33 JUMP_TO 'L110group_end'
+  L110group_end:
+     34 POP 
+     35 JUMP_TO 'L108group_end'
+  L108group_end:
+     36 POP 
+     37 CMD   <<ExitRadio Tower>>
+     38 STOP 
+=== NODE Nothing ===
+      0 CMD   <<SetupName UIManager ???>>
+      1 CMD   <<PlayStatic Tower>>
+      2 CMD   <<PlaySFX2 Tower>>
+      3 SAY   '[nomarkup][STATIC][/nomarkup]'
+      4 OPT   '...Green' -> L117shortcutoption_Nothing_1
+      5 SHOW_OPTIONS 
+      6 JUMP 
+  L117shortcutoption_Nothing_1:
+      7 CMD   <<StopStatic Tower>>
+      8 JUMP_TO 'L116group_end'
+  L116group_end:
+      9 POP 
+     10 CMD   <<ExitRadio Tower>>
+     11 STOP 
+=== NODE Seq3Start ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 CMD   <<VO_SEQ3 Tower 0>>
+      4 SAY   'New guy, do you copy?'
+      5 OPT   '...Green' -> L2shortcutoption_Seq3Start_1
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L2shortcutoption_Seq3Start_1:
+      8 JUMP_TO 'L1group_end'
+  L1group_end:
+      9 POP 
+     10 CMD   <<PlaySFX1 Tower>>
+     11 CMD   <<VO_SEQ3 Tower 1>>
+     12 SAY   'This is connor from tower 12, do you copy?'
+     13 OPT   '...Green' -> L4shortcutoption_Seq3Start_1
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L4shortcutoption_Seq3Start_1:
+     16 JUMP_TO 'L3group_end'
+  L3group_end:
+     17 POP 
+     18 CMD   <<Blink Tower>>
+     19 CMD   <<ExitRadio Tower>>
+     20 STOP 
+=== NODE Campers ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 CMD   <<VO_SEQ3 Tower 2>>
+      4 SAY   'Tower 11 do you copy?'
+      5 OPT   "copy that, connor. what's up?Green" -> L7shortcutoption_Campers_1
+      6 OPT   "I'm right hereGreen" -> L8shortcutoption_Campers_2
+      7 SHOW_OPTIONS 
+      8 JUMP 
+  L7shortcutoption_Campers_1:
+      9 JUMP_TO 'L6group_end'
+  L8shortcutoption_Campers_2:
+     10 JUMP_TO 'L6group_end'
+  L6group_end:
+     11 POP 
+     12 CMD   <<PlaySFX1 Tower>>
+     13 CMD   <<VO_SEQ3 Tower 3>>
+     14 SAY   'SON OF A BITCH'
+     15 OPT   'excuse me?Green' -> L10shortcutoption_Campers_1
+     16 OPT   'what?Green' -> L11shortcutoption_Campers_2
+     17 SHOW_OPTIONS 
+     18 JUMP 
+  L10shortcutoption_Campers_1:
+     19 JUMP_TO 'L9group_end'
+  L11shortcutoption_Campers_2:
+     20 JUMP_TO 'L9group_end'
+  L9group_end:
+     21 POP 
+     22 CMD   <<PlaySFX1 Tower>>
+     23 CMD   <<VO_SEQ3 Tower 4>>
+     24 SAY   'Nobody bothers to get a camping permit these days anymore'
+     25 OPT   '...Green' -> L13shortcutoption_Campers_1
+     26 SHOW_OPTIONS 
+     27 JUMP 
+  L13shortcutoption_Campers_1:
+     28 JUMP_TO 'L12group_end'
+  L12group_end:
+     29 POP 
+     30 CMD   <<PlaySFX1 Tower>>
+     31 CMD   <<VO_SEQ3 Tower 5>>
+     32 SAY   'Do you have eyes on the smoke North of your position?'
+     33 OPT   '[EXIT] Let me have a lookGreen' -> L15shortcutoption_Campers_1
+     34 SHOW_OPTIONS 
+     35 JUMP 
+  L15shortcutoption_Campers_1:
+     36 JUMP_TO 'L14group_end'
+  L14group_end:
+     37 POP 
+     38 CMD   <<ExitRadio Tower>>
+     39 STOP 
+=== NODE Confirm ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 CMD   <<VO_SEQ3 Tower 6>>
+      4 SAY   'I need you to confirm'
+      5 OPT   '...Green' -> L18shortcutoption_Confirm_1
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L18shortcutoption_Confirm_1:
+      8 JUMP_TO 'L17group_end'
+  L17group_end:
+      9 POP 
+     10 CMD   <<PlaySFX1 Tower>>
+     11 CMD   <<VO_SEQ3 Tower 7>>
+     12 SAY   'Do you see that smoke up north?'
+     13 OPT   '...Green' -> L20shortcutoption_Confirm_1
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L20shortcutoption_Confirm_1:
+     16 JUMP_TO 'L19group_end'
+  L19group_end:
+     17 POP 
+     18 CMD   <<ExitRadio Tower>>
+     19 STOP 
+=== NODE CheckCampers ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 CMD   <<VO_SEQ3 Tower 8>>
+      4 SAY   'You spot that white smoke up north?'
+      5 OPT   '...Green' -> L23shortcutoption_CheckCampers_1
+      6 OPT   'yeah i see itGreen' -> L24shortcutoption_CheckCampers_2
+      7 SHOW_OPTIONS 
+      8 JUMP 
+  L23shortcutoption_CheckCampers_1:
+      9 JUMP_TO 'L22group_end'
+  L24shortcutoption_CheckCampers_2:
+     10 JUMP_TO 'L22group_end'
+  L22group_end:
+     11 POP 
+     12 CMD   <<PlaySFX1 Tower>>
+     13 CMD   <<VO_SEQ3 Tower 9>>
+     14 SAY   'It appears to be in the Lacey Trail sector, which is NOT a registered camping site.'
+     15 OPT   '...Green' -> L26shortcutoption_CheckCampers_1
+     16 SHOW_OPTIONS 
+     17 JUMP 
+  L26shortcutoption_CheckCampers_1:
+     18 JUMP_TO 'L25group_end'
+  L25group_end:
+     19 POP 
+     20 CMD   <<PlaySFX1 Tower>>
+     21 CMD   <<VO_SEQ3 Tower 10>>
+     22 SAY   "People like that don't bother to clean up after themselves"
+     23 OPT   '...Green' -> L28shortcutoption_CheckCampers_1
+     24 SHOW_OPTIONS 
+     25 JUMP 
+  L28shortcutoption_CheckCampers_1:
+     26 JUMP_TO 'L27group_end'
+  L27group_end:
+     27 POP 
+     28 CMD   <<PlaySFX1 Tower>>
+     29 CMD   <<VO_SEQ3 Tower 11>>
+     30 SAY   'and fire risks are high this season'
+     31 OPT   '...Green' -> L30shortcutoption_CheckCampers_1
+     32 SHOW_OPTIONS 
+     33 JUMP 
+  L30shortcutoption_CheckCampers_1:
+     34 JUMP_TO 'L29group_end'
+  L29group_end:
+     35 POP 
+     36 CMD   <<PlaySFX1 Tower>>
+     37 CMD   <<VO_SEQ3 Tower 12>>
+     38 SAY   'you mind checking it out?'
+     39 OPT   "okay heading north, I'll report back on itGreen" -> L32shortcutoption_CheckCampers_1
+     40 OPT   'yes, do you have any other detail?Green' -> L33shortcutoption_CheckCampers_2
+     41 OPT   'is it safe?Green' -> L34shortcutoption_CheckCampers_3
+     42 SHOW_OPTIONS 
+     43 JUMP 
+  L32shortcutoption_CheckCampers_1:
+     44 JUMP_TO 'L31group_end'
+  L33shortcutoption_CheckCampers_2:
+     45 CMD   <<PlaySFX1 Tower>>
+     46 CMD   <<VO_SEQ3 Tower 13>>
+     47 SAY   'No additional information at the moment, just follow lacey trail and keep an eye out for any signs of a campfire or any potential hazards along the way'
+     48 OPT   "okay heading north, I'll report back on itGreen" -> L36shortcutoption_CheckCampers_1
+     49 SHOW_OPTIONS 
+     50 JUMP 
+  L36shortcutoption_CheckCampers_1:
+     51 JUMP_TO 'L35group_end'
+  L35group_end:
+     52 POP 
+     53 JUMP_TO 'L31group_end'
+  L34shortcutoption_CheckCampers_3:
+     54 CMD   <<PlaySFX1 Tower>>
+     55 CMD   <<VO_SEQ3 Tower 14>>
+     56 SAY   'Be alert and carry your bear spray and you should be fine'
+     57 OPT   "okay heading north, I'll report back on itGreen" -> L38shortcutoption_CheckCampers_1
+     58 OPT   'do you have any other detail?Green' -> L39shortcutoption_CheckCampers_2
+     59 SHOW_OPTIONS 
+     60 JUMP 
+  L38shortcutoption_CheckCampers_1:
+     61 JUMP_TO 'L37group_end'
+  L39shortcutoption_CheckCampers_2:
+     62 CMD   <<PlaySFX1 Tower>>
+     63 CMD   <<VO_SEQ3 Tower 13>>
+     64 SAY   'No additional information at the moment, just follow lacey trail and keep an eye out for any signs of a campfire or any potential hazards along the way'
+     65 OPT   "okay heading north, I'll report back on itGreen" -> L41shortcutoption_CheckCampers_1
+     66 SHOW_OPTIONS 
+     67 JUMP 
+  L41shortcutoption_CheckCampers_1:
+     68 JUMP_TO 'L40group_end'
+  L40group_end:
+     69 POP 
+     70 JUMP_TO 'L37group_end'
+  L37group_end:
+     71 POP 
+     72 JUMP_TO 'L31group_end'
+  L31group_end:
+     73 POP 
+     74 CMD   <<PlaySFX1 Tower>>
+     75 CMD   <<VO_SEQ3 Tower 17>>
+     76 SAY   'Stay safe out there.'
+     77 OPT   '...Green' -> L43shortcutoption_CheckCampers_1
+     78 SHOW_OPTIONS 
+     79 JUMP 
+  L43shortcutoption_CheckCampers_1:
+     80 JUMP_TO 'L42group_end'
+  L42group_end:
+     81 POP 
+     82 CMD   <<PlaySFX1 Tower>>
+     83 CMD   <<VO_SEQ3 Tower 15>>
+     84 SAY   "Don't forget to carry your bear spray in these woods, new guy."
+     85 OPT   '...' -> L45shortcutoption_CheckCampers_1
+     86 SHOW_OPTIONS 
+     87 JUMP 
+  L45shortcutoption_CheckCampers_1:
+     88 CMD   <<PlaySFX1 Tower>>
+     89 CMD   <<VO_SEQ3 Tower 16>>
+     90 SAY   'Over and out.'
+     91 OPT   '[EXIT] over and outGreen' -> L47shortcutoption_CheckCampers_1
+     92 SHOW_OPTIONS 
+     93 JUMP 
+  L47shortcutoption_CheckCampers_1:
+     94 JUMP_TO 'L46group_end'
+  L46group_end:
+     95 POP 
+     96 JUMP_TO 'L44group_end'
+  L44group_end:
+     97 POP 
+     98 CMD   <<ExitRadio Tower>>
+     99 STOP 
+=== NODE Seq4Start ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 SAY   '...'
+      4 OPT   'Connor do you copy?Green' -> L2shortcutoption_Seq4Start_1
+      5 OPT   'Tower 12, do you copy?Green' -> L3shortcutoption_Seq4Start_2
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L2shortcutoption_Seq4Start_1:
+      8 JUMP_TO 'L1group_end'
+  L3shortcutoption_Seq4Start_2:
+      9 JUMP_TO 'L1group_end'
+  L1group_end:
+     10 POP 
+     11 CMD   <<PlaySFX1 Tower>>
+     12 SAY   '...'
+     13 OPT   'Hey connor, do you copy?Green' -> L5shortcutoption_Seq4Start_1
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L5shortcutoption_Seq4Start_1:
+     16 JUMP_TO 'L4group_end'
+  L4group_end:
+     17 POP 
+     18 CMD   <<PlaySFX1 Tower>>
+     19 CMD   <<VO_SEQ4 Tower 0>>
+     20 SAY   "Loud and clear, new guy<br>I was just cooking myself some hot- ..well first, what's your status?"
+     21 OPT   '[TALK ABOUT CAMPSITE]Green' -> L7shortcutoption_Seq4Start_1
+     22 SHOW_OPTIONS 
+     23 JUMP 
+  L7shortcutoption_Seq4Start_1:
+     24 JUMP_TO 'L6group_end'
+  L6group_end:
+     25 POP 
+     26 CMD   <<PlaySFX1 Tower>>
+     27 CMD   <<VO_SEQ4 Tower 1>>
+     28 SAY   'Are you kidding me?'
+     29 OPT   '...Green' -> L9shortcutoption_Seq4Start_1
+     30 SHOW_OPTIONS 
+     31 JUMP 
+  L9shortcutoption_Seq4Start_1:
+     32 JUMP_TO 'L8group_end'
+  L8group_end:
+     33 POP 
+     34 CMD   <<PlaySFX1 Tower>>
+     35 CMD   <<VO_SEQ4 Tower 2>>
+     36 SAY   'Son of a bitch'
+     37 OPT   '...Green' -> L11shortcutoption_Seq4Start_1
+     38 SHOW_OPTIONS 
+     39 JUMP 
+  L11shortcutoption_Seq4Start_1:
+     40 JUMP_TO 'L10group_end'
+  L10group_end:
+     41 POP 
+     42 CMD   <<PlaySFX1 Tower>>
+     43 CMD   <<VO_SEQ4 Tower 3>>
+     44 SAY   'they never learn, do they?'
+     45 OPT   '...Green' -> L13shortcutoption_Seq4Start_1
+     46 OPT   'what do you mean?Green' -> L14shortcutoption_Seq4Start_2
+     47 OPT   'who are you talking aboutGreen' -> L15shortcutoption_Seq4Start_3
+     48 SHOW_OPTIONS 
+     49 JUMP 
+  L13shortcutoption_Seq4Start_1:
+     50 JUMP_TO 'L12group_end'
+  L14shortcutoption_Seq4Start_2:
+     51 JUMP_TO 'L12group_end'
+  L15shortcutoption_Seq4Start_3:
+     52 JUMP_TO 'L12group_end'
+  L12group_end:
+     53 POP 
+     54 CMD   <<PlaySFX1 Tower>>
+     55 CMD   <<VO_SEQ4 Tower 4>>
+     56 SAY   "I'm sick of these bastards, it's unbelievable"
+     57 OPT   '...Green' -> L17shortcutoption_Seq4Start_1
+     58 OPT   'Has this been happening alot?Green' -> L18shortcutoption_Seq4Start_2
+     59 SHOW_OPTIONS 
+     60 JUMP 
+  L17shortcutoption_Seq4Start_1:
+     61 JUMP_TO 'L16group_end'
+  L18shortcutoption_Seq4Start_2:
+     62 JUMP_TO 'L16group_end'
+  L16group_end:
+     63 POP 
+     64 CMD   <<PlaySFX1 Tower>>
+     65 CMD   <<VO_SEQ4 Tower 5>>
+     66 SAY   'This is the third time this month alone!'
+     67 OPT   '...Green' -> L20shortcutoption_Seq4Start_1
+     68 SHOW_OPTIONS 
+     69 JUMP 
+  L20shortcutoption_Seq4Start_1:
+     70 JUMP_TO 'L19group_end'
+  L19group_end:
+     71 POP 
+     72 CMD   <<PlaySFX1 Tower>>
+     73 CMD   <<VO_SEQ4 Tower 6>>
+     74 SAY   'Anything else you notice in those woods?'
+     75 OPT   'Nothing reallyGreen' -> L22shortcutoption_Seq4Start_1
+     76 OPT   '[MENTION SCREAM]Green' -> L23shortcutoption_Seq4Start_2
+     77 SHOW_OPTIONS 
+     78 JUMP 
+  L22shortcutoption_Seq4Start_1:
+     79 CMD   <<PlaySFX1 Tower>>
+     80 CMD   <<VO_SEQ4 Tower 7>>
+     81 CMD   <<LowAndDeep DialogueSFX>>
+     82 SAY   'You know, I heard from the rangers that many campers have been flocking to that area lately because of the disappearance of those three kids'
+     83 OPT   'Kids went missing in that area?Green' -> L25shortcutoption_Seq4Start_1
+     84 OPT   'Disappearance of kids?Green' -> L26shortcutoption_Seq4Start_2
+     85 SHOW_OPTIONS 
+     86 JUMP 
+  L25shortcutoption_Seq4Start_1:
+     87 JUMP_TO 'L24group_end'
+  L26shortcutoption_Seq4Start_2:
+     88 JUMP_TO 'L24group_end'
+  L24group_end:
+     89 POP 
+     90 JUMP_TO 'L21group_end'
+  L23shortcutoption_Seq4Start_2:
+     91 CMD   <<PlaySFX1 Tower>>
+     92 CMD   <<VO_SEQ4 Tower 8>>
+     93 CMD   <<SubtleTension DialogueSFX>>
+     94 SAY   'A scream?<br>Must have been one of those red foxes, they sound pretty much like a screaming lady at night.'
+     95 OPT   'It was a manly screamGreen' -> L28shortcutoption_Seq4Start_1
+     96 SHOW_OPTIONS 
+     97 JUMP 
+  L28shortcutoption_Seq4Start_1:
+     98 CMD   <<PlaySFX1 Tower>>
+     99 CMD   <<VO_SEQ4 Tower 9>>
+    100 CMD   <<LowAndDeep DialogueSFX>>
+    101 SAY   "I don't know what you're talking about, new guy.<br>But I heard from the rangers that many campers have been flocking to that area lately because of the disappearance of those three kids"
+    102 OPT   'Kids went missing in that area?Green' -> L30shortcutoption_Seq4Start_1
+    103 SHOW_OPTIONS 
+    104 JUMP 
+  L30shortcutoption_Seq4Start_1:
+    105 JUMP_TO 'L29group_end'
+  L29group_end:
+    106 POP 
+    107 JUMP_TO 'L27group_end'
+  L27group_end:
+    108 POP 
+    109 JUMP_TO 'L21group_end'
+  L21group_end:
+    110 POP 
+    111 CMD   <<PlaySFX1 Tower>>
+    112 CMD   <<VO_SEQ4 Tower 10>>
+    113 SAY   'about a month ago.<br>They were hiking with their families, they went off the trail and just vanished. No trace of them since.'
+    114 OPT   'what does that have to do with campers?Green' -> L32shortcutoption_Seq4Start_1
+    115 OPT   'what happened to those kids?Green' -> L33shortcutoption_Seq4Start_2
+    116 SHOW_OPTIONS 
+    117 JUMP 
+  L32shortcutoption_Seq4Start_1:
+    118 CMD   <<PlaySFX1 Tower>>
+    119 CMD   <<VO_SEQ4 Tower 11>>
+    120 CMD   <<SubtleTension DialogueSFX>>
+    121 SAY   'Well, people have started spreading rumours that the area might be haunted by some "entities"'
+    122 OPT   '...Green' -> L35shortcutoption_Seq4Start_1
+    123 SHOW_OPTIONS 
+    124 JUMP 
+  L35shortcutoption_Seq4Start_1:
+    125 JUMP_TO 'L34group_end'
+  L34group_end:
+    126 POP 
+    127 JUMP_TO 'L31group_end'
+  L33shortcutoption_Seq4Start_2:
+    128 CMD   <<PlaySFX1 Tower>>
+    129 CMD   <<VO_SEQ4 Tower 12>>
+    130 CMD   <<EerieStrings DialogueSFX>>
+    131 SAY   "We don't know, their parents said some whistle lead them off the trail, it's unbelievable."
+    132 OPT   '...Green' -> L37shortcutoption_Seq4Start_1
+    133 SHOW_OPTIONS 
+    134 JUMP 
+  L37shortcutoption_Seq4Start_1:
+    135 CMD   <<PlaySFX1 Tower>>
+    136 CMD   <<VO_SEQ4 Tower 13>>
+    137 CMD   <<SubtleTension DialogueSFX>>
+    138 SAY   'People have started spreading rumours that the area might be haunted by some "entities"'
+    139 OPT   '...Green' -> L39shortcutoption_Seq4Start_1
+    140 SHOW_OPTIONS 
+    141 JUMP 
+  L39shortcutoption_Seq4Start_1:
+    142 JUMP_TO 'L38group_end'
+  L38group_end:
+    143 POP 
+    144 JUMP_TO 'L36group_end'
+  L36group_end:
+    145 POP 
+    146 JUMP_TO 'L31group_end'
+  L31group_end:
+    147 POP 
+    148 CMD   <<PlaySFX1 Tower>>
+    149 CMD   <<VO_SEQ4 Tower 14>>
+    150 SAY   "It's crazy, I know.<br>You would think these rumours would scare people off but apparently it's been the opposite."
+    151 OPT   '...Green' -> L41shortcutoption_Seq4Start_1
+    152 SHOW_OPTIONS 
+    153 JUMP 
+  L41shortcutoption_Seq4Start_1:
+    154 JUMP_TO 'L40group_end'
+  L40group_end:
+    155 POP 
+    156 CMD   <<PlaySFX1 Tower>>
+    157 CMD   <<VO_SEQ4 Tower 15>>
+    158 SAY   'Sometimes, I only wish they were true'
+    159 OPT   '...Green' -> L43shortcutoption_Seq4Start_1
+    160 SHOW_OPTIONS 
+    161 JUMP 
+  L43shortcutoption_Seq4Start_1:
+    162 JUMP_TO 'L42group_end'
+  L42group_end:
+    163 POP 
+    164 CMD   <<PlaySFX1 Tower>>
+    165 CMD   <<VO_SEQ4 Tower 16>>
+    166 SAY   'Well.. at least now you know why Mitch had to staff tower 11 "urgently"'
+    167 OPT   "that's unsettlingGreen" -> L45shortcutoption_Seq4Start_1
+    168 OPT   'glad to be of serviceGreen' -> L46shortcutoption_Seq4Start_2
+    169 SHOW_OPTIONS 
+    170 JUMP 
+  L45shortcutoption_Seq4Start_1:
+    171 CMD   <<PlaySFX1 Tower>>
+    172 CMD   <<VO_SEQ4 Tower 17>>
+    173 SAY   "New guy?<br>I hope you don't believe these rumours do you?"
+    174 OPT   'noGreen' -> L48shortcutoption_Seq4Start_1
+    175 OPT   'oh absolutely notGreen' -> L49shortcutoption_Seq4Start_2
+    176 SHOW_OPTIONS 
+    177 JUMP 
+  L48shortcutoption_Seq4Start_1:
+    178 JUMP_TO 'L47group_end'
+  L49shortcutoption_Seq4Start_2:
+    179 JUMP_TO 'L47group_end'
+  L47group_end:
+    180 POP 
+    181 JUMP_TO 'L44group_end'
+  L46shortcutoption_Seq4Start_2:
+    182 JUMP_TO 'L44group_end'
+  L44group_end:
+    183 POP 
+    184 CMD   <<PlaySFX1 Tower>>
+    185 CMD   <<VO_SEQ4 Tower 18>>
+    186 SAY   'Great, anyways thanks for staying vigilant.'
+    187 OPT   '...Green' -> L51shortcutoption_Seq4Start_1
+    188 SHOW_OPTIONS 
+    189 JUMP 
+  L51shortcutoption_Seq4Start_1:
+    190 JUMP_TO 'L50group_end'
+  L50group_end:
+    191 POP 
+    192 CMD   <<PlaySFX1 Tower>>
+    193 CMD   <<VO_SEQ4 Tower 19>>
+    194 SAY   "I gotta contact the authorities so they can take care of this commotion first thing in the morning, we can't tolerate these goons anymore"
+    195 OPT   '...Green' -> L53shortcutoption_Seq4Start_1
+    196 SHOW_OPTIONS 
+    197 JUMP 
+  L53shortcutoption_Seq4Start_1:
+    198 JUMP_TO 'L52group_end'
+  L52group_end:
+    199 POP 
+    200 CMD   <<PlaySFX1 Tower>>
+    201 CMD   <<VO_SEQ4 Tower 20>>
+    202 SAY   "If they find them I'll personally make sure they never set foot in this forest again"
+    203 OPT   'AgreedGreen' -> L55shortcutoption_Seq4Start_1
+    204 OPT   'Keep me updated' -> L56shortcutoption_Seq4Start_2
+    205 SHOW_OPTIONS 
+    206 JUMP 
+  L55shortcutoption_Seq4Start_1:
+    207 CMD   <<PlaySFX1 Tower>>
+    208 CMD   <<VO_SEQ4 Tower 21>>
+    209 SAY   'You be safe, new guy. Over and out'
+    210 OPT   'you too. Over and outGreen' -> L58shortcutoption_Seq4Start_1
+    211 SHOW_OPTIONS 
+    212 JUMP 
+  L58shortcutoption_Seq4Start_1:
+    213 JUMP_TO 'L57group_end'
+  L57group_end:
+    214 POP 
+    215 JUMP_TO 'L54group_end'
+  L56shortcutoption_Seq4Start_2:
+    216 CMD   <<PlaySFX1 Tower>>
+    217 CMD   <<VO_SEQ4 Tower 22>>
+    218 SAY   'Will do. Over and out'
+    219 OPT   'Over and outGreen' -> L60shortcutoption_Seq4Start_1
+    220 SHOW_OPTIONS 
+    221 JUMP 
+  L60shortcutoption_Seq4Start_1:
+    222 JUMP_TO 'L59group_end'
+  L59group_end:
+    223 POP 
+    224 JUMP_TO 'L54group_end'
+  L54group_end:
+    225 POP 
+    226 CMD   <<ExitRadio Tower>>
+    227 STOP 
+=== NODE Seq4StandUp ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 CMD   <<VO_SEQ4 Tower 23>>
+      4 SAY   'New guy, you there?'
+      5 OPT   '...Green' -> L63shortcutoption_Seq4StandUp_1
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L63shortcutoption_Seq4StandUp_1:
+      8 JUMP_TO 'L62group_end'
+  L62group_end:
+      9 POP 
+     10 CMD   <<PlaySFX1 Tower>>
+     11 SAY   '[nomarkup][STATIC][/nomarkup]'
+     12 OPT   '...Green' -> L65shortcutoption_Seq4StandUp_1
+     13 SHOW_OPTIONS 
+     14 JUMP 
+  L65shortcutoption_Seq4StandUp_1:
+     15 JUMP_TO 'L64group_end'
+  L64group_end:
+     16 POP 
+     17 CMD   <<PlaySFX1 Tower>>
+     18 CMD   <<VO_SEQ4 Tower 24>>
+     19 SAY   'New guy, do you copy?'
+     20 OPT   '...Green' -> L67shortcutoption_Seq4StandUp_1
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L67shortcutoption_Seq4StandUp_1:
+     23 JUMP_TO 'L66group_end'
+  L66group_end:
+     24 POP 
+     25 CMD   <<Blink Tower>>
+     26 CMD   <<ExitRadio Tower>>
+     27 STOP 
+=== NODE Seq4Last ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 SAY   '...'
+      4 OPT   'what is it?Green' -> L70shortcutoption_Seq4Last_1
+      5 OPT   'Connor?Green' -> L71shortcutoption_Seq4Last_2
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L70shortcutoption_Seq4Last_1:
+      8 JUMP_TO 'L69group_end'
+  L71shortcutoption_Seq4Last_2:
+      9 JUMP_TO 'L69group_end'
+  L69group_end:
+     10 POP 
+     11 CMD   <<PlaySFX1 Tower>>
+     12 CMD   <<VO_SEQ4 Tower 25>>
+     13 SAY   '*YAWN*<br>Just reported their ass to the authorities'
+     14 OPT   'Good jobGreen' -> L73shortcutoption_Seq4Last_1
+     15 OPT   'what did they say?Green' -> L74shortcutoption_Seq4Last_2
+     16 SHOW_OPTIONS 
+     17 JUMP 
+  L73shortcutoption_Seq4Last_1:
+     18 JUMP_TO 'L72group_end'
+  L74shortcutoption_Seq4Last_2:
+     19 CMD   <<PlaySFX1 Tower>>
+     20 CMD   <<VO_SEQ4 Tower 26>>
+     21 SAY   "Don't worry, forest service agency will take care of it first thing in the morning"
+     22 OPT   '...Green' -> L76shortcutoption_Seq4Last_1
+     23 OPT   "That's relievingGreen" -> L77shortcutoption_Seq4Last_2
+     24 SHOW_OPTIONS 
+     25 JUMP 
+  L76shortcutoption_Seq4Last_1:
+     26 JUMP_TO 'L75group_end'
+  L77shortcutoption_Seq4Last_2:
+     27 JUMP_TO 'L75group_end'
+  L75group_end:
+     28 POP 
+     29 JUMP_TO 'L72group_end'
+  L72group_end:
+     30 POP 
+     31 CMD   <<PlaySFX1 Tower>>
+     32 CMD   <<VO_SEQ4 Tower 27>>
+     33 SAY   'Hope they can track them down and give them a piece of their mind'
+     34 OPT   '...Green' -> L79shortcutoption_Seq4Last_1
+     35 SHOW_OPTIONS 
+     36 JUMP 
+  L79shortcutoption_Seq4Last_1:
+     37 JUMP_TO 'L78group_end'
+  L78group_end:
+     38 POP 
+     39 CMD   <<PlaySFX1 Tower>>
+     40 CMD   <<VO_SEQ4 Tower 28>>
+     41 SAY   "*YAWN* I'll keep an eye on things from here, you stay vigilant for such smokes moving forward"
+     42 OPT   '...Green' -> L81shortcutoption_Seq4Last_1
+     43 OPT   "That's the duty I choseGreen" -> L82shortcutoption_Seq4Last_2
+     44 SHOW_OPTIONS 
+     45 JUMP 
+  L81shortcutoption_Seq4Last_1:
+     46 CMD   <<PlaySFX1 Tower>>
+     47 CMD   <<VO_SEQ4 Tower 29>>
+     48 SAY   "By the way, I don't see your name here, did you report for the night yet?"
+     49 OPT   'I was just getting to itGreen' -> L84shortcutoption_Seq4Last_1
+     50 OPT   'I forgotGreen' -> L85shortcutoption_Seq4Last_2
+     51 SHOW_OPTIONS 
+     52 JUMP 
+  L84shortcutoption_Seq4Last_1:
+     53 JUMP_TO 'L83group_end'
+  L85shortcutoption_Seq4Last_2:
+     54 JUMP_TO 'L83group_end'
+  L83group_end:
+     55 POP 
+     56 JUMP_TO 'L80group_end'
+  L82shortcutoption_Seq4Last_2:
+     57 CMD   <<PlaySFX1 Tower>>
+     58 CMD   <<VO_SEQ4 Tower 30>>
+     59 SAY   "Speaking of duty, I don't see your name here, did you report for the night yet?"
+     60 OPT   'I was just getting to itGreen' -> L87shortcutoption_Seq4Last_1
+     61 OPT   'I forgotGreen' -> L88shortcutoption_Seq4Last_2
+     62 SHOW_OPTIONS 
+     63 JUMP 
+  L87shortcutoption_Seq4Last_1:
+     64 JUMP_TO 'L86group_end'
+  L88shortcutoption_Seq4Last_2:
+     65 JUMP_TO 'L86group_end'
+  L86group_end:
+     66 POP 
+     67 JUMP_TO 'L80group_end'
+  L80group_end:
+     68 POP 
+     69 CMD   <<PlaySFX1 Tower>>
+     70 CMD   <<VO_SEQ4 Tower 31>>
+     71 SAY   "You better get to it, Mitch didn't sound to be in a very good mood today"
+     72 OPT   '...Green' -> L90shortcutoption_Seq4Last_1
+     73 OPT   'you got itGreen' -> L91shortcutoption_Seq4Last_2
+     74 SHOW_OPTIONS 
+     75 JUMP 
+  L90shortcutoption_Seq4Last_1:
+     76 JUMP_TO 'L89group_end'
+  L91shortcutoption_Seq4Last_2:
+     77 JUMP_TO 'L89group_end'
+  L89group_end:
+     78 POP 
+     79 CMD   <<PlaySFX1 Tower>>
+     80 CMD   <<VO_SEQ4 Tower 32>>
+     81 SAY   "*YAWN*<br>tell you what, I think I'm gonna hit the sack now"
+     82 OPT   '...Green' -> L93shortcutoption_Seq4Last_1
+     83 SHOW_OPTIONS 
+     84 JUMP 
+  L93shortcutoption_Seq4Last_1:
+     85 JUMP_TO 'L92group_end'
+  L92group_end:
+     86 POP 
+     87 CMD   <<PlaySFX1 Tower>>
+     88 CMD   <<VO_SEQ4 Tower 33>>
+     89 SAY   "I know it's been a tough day but you're doing an excellent job up there"
+     90 OPT   'Thank you connorGreen' -> L95shortcutoption_Seq4Last_1
+     91 OPT   'My pleasureGreen' -> L96shortcutoption_Seq4Last_2
+     92 OPT   "I'm really tiredGreen" -> L97shortcutoption_Seq4Last_3
+     93 SHOW_OPTIONS 
+     94 JUMP 
+  L95shortcutoption_Seq4Last_1:
+     95 JUMP_TO 'L94group_end'
+  L96shortcutoption_Seq4Last_2:
+     96 JUMP_TO 'L94group_end'
+  L97shortcutoption_Seq4Last_3:
+     97 JUMP_TO 'L94group_end'
+  L94group_end:
+     98 POP 
+     99 CMD   <<PlaySFX1 Tower>>
+    100 SAY   '...'
+    101 OPT   '...Green' -> L99shortcutoption_Seq4Last_1
+    102 SHOW_OPTIONS 
+    103 JUMP 
+  L99shortcutoption_Seq4Last_1:
+    104 JUMP_TO 'L98group_end'
+  L98group_end:
+    105 POP 
+    106 CMD   <<PlaySFX1 Tower>>
+    107 SAY   '...'
+    108 OPT   '...Green' -> L101shortcutoption_Seq4Last_1
+    109 SHOW_OPTIONS 
+    110 JUMP 
+  L101shortcutoption_Seq4Last_1:
+    111 JUMP_TO 'L100group_end'
+  L100group_end:
+    112 POP 
+    113 CMD   <<PlaySFX1 Tower>>
+    114 CMD   <<VO_SEQ4 Tower 34>>
+    115 SAY   '*YAWN*<br>Tower 12 signing off, over and out'
+    116 OPT   '[EXIT] Goodnight ConnerGreen' -> L103shortcutoption_Seq4Last_1
+    117 OPT   '[EXIT] Over and OutGreen' -> L104shortcutoption_Seq4Last_2
+    118 SHOW_OPTIONS 
+    119 JUMP 
+  L103shortcutoption_Seq4Last_1:
+    120 JUMP_TO 'L102group_end'
+  L104shortcutoption_Seq4Last_2:
+    121 JUMP_TO 'L102group_end'
+  L102group_end:
+    122 POP 
+    123 CMD   <<ExitRadio Tower>>
+    124 STOP 
+=== NODE Seq4LastReportDone ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 SAY   '...'
+      4 OPT   'what is it?Green' -> L107shortcutoption_Seq4LastReportDone_1
+      5 OPT   'Connor?Green' -> L108shortcutoption_Seq4LastReportDone_2
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L107shortcutoption_Seq4LastReportDone_1:
+      8 JUMP_TO 'L106group_end'
+  L108shortcutoption_Seq4LastReportDone_2:
+      9 JUMP_TO 'L106group_end'
+  L106group_end:
+     10 POP 
+     11 CMD   <<PlaySFX1 Tower>>
+     12 CMD   <<VO_SEQ4 Tower 25>>
+     13 SAY   '*YAWN*<br>Just reported their ass to authorities'
+     14 OPT   'Good jobGreen' -> L110shortcutoption_Seq4LastReportDone_1
+     15 OPT   'what did they say?Green' -> L111shortcutoption_Seq4LastReportDone_2
+     16 SHOW_OPTIONS 
+     17 JUMP 
+  L110shortcutoption_Seq4LastReportDone_1:
+     18 JUMP_TO 'L109group_end'
+  L111shortcutoption_Seq4LastReportDone_2:
+     19 CMD   <<PlaySFX1 Tower>>
+     20 CMD   <<VO_SEQ4 Tower 26>>
+     21 SAY   "Don't worry, forest service agency will take care of it first thing in the morning"
+     22 OPT   '...Green' -> L113shortcutoption_Seq4LastReportDone_1
+     23 OPT   "That's relievingGreen" -> L114shortcutoption_Seq4LastReportDone_2
+     24 SHOW_OPTIONS 
+     25 JUMP 
+  L113shortcutoption_Seq4LastReportDone_1:
+     26 JUMP_TO 'L112group_end'
+  L114shortcutoption_Seq4LastReportDone_2:
+     27 JUMP_TO 'L112group_end'
+  L112group_end:
+     28 POP 
+     29 JUMP_TO 'L109group_end'
+  L109group_end:
+     30 POP 
+     31 CMD   <<PlaySFX1 Tower>>
+     32 CMD   <<VO_SEQ4 Tower 27>>
+     33 SAY   'Hope they can track them down and give them a piece of their mind'
+     34 OPT   '...Green' -> L116shortcutoption_Seq4LastReportDone_1
+     35 SHOW_OPTIONS 
+     36 JUMP 
+  L116shortcutoption_Seq4LastReportDone_1:
+     37 JUMP_TO 'L115group_end'
+  L115group_end:
+     38 POP 
+     39 CMD   <<PlaySFX1 Tower>>
+     40 CMD   <<VO_SEQ4 Tower 32>>
+     41 SAY   "*YAWN*<br>tell you what, I think I'm gonna hit the sack now"
+     42 OPT   '...Green' -> L118shortcutoption_Seq4LastReportDone_1
+     43 SHOW_OPTIONS 
+     44 JUMP 
+  L118shortcutoption_Seq4LastReportDone_1:
+     45 JUMP_TO 'L117group_end'
+  L117group_end:
+     46 POP 
+     47 CMD   <<PlaySFX1 Tower>>
+     48 CMD   <<VO_SEQ4 Tower 33>>
+     49 SAY   "I know it's been a tough day but you're doing an excellent job up there"
+     50 OPT   'Thank you connorGreen' -> L120shortcutoption_Seq4LastReportDone_1
+     51 OPT   'Good nightGreen' -> L121shortcutoption_Seq4LastReportDone_2
+     52 SHOW_OPTIONS 
+     53 JUMP 
+  L120shortcutoption_Seq4LastReportDone_1:
+     54 JUMP_TO 'L119group_end'
+  L121shortcutoption_Seq4LastReportDone_2:
+     55 JUMP_TO 'L119group_end'
+  L119group_end:
+     56 POP 
+     57 CMD   <<PlaySFX1 Tower>>
+     58 SAY   '...'
+     59 OPT   '...Green' -> L123shortcutoption_Seq4LastReportDone_1
+     60 SHOW_OPTIONS 
+     61 JUMP 
+  L123shortcutoption_Seq4LastReportDone_1:
+     62 JUMP_TO 'L122group_end'
+  L122group_end:
+     63 POP 
+     64 CMD   <<PlaySFX1 Tower>>
+     65 SAY   '...'
+     66 OPT   '...Green' -> L125shortcutoption_Seq4LastReportDone_1
+     67 SHOW_OPTIONS 
+     68 JUMP 
+  L125shortcutoption_Seq4LastReportDone_1:
+     69 JUMP_TO 'L124group_end'
+  L124group_end:
+     70 POP 
+     71 CMD   <<PlaySFX1 Tower>>
+     72 CMD   <<VO_SEQ4 Tower 34>>
+     73 SAY   '*YAWN*<br>Tower 12 signing off, over and out'
+     74 OPT   '[EXIT] Goodnight ConnerGreen' -> L127shortcutoption_Seq4LastReportDone_1
+     75 OPT   '[EXIT] Over and OutGreen' -> L128shortcutoption_Seq4LastReportDone_2
+     76 SHOW_OPTIONS 
+     77 JUMP 
+  L127shortcutoption_Seq4LastReportDone_1:
+     78 JUMP_TO 'L126group_end'
+  L128shortcutoption_Seq4LastReportDone_2:
+     79 JUMP_TO 'L126group_end'
+  L126group_end:
+     80 POP 
+     81 CMD   <<ExitRadio Tower>>
+     82 STOP 
+=== NODE Seq5Start ===
+      0 CMD   <<SetupName UIManager ???>>
+      1 CMD   <<PlayStatic Tower>>
+      2 CMD   <<PlaySFX2 Tower>>
+      3 SAY   '[nomarkup][STATIC][/nomarkup]'
+      4 OPT   'connor, do you copy?Green' -> L2shortcutoption_Seq5Start_1
+      5 OPT   'Wake upGreen' -> L3shortcutoption_Seq5Start_2
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L2shortcutoption_Seq5Start_1:
+      8 JUMP_TO 'L1group_end'
+  L3shortcutoption_Seq5Start_2:
+      9 JUMP_TO 'L1group_end'
+  L1group_end:
+     10 POP 
+     11 SAY   '[nomarkup][STATIC][/nomarkup]'
+     12 OPT   '...Green' -> L5shortcutoption_Seq5Start_1
+     13 SHOW_OPTIONS 
+     14 JUMP 
+  L5shortcutoption_Seq5Start_1:
+     15 JUMP_TO 'L4group_end'
+  L4group_end:
+     16 POP 
+     17 SAY   '[nomarkup][STATIC][/nomarkup]'
+     18 OPT   'do you copy?Green' -> L7shortcutoption_Seq5Start_1
+     19 OPT   "I need to talk to you, it's urgentGreen" -> L8shortcutoption_Seq5Start_2
+     20 SHOW_OPTIONS 
+     21 JUMP 
+  L7shortcutoption_Seq5Start_1:
+     22 JUMP_TO 'L6group_end'
+  L8shortcutoption_Seq5Start_2:
+     23 JUMP_TO 'L6group_end'
+  L6group_end:
+     24 POP 
+     25 CMD   <<PlaySFX1 Tower>>
+     26 CMD   <<SetupName UIManager "Connor Hawkins">>
+     27 SAY   '...'
+     28 OPT   'hello?Green' -> L10shortcutoption_Seq5Start_1
+     29 OPT   'you there?Green' -> L11shortcutoption_Seq5Start_2
+     30 SHOW_OPTIONS 
+     31 JUMP 
+  L10shortcutoption_Seq5Start_1:
+     32 JUMP_TO 'L9group_end'
+  L11shortcutoption_Seq5Start_2:
+     33 JUMP_TO 'L9group_end'
+  L9group_end:
+     34 POP 
+     35 CMD   <<PlaySFX1 Tower>>
+     36 CMD   <<VO_SEQ5 Tower 0>>
+     37 SAY   'Do you have any idea what time is it?'
+     38 OPT   "there's somthing outside my doorGreen" -> L13shortcutoption_Seq5Start_1
+     39 OPT   "there's something eerie about this placeGreen" -> L14shortcutoption_Seq5Start_2
+     40 SHOW_OPTIONS 
+     41 JUMP 
+  L13shortcutoption_Seq5Start_1:
+     42 CMD   <<PlaySFX1 Tower>>
+     43 CMD   <<VO_SEQ5 Tower 1>>
+     44 SAY   "And this couldn't wait until morning?"
+     45 OPT   '[MENTION THE SKULL]Green' -> L16shortcutoption_Seq5Start_1
+     46 SHOW_OPTIONS 
+     47 JUMP 
+  L16shortcutoption_Seq5Start_1:
+     48 JUMP_TO 'L15group_end'
+  L15group_end:
+     49 POP 
+     50 JUMP_TO 'L12group_end'
+  L14shortcutoption_Seq5Start_2:
+     51 CMD   <<PlaySFX1 Tower>>
+     52 CMD   <<VO_SEQ5 Tower 2>>
+     53 SAY   "Now you're starting to sound just like Marley, what is it?"
+     54 OPT   '[MENTION THE SKULL]Green' -> L18shortcutoption_Seq5Start_1
+     55 SHOW_OPTIONS 
+     56 JUMP 
+  L18shortcutoption_Seq5Start_1:
+     57 JUMP_TO 'L17group_end'
+  L17group_end:
+     58 POP 
+     59 JUMP_TO 'L12group_end'
+  L12group_end:
+     60 POP 
+     61 CMD   <<PlaySFX1 Tower>>
+     62 CMD   <<VO_SEQ5 Tower 3>>
+     63 CMD   <<SubtleTension DialogueSFX>>
+     64 SAY   "*SIGH*<br>Tell you what, new guy-<br>It's probably best to ignore these kids messing around, I suspect that's what Marley got tired of."
+     65 OPT   "I don't think these are kids messing aroundGreen" -> L20shortcutoption_Seq5Start_1
+     66 OPT   'what if this is not a prank?Green' -> L21shortcutoption_Seq5Start_2
+     67 SHOW_OPTIONS 
+     68 JUMP 
+  L20shortcutoption_Seq5Start_1:
+     69 JUMP_TO 'L19group_end'
+  L21shortcutoption_Seq5Start_2:
+     70 JUMP_TO 'L19group_end'
+  L19group_end:
+     71 POP 
+     72 CMD   <<PlaySFX1 Tower>>
+     73 CMD   <<VO_SEQ5 Tower 4>>
+     74 SAY   'These kids can be pretty creative with these pranks. They watch too many horror movies maybe they thought it would be funny.'
+     75 OPT   'this feels like a some real ritualGreen' -> L23shortcutoption_Seq5Start_1
+     76 OPT   "this is serious. you don't understand, do you?Green" -> L24shortcutoption_Seq5Start_2
+     77 SHOW_OPTIONS 
+     78 JUMP 
+  L23shortcutoption_Seq5Start_1:
+     79 JUMP_TO 'L22group_end'
+  L24shortcutoption_Seq5Start_2:
+     80 JUMP_TO 'L22group_end'
+  L22group_end:
+     81 POP 
+     82 CMD   <<PlaySFX1 Tower>>
+     83 CMD   <<VO_SEQ5 Tower 5>>
+     84 SAY   "Let's not get carried away, new guy.<br>We're in the middle of nowhere."
+     85 OPT   '...Green' -> L26shortcutoption_Seq5Start_1
+     86 SHOW_OPTIONS 
+     87 JUMP 
+  L26shortcutoption_Seq5Start_1:
+     88 JUMP_TO 'L25group_end'
+  L25group_end:
+     89 POP 
+     90 CMD   <<PlaySFX1 Tower>>
+     91 CMD   <<VO_SEQ5 Tower 6>>
+     92 SAY   "Alright, here's what we'll do. I'll send someone to check in on you tomorrow"
+     93 OPT   '...Green' -> L28shortcutoption_Seq5Start_1
+     94 SHOW_OPTIONS 
+     95 JUMP 
+  L28shortcutoption_Seq5Start_1:
+     96 JUMP_TO 'L27group_end'
+  L27group_end:
+     97 POP 
+     98 CMD   <<PlaySFX1 Tower>>
+     99 CMD   <<VO_SEQ5 Tower 7>>
+    100 SAY   "For now, just lock your door, take a deep breath and try to get some rest. We can't do much in the dark."
+    101 OPT   '...Green' -> L30shortcutoption_Seq5Start_1
+    102 SHOW_OPTIONS 
+    103 JUMP 
+  L30shortcutoption_Seq5Start_1:
+    104 JUMP_TO 'L29group_end'
+  L29group_end:
+    105 POP 
+    106 CMD   <<PlaySFX1 Tower>>
+    107 CMD   <<VO_SEQ5 Tower 8>>
+    108 SAY   "It'll be morning before you know it."
+    109 OPT   '...Green' -> L32shortcutoption_Seq5Start_1
+    110 SHOW_OPTIONS 
+    111 JUMP 
+  L32shortcutoption_Seq5Start_1:
+    112 JUMP_TO 'L31group_end'
+  L31group_end:
+    113 POP 
+    114 CMD   <<PlaySFX1 Tower>>
+    115 CMD   <<VO_SEQ5 Tower 9>>
+    116 SAY   '*YAWN* Try to get some sleep, jack.<br>Over and out.'
+    117 OPT   '^exit+ ...Green' -> L34shortcutoption_Seq5Start_1
+    118 OPT   '^exit+ ThanksGreen' -> L35shortcutoption_Seq5Start_2
+    119 OPT   '^exit+ goodnight connorGreen' -> L36shortcutoption_Seq5Start_3
+    120 SHOW_OPTIONS 
+    121 JUMP 
+  L34shortcutoption_Seq5Start_1:
+    122 JUMP_TO 'L33group_end'
+  L35shortcutoption_Seq5Start_2:
+    123 JUMP_TO 'L33group_end'
+  L36shortcutoption_Seq5Start_3:
+    124 JUMP_TO 'L33group_end'
+  L33group_end:
+    125 POP 
+    126 CMD   <<ExitRadio Tower>>
+    127 STOP 
+=== NODE Seq6BadGuy ===
+      0 CMD   <<HideTitle UIManager>>
+      1 SAY   '...'
+      2 OPT   'you just gave me a heart attackYellow' -> L2shortcutoption_Seq6BadGuy_1
+      3 OPT   'Who are you?Yellow' -> L3shortcutoption_Seq6BadGuy_2
+      4 OPT   'What are you doing here?Yellow' -> L4shortcutoption_Seq6BadGuy_3
+      5 SHOW_OPTIONS 
+      6 JUMP 
+  L2shortcutoption_Seq6BadGuy_1:
+      7 SAY   'I understand loneliness can make the mind play tricks on you.'
+      8 OPT   "What's your name?Yellow" -> L6shortcutoption_Seq6BadGuy_1
+      9 OPT   'Who are you?Yellow' -> L7shortcutoption_Seq6BadGuy_2
+     10 OPT   'What are you doing here?Yellow' -> L8shortcutoption_Seq6BadGuy_3
+     11 SHOW_OPTIONS 
+     12 JUMP 
+  L6shortcutoption_Seq6BadGuy_1:
+     13 SAY   'Names can be deceiving.<br>Call me Silas.'
+     14 OPT   'Who are you?Yellow' -> L10shortcutoption_Seq6BadGuy_1
+     15 OPT   'What are you doing here?Yellow' -> L11shortcutoption_Seq6BadGuy_2
+     16 SHOW_OPTIONS 
+     17 JUMP 
+  L10shortcutoption_Seq6BadGuy_1:
+     18 CMD   <<AmbToZero Tower>>
+     19 SAY   "No need to be alarmed.<br>..I'm a worker, I was just doing usual maintenance on the radio tower over there."
+     20 OPT   '...Yellow' -> L13shortcutoption_Seq6BadGuy_1
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L13shortcutoption_Seq6BadGuy_1:
+     23 SAY   "Thought I'd say hi the new guy everyone's been talking about"
+     24 OPT   'Nice to meet youYellow' -> L15shortcutoption_Seq6BadGuy_1
+     25 OPT   'do you usually work this late?Yellow' -> L16shortcutoption_Seq6BadGuy_2
+     26 SHOW_OPTIONS 
+     27 JUMP 
+  L15shortcutoption_Seq6BadGuy_1:
+     28 SAY   '...'
+     29 OPT   'so, do you usually work this late?Yellow' -> L18shortcutoption_Seq6BadGuy_1
+     30 SHOW_OPTIONS 
+     31 JUMP 
+  L18shortcutoption_Seq6BadGuy_1:
+     32 JUMP_TO 'L17group_end'
+  L17group_end:
+     33 POP 
+     34 JUMP_TO 'L14group_end'
+  L16shortcutoption_Seq6BadGuy_2:
+     35 JUMP_TO 'L14group_end'
+  L14group_end:
+     36 POP 
+     37 JUMP_TO 'L12group_end'
+  L12group_end:
+     38 POP 
+     39 JUMP_TO 'L9group_end'
+  L11shortcutoption_Seq6BadGuy_2:
+     40 CMD   <<AmbToZero Tower>>
+     41 SAY   "No need to be alarmed.<br>..I'm a worker, I was just doing some routine maintenance on the radio tower over there."
+     42 OPT   '...Yellow' -> L20shortcutoption_Seq6BadGuy_1
+     43 SHOW_OPTIONS 
+     44 JUMP 
+  L20shortcutoption_Seq6BadGuy_1:
+     45 SAY   "Thought I'd say hi the new guy everyone's been talking about"
+     46 OPT   'Nice to meet youYellow' -> L22shortcutoption_Seq6BadGuy_1
+     47 OPT   'do you usually work this late?Yellow' -> L23shortcutoption_Seq6BadGuy_2
+     48 SHOW_OPTIONS 
+     49 JUMP 
+  L22shortcutoption_Seq6BadGuy_1:
+     50 SAY   '...'
+     51 OPT   'do you usually work this late?Yellow' -> L25shortcutoption_Seq6BadGuy_1
+     52 SHOW_OPTIONS 
+     53 JUMP 
+  L25shortcutoption_Seq6BadGuy_1:
+     54 JUMP_TO 'L24group_end'
+  L24group_end:
+     55 POP 
+     56 JUMP_TO 'L21group_end'
+  L23shortcutoption_Seq6BadGuy_2:
+     57 JUMP_TO 'L21group_end'
+  L21group_end:
+     58 POP 
+     59 JUMP_TO 'L19group_end'
+  L19group_end:
+     60 POP 
+     61 JUMP_TO 'L9group_end'
+  L9group_end:
+     62 POP 
+     63 JUMP_TO 'L5group_end'
+  L7shortcutoption_Seq6BadGuy_2:
+     64 CMD   <<AmbToZero Tower>>
+     65 SAY   "No need to be alarmed.<br>..I'm a worker, I was just doing some routine maintenance on the radio tower over there."
+     66 OPT   '...Yellow' -> L27shortcutoption_Seq6BadGuy_1
+     67 SHOW_OPTIONS 
+     68 JUMP 
+  L27shortcutoption_Seq6BadGuy_1:
+     69 SAY   "Thought I'd say hi the new guy everyone's been talking about"
+     70 OPT   'Nice to meet youYellow' -> L29shortcutoption_Seq6BadGuy_1
+     71 OPT   'do you usually work this late?Yellow' -> L30shortcutoption_Seq6BadGuy_2
+     72 SHOW_OPTIONS 
+     73 JUMP 
+  L29shortcutoption_Seq6BadGuy_1:
+     74 SAY   '...'
+     75 OPT   'so, do you usually work this late?Yellow' -> L32shortcutoption_Seq6BadGuy_1
+     76 SHOW_OPTIONS 
+     77 JUMP 
+  L32shortcutoption_Seq6BadGuy_1:
+     78 JUMP_TO 'L31group_end'
+  L31group_end:
+     79 POP 
+     80 JUMP_TO 'L28group_end'
+  L30shortcutoption_Seq6BadGuy_2:
+     81 JUMP_TO 'L28group_end'
+  L28group_end:
+     82 POP 
+     83 JUMP_TO 'L26group_end'
+  L26group_end:
+     84 POP 
+     85 JUMP_TO 'L5group_end'
+  L8shortcutoption_Seq6BadGuy_3:
+     86 CMD   <<AmbToZero Tower>>
+     87 SAY   "No need to be alarmed.<br>..I'm a worker, I was just doing some routine maintenance on the radio tower over there."
+     88 OPT   '...Yellow' -> L34shortcutoption_Seq6BadGuy_1
+     89 SHOW_OPTIONS 
+     90 JUMP 
+  L34shortcutoption_Seq6BadGuy_1:
+     91 SAY   "Thought I'd say hi the new guy everyone's been talking about"
+     92 OPT   'Nice to meet youYellow' -> L36shortcutoption_Seq6BadGuy_1
+     93 OPT   'do you usually work this late?Yellow' -> L37shortcutoption_Seq6BadGuy_2
+     94 SHOW_OPTIONS 
+     95 JUMP 
+  L36shortcutoption_Seq6BadGuy_1:
+     96 SAY   '...'
+     97 OPT   'so, do you usually work this late?Yellow' -> L39shortcutoption_Seq6BadGuy_1
+     98 SHOW_OPTIONS 
+     99 JUMP 
+  L39shortcutoption_Seq6BadGuy_1:
+    100 JUMP_TO 'L38group_end'
+  L38group_end:
+    101 POP 
+    102 JUMP_TO 'L35group_end'
+  L37shortcutoption_Seq6BadGuy_2:
+    103 JUMP_TO 'L35group_end'
+  L35group_end:
+    104 POP 
+    105 JUMP_TO 'L33group_end'
+  L33group_end:
+    106 POP 
+    107 JUMP_TO 'L5group_end'
+  L5group_end:
+    108 POP 
+    109 JUMP_TO 'L1group_end'
+  L3shortcutoption_Seq6BadGuy_2:
+    110 CMD   <<AmbToZero Tower>>
+    111 SAY   "No need to be alarmed.<br>..I'm a worker, I was just doing some routine maintenance on the radio tower over there."
+    112 OPT   '...Yellow' -> L41shortcutoption_Seq6BadGuy_1
+    113 SHOW_OPTIONS 
+    114 JUMP 
+  L41shortcutoption_Seq6BadGuy_1:
+    115 SAY   "Thought I'd say hi the new guy everyone's been talking about"
+    116 OPT   "What's your name?Yellow" -> L43shortcutoption_Seq6BadGuy_1
+    117 SHOW_OPTIONS 
+    118 JUMP 
+  L43shortcutoption_Seq6BadGuy_1:
+    119 SAY   'Names can be deceiving.<br>Call me Silas.Yellow'
+    120 OPT   'Nice to meet youYellow' -> L45shortcutoption_Seq6BadGuy_1
+    121 OPT   'do you usually work this late?Yellow' -> L46shortcutoption_Seq6BadGuy_2
+    122 SHOW_OPTIONS 
+    123 JUMP 
+  L45shortcutoption_Seq6BadGuy_1:
+    124 SAY   '...'
+    125 OPT   'so, do you usually work this late?' -> L48shortcutoption_Seq6BadGuy_1
+    126 SHOW_OPTIONS 
+    127 JUMP 
+  L48shortcutoption_Seq6BadGuy_1:
+    128 JUMP_TO 'L47group_end'
+  L47group_end:
+    129 POP 
+    130 JUMP_TO 'L44group_end'
+  L46shortcutoption_Seq6BadGuy_2:
+    131 JUMP_TO 'L44group_end'
+  L44group_end:
+    132 POP 
+    133 JUMP_TO 'L42group_end'
+  L42group_end:
+    134 POP 
+    135 JUMP_TO 'L40group_end'
+  L40group_end:
+    136 POP 
+    137 JUMP_TO 'L1group_end'
+  L4shortcutoption_Seq6BadGuy_3:
+    138 CMD   <<AmbToZero Tower>>
+    139 SAY   "No need to be alarmed.<br>..I'm a worker, I was just doing some routine maintenance on the radio tower over there."
+    140 OPT   '...Yellow' -> L50shortcutoption_Seq6BadGuy_1
+    141 SHOW_OPTIONS 
+    142 JUMP 
+  L50shortcutoption_Seq6BadGuy_1:
+    143 SAY   "Thought I'd say hi the new guy everyone's been talking about"
+    144 OPT   "What's your name?Yellow" -> L52shortcutoption_Seq6BadGuy_1
+    145 SHOW_OPTIONS 
+    146 JUMP 
+  L52shortcutoption_Seq6BadGuy_1:
+    147 SAY   'Names can be deceiving.<br>Call me Silas.'
+    148 OPT   'Nice to meet youYellow' -> L54shortcutoption_Seq6BadGuy_1
+    149 OPT   'do you usually work this late?Yellow' -> L55shortcutoption_Seq6BadGuy_2
+    150 SHOW_OPTIONS 
+    151 JUMP 
+  L54shortcutoption_Seq6BadGuy_1:
+    152 SAY   '...'
+    153 OPT   'so, do you usually work this late?Yellow' -> L57shortcutoption_Seq6BadGuy_1
+    154 SHOW_OPTIONS 
+    155 JUMP 
+  L57shortcutoption_Seq6BadGuy_1:
+    156 JUMP_TO 'L56group_end'
+  L56group_end:
+    157 POP 
+    158 JUMP_TO 'L53group_end'
+  L55shortcutoption_Seq6BadGuy_2:
+    159 JUMP_TO 'L53group_end'
+  L53group_end:
+    160 POP 
+    161 JUMP_TO 'L51group_end'
+  L51group_end:
+    162 POP 
+    163 JUMP_TO 'L49group_end'
+  L49group_end:
+    164 POP 
+    165 JUMP_TO 'L1group_end'
+  L1group_end:
+    166 POP 
+    167 SAY   '..Every sunday. Just trying to keep the communication lines open.'
+    168 OPT   '...Yellow' -> L59shortcutoption_Seq6BadGuy_1
+    169 SHOW_OPTIONS 
+    170 JUMP 
+  L59shortcutoption_Seq6BadGuy_1:
+    171 JUMP_TO 'L58group_end'
+  L58group_end:
+    172 POP 
+    173 SAY   "We must ensure that the right message reach the right places, wouldn't you agree?"
+    174 OPT   'right, we rely information about fire sightingsYellow' -> L61shortcutoption_Seq6BadGuy_1
+    175 OPT   'I agree, fire risks are high this seasonYellow' -> L62shortcutoption_Seq6BadGuy_2
+    176 SHOW_OPTIONS 
+    177 JUMP 
+  L61shortcutoption_Seq6BadGuy_1:
+    178 JUMP_TO 'L60group_end'
+  L62shortcutoption_Seq6BadGuy_2:
+    179 JUMP_TO 'L60group_end'
+  L60group_end:
+    180 POP 
+    181 CMD   <<ScaryViolin DialogueSFX>>
+    182 SAY   'Absolutely.<br>But some fires are meant to burn, and no amount of prevention can stop them.'
+    183 OPT   '...Yellow' -> L64shortcutoption_Seq6BadGuy_1
+    184 OPT   'What do you mean?Yellow' -> L65shortcutoption_Seq6BadGuy_2
+    185 SHOW_OPTIONS 
+    186 JUMP 
+  L64shortcutoption_Seq6BadGuy_1:
+    187 JUMP_TO 'L63group_end'
+  L65shortcutoption_Seq6BadGuy_2:
+    188 JUMP_TO 'L63group_end'
+  L63group_end:
+    189 POP 
+    190 SAY   "Nature has its own plans. Some things can't be controlled, no matter how hard we try."
+    191 OPT   '...Yellow' -> L67shortcutoption_Seq6BadGuy_1
+    192 SHOW_OPTIONS 
+    193 JUMP 
+  L67shortcutoption_Seq6BadGuy_1:
+    194 JUMP_TO 'L66group_end'
+  L66group_end:
+    195 POP 
+    196 SAY   'And sometimes, disasters are just another form of cleansing. A way for the land to purify itself.'
+    197 OPT   'I should head back to the tower nowYellow' -> L69shortcutoption_Seq6BadGuy_1
+    198 OPT   "it's getting lateYellow" -> L70shortcutoption_Seq6BadGuy_2
+    199 OPT   "I'll see you around, silas?Yellow" -> L71shortcutoption_Seq6BadGuy_3
+    200 SHOW_OPTIONS 
+    201 JUMP 
+  L69shortcutoption_Seq6BadGuy_1:
+    202 JUMP_TO 'L68group_end'
+  L70shortcutoption_Seq6BadGuy_2:
+    203 JUMP_TO 'L68group_end'
+  L71shortcutoption_Seq6BadGuy_3:
+    204 JUMP_TO 'L68group_end'
+  L68group_end:
+    205 POP 
+    206 SAY   'Have a good night, jack.<br>Hope you sleep well. but remember..'
+    207 OPT   '...Yellow' -> L73shortcutoption_Seq6BadGuy_1
+    208 SHOW_OPTIONS 
+    209 JUMP 
+  L73shortcutoption_Seq6BadGuy_1:
+    210 JUMP_TO 'L72group_end'
+  L72group_end:
+    211 POP 
+    212 SAY   '...'
+    213 OPT   '...Yellow' -> L75shortcutoption_Seq6BadGuy_1
+    214 SHOW_OPTIONS 
+    215 JUMP 
+  L75shortcutoption_Seq6BadGuy_1:
+    216 JUMP_TO 'L74group_end'
+  L74group_end:
+    217 POP 
+    218 SAY   '...'
+    219 OPT   '...Yellow' -> L77shortcutoption_Seq6BadGuy_1
+    220 SHOW_OPTIONS 
+    221 JUMP 
+  L77shortcutoption_Seq6BadGuy_1:
+    222 JUMP_TO 'L76group_end'
+  L76group_end:
+    223 POP 
+    224 CMD   <<SubtleTension DialogueSFX>>
+    225 SAY   "curiosity can lead to places you'd rather not go."
+    226 OPT   '...Yellow' -> L79shortcutoption_Seq6BadGuy_1
+    227 SHOW_OPTIONS 
+    228 JUMP 
+  L79shortcutoption_Seq6BadGuy_1:
+    229 JUMP_TO 'L78group_end'
+  L78group_end:
+    230 POP 
+    231 SAY   '...'
+    232 OPT   '...Yellow' -> L81shortcutoption_Seq6BadGuy_1
+    233 SHOW_OPTIONS 
+    234 JUMP 
+  L81shortcutoption_Seq6BadGuy_1:
+    235 JUMP_TO 'L80group_end'
+  L80group_end:
+    236 POP 
+    237 SAY   '...'
+    238 OPT   '...Yellow' -> L83shortcutoption_Seq6BadGuy_1
+    239 SHOW_OPTIONS 
+    240 JUMP 
+  L83shortcutoption_Seq6BadGuy_1:
+    241 JUMP_TO 'L82group_end'
+  L82group_end:
+    242 POP 
+    243 SAY   'Farewell, Jack.'
+    244 OPT   '^EXIT+...Yellow' -> L85shortcutoption_Seq6BadGuy_1
+    245 SHOW_OPTIONS 
+    246 JUMP 
+  L85shortcutoption_Seq6BadGuy_1:
+    247 JUMP_TO 'L84group_end'
+  L84group_end:
+    248 POP 
+    249 CMD   <<ExitConvo Tower>>
+    250 STOP 
+=== NODE Seq6Billy ===
+      0 CMD   <<HideTitle UIManager>>
+      1 SAY   'Holy molly what took you so long in there'
+      2 OPT   '...Yellow' -> L2shortcutoption_Seq6Billy_1
+      3 SHOW_OPTIONS 
+      4 JUMP 
+  L2shortcutoption_Seq6Billy_1:
+      5 JUMP_TO 'L1group_end'
+  L1group_end:
+      6 POP 
+      7 SAY   "I've been knocking for hours, I was asked to check in on you.<br>what were you up to, pal?"
+      8 OPT   'I was assisting a lost hikerYellow' -> L4shortcutoption_Seq6Billy_1
+      9 OPT   'just finishing up on reportYellow' -> L5shortcutoption_Seq6Billy_2
+     10 OPT   'nothing muchYellow' -> L6shortcutoption_Seq6Billy_3
+     11 SHOW_OPTIONS 
+     12 JUMP 
+  L4shortcutoption_Seq6Billy_1:
+     13 SAY   'At this hour?<br>May the god be merciful.'
+     14 OPT   '...Yellow' -> L8shortcutoption_Seq6Billy_1
+     15 SHOW_OPTIONS 
+     16 JUMP 
+  L8shortcutoption_Seq6Billy_1:
+     17 SAY   'Anyways, Got your tower supplies here, Just the usual essentials.'
+     18 OPT   '...Yellow' -> L10shortcutoption_Seq6Billy_1
+     19 SHOW_OPTIONS 
+     20 JUMP 
+  L10shortcutoption_Seq6Billy_1:
+     21 JUMP_TO 'L9group_end'
+  L9group_end:
+     22 POP 
+     23 JUMP_TO 'L7group_end'
+  L7group_end:
+     24 POP 
+     25 JUMP_TO 'L3group_end'
+  L5shortcutoption_Seq6Billy_2:
+     26 SAY   'No worries, pal.<br>Got your tower supplies here. Just the usual essentials.'
+     27 OPT   '...Yellow' -> L12shortcutoption_Seq6Billy_1
+     28 SHOW_OPTIONS 
+     29 JUMP 
+  L12shortcutoption_Seq6Billy_1:
+     30 JUMP_TO 'L11group_end'
+  L11group_end:
+     31 POP 
+     32 JUMP_TO 'L3group_end'
+  L6shortcutoption_Seq6Billy_3:
+     33 SAY   'Anyways, Got your tower supplies here, Just the usual essentials.'
+     34 OPT   '...Yellow' -> L14shortcutoption_Seq6Billy_1
+     35 SHOW_OPTIONS 
+     36 JUMP 
+  L14shortcutoption_Seq6Billy_1:
+     37 JUMP_TO 'L13group_end'
+  L13group_end:
+     38 POP 
+     39 JUMP_TO 'L3group_end'
+  L3group_end:
+     40 POP 
+     41 SAY   "Here you go<br>I feel like I'm going to pass out if I keep holding this for one more second"
+     42 OPT   '^TAKE SUPPLIES+Yellow' -> L16shortcutoption_Seq6Billy_1
+     43 SHOW_OPTIONS 
+     44 JUMP 
+  L16shortcutoption_Seq6Billy_1:
+     45 JUMP_TO 'L15group_end'
+  L15group_end:
+     46 POP 
+     47 CMD   <<TakeSupplies Tower>>
+     48 STOP 
+=== NODE Seq6Billy2 ===
+      0 SAY   '...'
+      1 OPT   '...Yellow' -> L19shortcutoption_Seq6Billy2_1
+      2 SHOW_OPTIONS 
+      3 JUMP 
+  L19shortcutoption_Seq6Billy2_1:
+      4 JUMP_TO 'L18group_end'
+  L18group_end:
+      5 POP 
+      6 SAY   '...'
+      7 OPT   '...Yellow' -> L21shortcutoption_Seq6Billy2_1
+      8 SHOW_OPTIONS 
+      9 JUMP 
+  L21shortcutoption_Seq6Billy2_1:
+     10 JUMP_TO 'L20group_end'
+  L20group_end:
+     11 POP 
+     12 CMD   <<WhatWereYouDoing DialogueSFX>>
+     13 SAY   'What were you doing there last night?'
+     14 OPT   '...Yellow' -> L23shortcutoption_Seq6Billy2_1
+     15 OPT   'What do you mean?' -> L24shortcutoption_Seq6Billy2_2
+     16 SHOW_OPTIONS 
+     17 JUMP 
+  L23shortcutoption_Seq6Billy2_1:
+     18 JUMP_TO 'L22group_end'
+  L24shortcutoption_Seq6Billy2_2:
+     19 SAY   'Up North, why were you there?'
+     20 OPT   '...Yellow' -> L26shortcutoption_Seq6Billy2_1
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L26shortcutoption_Seq6Billy2_1:
+     23 JUMP_TO 'L25group_end'
+  L25group_end:
+     24 POP 
+     25 JUMP_TO 'L22group_end'
+  L22group_end:
+     26 POP 
+     27 SAY   "I wouldn't screw around out there pal"
+     28 OPT   '...Yellow' -> L28shortcutoption_Seq6Billy2_1
+     29 OPT   'I was required to investigate on a campfire smokeYellow' -> L29shortcutoption_Seq6Billy2_2
+     30 SHOW_OPTIONS 
+     31 JUMP 
+  L28shortcutoption_Seq6Billy2_1:
+     32 SAY   'nasty business up there pal'
+     33 OPT   '...Yellow' -> L31shortcutoption_Seq6Billy2_1
+     34 SHOW_OPTIONS 
+     35 JUMP 
+  L31shortcutoption_Seq6Billy2_1:
+     36 JUMP_TO 'L30group_end'
+  L30group_end:
+     37 POP 
+     38 JUMP_TO 'L27group_end'
+  L29shortcutoption_Seq6Billy2_2:
+     39 SAY   'Oh lord have mercy..'
+     40 OPT   '...Yellow' -> L33shortcutoption_Seq6Billy2_1
+     41 SHOW_OPTIONS 
+     42 JUMP 
+  L33shortcutoption_Seq6Billy2_1:
+     43 SAY   'nasty business up there pal'
+     44 OPT   '...Yellow' -> L35shortcutoption_Seq6Billy2_1
+     45 SHOW_OPTIONS 
+     46 JUMP 
+  L35shortcutoption_Seq6Billy2_1:
+     47 JUMP_TO 'L34group_end'
+  L34group_end:
+     48 POP 
+     49 JUMP_TO 'L32group_end'
+  L32group_end:
+     50 POP 
+     51 JUMP_TO 'L27group_end'
+  L27group_end:
+     52 POP 
+     53 SAY   'bob cats and bears...'
+     54 OPT   '...' -> L37shortcutoption_Seq6Billy2_1
+     55 SHOW_OPTIONS 
+     56 JUMP 
+  L37shortcutoption_Seq6Billy2_1:
+     57 JUMP_TO 'L36group_end'
+  L36group_end:
+     58 POP 
+     59 SAY   "You be careful out there pal, these woods aren't normal and there's stuff out there that would love to get a piece of you."
+     60 OPT   '...' -> L39shortcutoption_Seq6Billy2_1
+     61 SHOW_OPTIONS 
+     62 JUMP 
+  L39shortcutoption_Seq6Billy2_1:
+     63 JUMP_TO 'L38group_end'
+  L38group_end:
+     64 POP 
+     65 SAY   "Not to mention you'd be quite a distance from help if anything happened."
+     66 OPT   '...Yellow' -> L41shortcutoption_Seq6Billy2_1
+     67 OPT   "I've got enough to keep me occupied hereYellow" -> L42shortcutoption_Seq6Billy2_2
+     68 SHOW_OPTIONS 
+     69 JUMP 
+  L41shortcutoption_Seq6Billy2_1:
+     70 SAY   '...'
+     71 OPT   '...Yellow' -> L44shortcutoption_Seq6Billy2_1
+     72 SHOW_OPTIONS 
+     73 JUMP 
+  L44shortcutoption_Seq6Billy2_1:
+     74 JUMP_TO 'L43group_end'
+  L43group_end:
+     75 POP 
+     76 JUMP_TO 'L40group_end'
+  L42shortcutoption_Seq6Billy2_2:
+     77 SAY   "Absolutely, it's a busy job"
+     78 OPT   '...Yellow' -> L46shortcutoption_Seq6Billy2_1
+     79 SHOW_OPTIONS 
+     80 JUMP 
+  L46shortcutoption_Seq6Billy2_1:
+     81 JUMP_TO 'L45group_end'
+  L45group_end:
+     82 POP 
+     83 JUMP_TO 'L40group_end'
+  L40group_end:
+     84 POP 
+     85 SAY   '...'
+     86 OPT   '...Yellow' -> L48shortcutoption_Seq6Billy2_1
+     87 SHOW_OPTIONS 
+     88 JUMP 
+  L48shortcutoption_Seq6Billy2_1:
+     89 JUMP_TO 'L47group_end'
+  L47group_end:
+     90 POP 
+     91 SAY   "I've been hearing you've been a bit on the edge.<br>Everything alright?"
+     92 OPT   'Just get getting used to the new environmentYellow' -> L50shortcutoption_Seq6Billy2_1
+     93 OPT   '^MENTION THE SKULL+Yellow' -> L51shortcutoption_Seq6Billy2_2
+     94 SHOW_OPTIONS 
+     95 JUMP 
+  L50shortcutoption_Seq6Billy2_1:
+     96 SAY   "That's the spirit!"
+     97 OPT   '...Yellow' -> L53shortcutoption_Seq6Billy2_1
+     98 SHOW_OPTIONS 
+     99 JUMP 
+  L53shortcutoption_Seq6Billy2_1:
+    100 SAY   'Did you notice anything unusual on your hike up north yesterday?'
+    101 OPT   '^MENTION THE SKULL+Yellow' -> L55shortcutoption_Seq6Billy2_1
+    102 SHOW_OPTIONS 
+    103 JUMP 
+  L55shortcutoption_Seq6Billy2_1:
+    104 JUMP_TO 'L54group_end'
+  L54group_end:
+    105 POP 
+    106 JUMP_TO 'L52group_end'
+  L52group_end:
+    107 POP 
+    108 JUMP_TO 'L49group_end'
+  L51shortcutoption_Seq6Billy2_2:
+    109 JUMP_TO 'L49group_end'
+  L49group_end:
+    110 POP 
+    111 CMD   <<SubtleTension DialogueSFX>>
+    112 SAY   '...'
+    113 OPT   '...Yellow' -> L57shortcutoption_Seq6Billy2_1
+    114 SHOW_OPTIONS 
+    115 JUMP 
+  L57shortcutoption_Seq6Billy2_1:
+    116 JUMP_TO 'L56group_end'
+  L56group_end:
+    117 POP 
+    118 SAY   '...'
+    119 OPT   '...Yellow' -> L59shortcutoption_Seq6Billy2_1
+    120 SHOW_OPTIONS 
+    121 JUMP 
+  L59shortcutoption_Seq6Billy2_1:
+    122 JUMP_TO 'L58group_end'
+  L58group_end:
+    123 POP 
+    124 SAY   'Oh, Lord have mercy..'
+    125 OPT   '...Yellow' -> L61shortcutoption_Seq6Billy2_1
+    126 SHOW_OPTIONS 
+    127 JUMP 
+  L61shortcutoption_Seq6Billy2_1:
+    128 JUMP_TO 'L60group_end'
+  L60group_end:
+    129 POP 
+    130 SAY   'Did you take a photo of it before cleaning it up?'
+    131 OPT   'NoYellow' -> L63shortcutoption_Seq6Billy2_1
+    132 OPT   "I didn't think about itYellow" -> L64shortcutoption_Seq6Billy2_2
+    133 SHOW_OPTIONS 
+    134 JUMP 
+  L63shortcutoption_Seq6Billy2_1:
+    135 JUMP_TO 'L62group_end'
+  L64shortcutoption_Seq6Billy2_2:
+    136 JUMP_TO 'L62group_end'
+  L62group_end:
+    137 POP 
+    138 SAY   '...'
+    139 OPT   '...Yellow' -> L66shortcutoption_Seq6Billy2_1
+    140 SHOW_OPTIONS 
+    141 JUMP 
+  L66shortcutoption_Seq6Billy2_1:
+    142 JUMP_TO 'L65group_end'
+  L65group_end:
+    143 POP 
+    144 SAY   "You know it's best we don't dwell on these things, pal.<br>Besides, we can't do anything without the evidence."
+    145 OPT   '...Yellow' -> L68shortcutoption_Seq6Billy2_1
+    146 SHOW_OPTIONS 
+    147 JUMP 
+  L68shortcutoption_Seq6Billy2_1:
+    148 JUMP_TO 'L67group_end'
+  L67group_end:
+    149 POP 
+    150 SAY   '...'
+    151 OPT   '...Yellow' -> L70shortcutoption_Seq6Billy2_1
+    152 SHOW_OPTIONS 
+    153 JUMP 
+  L70shortcutoption_Seq6Billy2_1:
+    154 JUMP_TO 'L69group_end'
+  L69group_end:
+    155 POP 
+    156 SAY   "Anyways, It's getting late, I better get going now. Just keep watch."
+    157 OPT   'Thanks for the suppliesYellow' -> L72shortcutoption_Seq6Billy2_1
+    158 OPT   '...Yellow' -> L73shortcutoption_Seq6Billy2_2
+    159 SHOW_OPTIONS 
+    160 JUMP 
+  L72shortcutoption_Seq6Billy2_1:
+    161 JUMP_TO 'L71group_end'
+  L73shortcutoption_Seq6Billy2_2:
+    162 JUMP_TO 'L71group_end'
+  L71group_end:
+    163 POP 
+    164 CMD   <<ExitConvo Tower>>
+    165 STOP 
+=== NODE Seq6Connor ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 CMD   <<VO_SEQ6 Tower 3>>
+      4 SAY   'Do you copy now?'
+      5 OPT   'right hereGreen' -> L2shortcutoption_Seq6Connor_1
+      6 OPT   'this is jackGreen' -> L3shortcutoption_Seq6Connor_2
+      7 OPT   'loud and clearGreen' -> L4shortcutoption_Seq6Connor_3
+      8 SHOW_OPTIONS 
+      9 JUMP 
+  L2shortcutoption_Seq6Connor_1:
+     10 JUMP_TO 'L1group_end'
+  L3shortcutoption_Seq6Connor_2:
+     11 JUMP_TO 'L1group_end'
+  L4shortcutoption_Seq6Connor_3:
+     12 JUMP_TO 'L1group_end'
+  L1group_end:
+     13 POP 
+     14 CMD   <<PlaySFX1 Tower>>
+     15 CMD   <<VO_SEQ6 Tower 4>>
+     16 SAY   "*SIGH* Finally. I've been trying to reach you for a while now. Where have you been?"
+     17 OPT   'went down to get firewoodGreen' -> L6shortcutoption_Seq6Connor_1
+     18 OPT   'ran into silas downstairsGreen' -> L7shortcutoption_Seq6Connor_2
+     19 SHOW_OPTIONS 
+     20 JUMP 
+  L6shortcutoption_Seq6Connor_1:
+     21 CMD   <<PlaySFX1 Tower>>
+     22 CMD   <<VO_SEQ6 Tower 5>>
+     23 SAY   "It doesn't exactly take ages to get just some firewood."
+     24 OPT   'ran into the radio tower workerGreen' -> L9shortcutoption_Seq6Connor_1
+     25 SHOW_OPTIONS 
+     26 JUMP 
+  L9shortcutoption_Seq6Connor_1:
+     27 JUMP_TO 'L8group_end'
+  L8group_end:
+     28 POP 
+     29 JUMP_TO 'L5group_end'
+  L7shortcutoption_Seq6Connor_2:
+     30 JUMP_TO 'L5group_end'
+  L5group_end:
+     31 POP 
+     32 CMD   <<PlaySFX1 Tower>>
+     33 CMD   <<VO_SEQ6 Tower 6>>
+     34 SAY   'Ran into who?'
+     35 OPT   'the guy maintaining that nearby radio towerGreen' -> L11shortcutoption_Seq6Connor_1
+     36 OPT   'the nearby radio tower workerGreen' -> L12shortcutoption_Seq6Connor_2
+     37 SHOW_OPTIONS 
+     38 JUMP 
+  L11shortcutoption_Seq6Connor_1:
+     39 JUMP_TO 'L10group_end'
+  L12shortcutoption_Seq6Connor_2:
+     40 JUMP_TO 'L10group_end'
+  L10group_end:
+     41 POP 
+     42 CMD   <<PlaySFX1 Tower>>
+     43 SAY   '...'
+     44 OPT   '...Green' -> L14shortcutoption_Seq6Connor_1
+     45 SHOW_OPTIONS 
+     46 JUMP 
+  L14shortcutoption_Seq6Connor_1:
+     47 JUMP_TO 'L13group_end'
+  L13group_end:
+     48 POP 
+     49 CMD   <<PlaySFX1 Tower>>
+     50 SAY   '...'
+     51 OPT   '...Green' -> L16shortcutoption_Seq6Connor_1
+     52 SHOW_OPTIONS 
+     53 JUMP 
+  L16shortcutoption_Seq6Connor_1:
+     54 JUMP_TO 'L15group_end'
+  L15group_end:
+     55 POP 
+     56 CMD   <<PlaySFX1 Tower>>
+     57 CMD   <<VO_SEQ6 Tower 7>>
+     58 SAY   '*SCOFF* is this about yesterday?'
+     59 OPT   'what?Green' -> L18shortcutoption_Seq6Connor_1
+     60 OPT   'what do you mean?Green' -> L19shortcutoption_Seq6Connor_2
+     61 SHOW_OPTIONS 
+     62 JUMP 
+  L18shortcutoption_Seq6Connor_1:
+     63 JUMP_TO 'L17group_end'
+  L19shortcutoption_Seq6Connor_2:
+     64 JUMP_TO 'L17group_end'
+  L17group_end:
+     65 POP 
+     66 CMD   <<PlaySFX1 Tower>>
+     67 CMD   <<VO_SEQ6 Tower 8>>
+     68 SAY   'You trying to yank my chain now?'
+     69 OPT   '...Green' -> L21shortcutoption_Seq6Connor_1
+     70 OPT   'what do you mean?Green' -> L22shortcutoption_Seq6Connor_2
+     71 SHOW_OPTIONS 
+     72 JUMP 
+  L21shortcutoption_Seq6Connor_1:
+     73 JUMP_TO 'L20group_end'
+  L22shortcutoption_Seq6Connor_2:
+     74 JUMP_TO 'L20group_end'
+  L20group_end:
+     75 POP 
+     76 CMD   <<PlaySFX1 Tower>>
+     77 CMD   <<VO_SEQ6 Tower 9>>
+     78 CMD   <<RadioOutOfService DialogueSFX>>
+     79 SAY   'That radio tower has been out of service for ages now'
+     80 OPT   '...Green' -> L24shortcutoption_Seq6Connor_1
+     81 SHOW_OPTIONS 
+     82 JUMP 
+  L24shortcutoption_Seq6Connor_1:
+     83 JUMP_TO 'L23group_end'
+  L23group_end:
+     84 POP 
+     85 CMD   <<PlaySFX1 Tower>>
+     86 CMD   <<VO_SEQ6 Tower 10>>
+     87 SAY   'It was closed down years ago after a lighting strike fried its systems, and its repair cost was deemed too costly.'
+     88 OPT   '...Green' -> L26shortcutoption_Seq6Connor_1
+     89 SHOW_OPTIONS 
+     90 JUMP 
+  L26shortcutoption_Seq6Connor_1:
+     91 JUMP_TO 'L25group_end'
+  L25group_end:
+     92 POP 
+     93 CMD   <<PlaySFX1 Tower>>
+     94 CMD   <<VO_SEQ6 Tower 11>>
+     95 SAY   'Its repair date was postponed until the next big funding, which is no time soon according to Mitch.'
+     96 OPT   '...Green' -> L28shortcutoption_Seq6Connor_1
+     97 OPT   'then who did I just talk to?Green' -> L29shortcutoption_Seq6Connor_2
+     98 SHOW_OPTIONS 
+     99 JUMP 
+  L28shortcutoption_Seq6Connor_1:
+    100 JUMP_TO 'L27group_end'
+  L29shortcutoption_Seq6Connor_2:
+    101 JUMP_TO 'L27group_end'
+  L27group_end:
+    102 POP 
+    103 CMD   <<PlaySFX1 Tower>>
+    104 CMD   <<VO_SEQ6 Tower 12>>
+    105 SAY   "Look, if what you're saying is true, it could be another one of those goons playing pranks on you."
+    106 OPT   '...Green' -> L31shortcutoption_Seq6Connor_1
+    107 OPT   'He knew my nameGreen' -> L32shortcutoption_Seq6Connor_2
+    108 SHOW_OPTIONS 
+    109 JUMP 
+  L31shortcutoption_Seq6Connor_1:
+    110 CMD   <<PlaySFX1 Tower>>
+    111 CMD   <<VO_SEQ6 Tower 13>>
+    112 SAY   'People can be weird sometimes.'
+    113 OPT   "you're right, it's best to ignoreGreen" -> L34shortcutoption_Seq6Connor_1
+    114 OPT   "I don't think he was just a hikerGreen" -> L35shortcutoption_Seq6Connor_2
+    115 SHOW_OPTIONS 
+    116 JUMP 
+  L34shortcutoption_Seq6Connor_1:
+    117 CMD   <<PlaySFX1 Tower>>
+    118 CMD   <<VO_SEQ6 Tower 14>>
+    119 SAY   'However, disguising as a staff member is strictly forbidden according to park guidelines.'
+    120 OPT   '...Green' -> L37shortcutoption_Seq6Connor_1
+    121 SHOW_OPTIONS 
+    122 JUMP 
+  L37shortcutoption_Seq6Connor_1:
+    123 JUMP_TO 'L36group_end'
+  L36group_end:
+    124 POP 
+    125 JUMP_TO 'L33group_end'
+  L35shortcutoption_Seq6Connor_2:
+    126 CMD   <<PlaySFX1 Tower>>
+    127 CMD   <<VO_SEQ6 Tower 15>>
+    128 SAY   'What are you trying to say?'
+    129 OPT   'He knew my nameGreen' -> L39shortcutoption_Seq6Connor_1
+    130 SHOW_OPTIONS 
+    131 JUMP 
+  L39shortcutoption_Seq6Connor_1:
+    132 CMD   <<PlaySFX1 Tower>>
+    133 CMD   <<VO_SEQ6 Tower 16>>
+    134 SAY   'Knew your name?<br>You think he has been listening?'
+    135 OPT   'PossiblyGreen' -> L41shortcutoption_Seq6Connor_1
+    136 OPT   "I'm not sureGreen" -> L42shortcutoption_Seq6Connor_2
+    137 OPT   "I don't knowGreen" -> L43shortcutoption_Seq6Connor_3
+    138 SHOW_OPTIONS 
+    139 JUMP 
+  L41shortcutoption_Seq6Connor_1:
+    140 CMD   <<PlaySFX1 Tower>>
+    141 CMD   <<VO_SEQ6 Tower 17>>
+    142 SAY   'Either way, disguising as a staff member is strictly forbidden according to park guidelines.'
+    143 OPT   '...Green' -> L45shortcutoption_Seq6Connor_1
+    144 SHOW_OPTIONS 
+    145 JUMP 
+  L45shortcutoption_Seq6Connor_1:
+    146 JUMP_TO 'L44group_end'
+  L44group_end:
+    147 POP 
+    148 JUMP_TO 'L40group_end'
+  L42shortcutoption_Seq6Connor_2:
+    149 CMD   <<PlaySFX1 Tower>>
+    150 CMD   <<VO_SEQ6 Tower 17>>
+    151 SAY   'Either way, disguising as a staff member is strictly forbidden according to park guidelines.'
+    152 OPT   '...Green' -> L47shortcutoption_Seq6Connor_1
+    153 SHOW_OPTIONS 
+    154 JUMP 
+  L47shortcutoption_Seq6Connor_1:
+    155 JUMP_TO 'L46group_end'
+  L46group_end:
+    156 POP 
+    157 JUMP_TO 'L40group_end'
+  L43shortcutoption_Seq6Connor_3:
+    158 CMD   <<PlaySFX1 Tower>>
+    159 CMD   <<VO_SEQ6 Tower 17>>
+    160 SAY   'Either way, disguising as a staff member is strictly forbidden according to park guidelines.'
+    161 OPT   '...Green' -> L49shortcutoption_Seq6Connor_1
+    162 SHOW_OPTIONS 
+    163 JUMP 
+  L49shortcutoption_Seq6Connor_1:
+    164 JUMP_TO 'L48group_end'
+  L48group_end:
+    165 POP 
+    166 JUMP_TO 'L40group_end'
+  L40group_end:
+    167 POP 
+    168 JUMP_TO 'L38group_end'
+  L38group_end:
+    169 POP 
+    170 JUMP_TO 'L33group_end'
+  L33group_end:
+    171 POP 
+    172 JUMP_TO 'L30group_end'
+  L32shortcutoption_Seq6Connor_2:
+    173 CMD   <<PlaySFX1 Tower>>
+    174 CMD   <<VO_SEQ6 Tower 16>>
+    175 SAY   'Knew your name?<br>You think he has been listenting?'
+    176 OPT   'PossiblyGreen' -> L51shortcutoption_Seq6Connor_1
+    177 OPT   "I'm not sureGreen" -> L52shortcutoption_Seq6Connor_2
+    178 OPT   "I don't knowGreen" -> L53shortcutoption_Seq6Connor_3
+    179 SHOW_OPTIONS 
+    180 JUMP 
+  L51shortcutoption_Seq6Connor_1:
+    181 CMD   <<PlaySFX1 Tower>>
+    182 CMD   <<VO_SEQ6 Tower 17>>
+    183 SAY   'Either way, disguising as a staff member is strictly forbidden according to park guidelines.'
+    184 OPT   '...Green' -> L55shortcutoption_Seq6Connor_1
+    185 SHOW_OPTIONS 
+    186 JUMP 
+  L55shortcutoption_Seq6Connor_1:
+    187 JUMP_TO 'L54group_end'
+  L54group_end:
+    188 POP 
+    189 JUMP_TO 'L50group_end'
+  L52shortcutoption_Seq6Connor_2:
+    190 CMD   <<PlaySFX1 Tower>>
+    191 CMD   <<VO_SEQ6 Tower 17>>
+    192 SAY   'Either way, disguising as a staff member is strictly forbidden according to park guidelines.'
+    193 OPT   '...Green' -> L57shortcutoption_Seq6Connor_1
+    194 SHOW_OPTIONS 
+    195 JUMP 
+  L57shortcutoption_Seq6Connor_1:
+    196 JUMP_TO 'L56group_end'
+  L56group_end:
+    197 POP 
+    198 JUMP_TO 'L50group_end'
+  L53shortcutoption_Seq6Connor_3:
+    199 CMD   <<PlaySFX1 Tower>>
+    200 CMD   <<VO_SEQ6 Tower 17>>
+    201 SAY   'Either way, disguising as a staff member is strictly forbidden according to park guidelines.'
+    202 OPT   '...Green' -> L59shortcutoption_Seq6Connor_1
+    203 SHOW_OPTIONS 
+    204 JUMP 
+  L59shortcutoption_Seq6Connor_1:
+    205 JUMP_TO 'L58group_end'
+  L58group_end:
+    206 POP 
+    207 JUMP_TO 'L50group_end'
+  L50group_end:
+    208 POP 
+    209 JUMP_TO 'L30group_end'
+  L30group_end:
+    210 POP 
+    211 CMD   <<PlaySFX1 Tower>>
+    212 CMD   <<VO_SEQ6 Tower 18>>
+    213 SAY   'Next time you see him, get his information or take a photo.<br>We need to figure this out.'
+    214 OPT   'SureGreen' -> L61shortcutoption_Seq6Connor_1
+    215 OPT   'I got thisGreen' -> L62shortcutoption_Seq6Connor_2
+    216 SHOW_OPTIONS 
+    217 JUMP 
+  L61shortcutoption_Seq6Connor_1:
+    218 JUMP_TO 'L60group_end'
+  L62shortcutoption_Seq6Connor_2:
+    219 JUMP_TO 'L60group_end'
+  L60group_end:
+    220 POP 
+    221 CMD   <<PlaySFX1 Tower>>
+    222 CMD   <<VO_SEQ6 Tower 19>>
+    223 SAY   "Anyways, I'm seeing that you've already reported.<br>I think I'm going to hit the sack now."
+    224 OPT   'Goodnight, ConnorGreen' -> L64shortcutoption_Seq6Connor_1
+    225 OPT   'Yeah me tooGreen' -> L65shortcutoption_Seq6Connor_2
+    226 SHOW_OPTIONS 
+    227 JUMP 
+  L64shortcutoption_Seq6Connor_1:
+    228 JUMP_TO 'L63group_end'
+  L65shortcutoption_Seq6Connor_2:
+    229 JUMP_TO 'L63group_end'
+  L63group_end:
+    230 POP 
+    231 CMD   <<PlaySFX1 Tower>>
+    232 CMD   <<VO_SEQ6 Tower 20>>
+    233 SAY   'Tower 12, signing off. Over and out.'
+    234 OPT   '^EXIT+ ...Green' -> L67shortcutoption_Seq6Connor_1
+    235 OPT   '^EXIT+ Goodnight. Over and outGreen' -> L68shortcutoption_Seq6Connor_2
+    236 SHOW_OPTIONS 
+    237 JUMP 
+  L67shortcutoption_Seq6Connor_1:
+    238 JUMP_TO 'L66group_end'
+  L68shortcutoption_Seq6Connor_2:
+    239 JUMP_TO 'L66group_end'
+  L66group_end:
+    240 POP 
+    241 CMD   <<ExitRadio Tower>>
+    242 STOP 
+=== NODE Seq6ConnorStandUp ===
+      0 CMD   <<SetupName UIManager "Connor Hawkins">>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<PlaySFX1 Tower>>
+      3 CMD   <<VO_SEQ6 Tower 0>>
+      4 SAY   "I see the smoke coming out of your tower, don't tell me you're not in there"
+      5 OPT   '...Green' -> L71shortcutoption_Seq6ConnorStandUp_1
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L71shortcutoption_Seq6ConnorStandUp_1:
+      8 JUMP_TO 'L70group_end'
+  L70group_end:
+      9 POP 
+     10 CMD   <<PlaySFX1 Tower>>
+     11 CMD   <<VO_SEQ6 Tower 1>>
+     12 SAY   'New guy...'
+     13 OPT   '...Green' -> L73shortcutoption_Seq6ConnorStandUp_1
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L73shortcutoption_Seq6ConnorStandUp_1:
+     16 JUMP_TO 'L72group_end'
+  L72group_end:
+     17 POP 
+     18 CMD   <<PlaySFX1 Tower>>
+     19 CMD   <<VO_SEQ6 Tower 2>>
+     20 SAY   'You there?'
+     21 OPT   '...Green' -> L75shortcutoption_Seq6ConnorStandUp_1
+     22 SHOW_OPTIONS 
+     23 JUMP 
+  L75shortcutoption_Seq6ConnorStandUp_1:
+     24 JUMP_TO 'L74group_end'
+  L74group_end:
+     25 POP 
+     26 CMD   <<Blink Tower>>
+     27 CMD   <<ExitRadio Tower>>
+     28 STOP 
+=== NODE Seq6Start ===
+      0 CMD   <<SetupName UIManager ???>>
+      1 CMD   <<PlayStatic Tower>>
+      2 CMD   <<PlaySFX2 Tower>>
+      3 CMD   <<PlaySFX1 Tower>>
+      4 CMD   <<VO_HIKER Tower 0>>
+      5 SAY   'Hello? Is anyone there?'
+      6 OPT   '...Green' -> L2shortcutoption_Seq6Start_1
+      7 SHOW_OPTIONS 
+      8 JUMP 
+  L2shortcutoption_Seq6Start_1:
+      9 JUMP_TO 'L1group_end'
+  L1group_end:
+     10 POP 
+     11 CMD   <<PlaySFX1 Tower>>
+     12 CMD   <<VO_HIKER Tower 30>>
+     13 SAY   'I... I need help'
+     14 OPT   '...Green' -> L4shortcutoption_Seq6Start_1
+     15 SHOW_OPTIONS 
+     16 JUMP 
+  L4shortcutoption_Seq6Start_1:
+     17 JUMP_TO 'L3group_end'
+  L3group_end:
+     18 POP 
+     19 CMD   <<PlaySFX1 Tower>>
+     20 CMD   <<VO_HIKER Tower 1>>
+     21 SAY   'Please, someone answer'
+     22 OPT   '...Green' -> L6shortcutoption_Seq6Start_1
+     23 SHOW_OPTIONS 
+     24 JUMP 
+  L6shortcutoption_Seq6Start_1:
+     25 JUMP_TO 'L5group_end'
+  L5group_end:
+     26 POP 
+     27 CMD   <<ExitRadio Tower>>
+     28 STOP 
+=== NODE Hiker1 ===
+      0 CMD   <<SetupName UIManager ???>>
+      1 CMD   <<PlayStatic Tower>>
+      2 CMD   <<PlaySFX2 Tower>>
+      3 CMD   <<PlaySFX1 Tower>>
+      4 CMD   <<VO_HIKER Tower 2>>
+      5 SAY   'Hello?<br>Can anyone hear me?<br>'
+      6 OPT   'This is jack, tower 11Green' -> L9shortcutoption_Hiker1_1
+      7 OPT   'I hear you loud and clearGreen' -> L10shortcutoption_Hiker1_2
+      8 OPT   "Who's this?Green" -> L11shortcutoption_Hiker1_3
+      9 SHOW_OPTIONS 
+     10 JUMP 
+  L9shortcutoption_Hiker1_1:
+     11 JUMP_TO 'L8group_end'
+  L10shortcutoption_Hiker1_2:
+     12 JUMP_TO 'L8group_end'
+  L11shortcutoption_Hiker1_3:
+     13 JUMP_TO 'L8group_end'
+  L8group_end:
+     14 POP 
+     15 CMD   <<PlaySFX1 Tower>>
+     16 CMD   <<SetupName UIManager Hiker>>
+     17 CMD   <<VO_HIKER Tower 3>>
+     18 SAY   "Oh, thank goodness... I'm lost and I'm... I'm really starting to freak out."
+     19 OPT   "What's going on?Green" -> L13shortcutoption_Hiker1_1
+     20 OPT   'Take a deep breathGreen' -> L14shortcutoption_Hiker1_2
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L13shortcutoption_Hiker1_1:
+     23 JUMP_TO 'L12group_end'
+  L14shortcutoption_Hiker1_2:
+     24 CMD   <<PlaySFX1 Tower>>
+     25 CMD   <<VO_HIKER Tower 25>>
+     26 SAY   'Okay... Okay...*DEEP BREATH*'
+     27 OPT   "What's going on?Green" -> L16shortcutoption_Hiker1_1
+     28 OPT   "What's the situation?Green" -> L17shortcutoption_Hiker1_2
+     29 SHOW_OPTIONS 
+     30 JUMP 
+  L16shortcutoption_Hiker1_1:
+     31 JUMP_TO 'L15group_end'
+  L17shortcutoption_Hiker1_2:
+     32 JUMP_TO 'L15group_end'
+  L15group_end:
+     33 POP 
+     34 JUMP_TO 'L12group_end'
+  L12group_end:
+     35 POP 
+     36 CMD   <<PlaySFX1 Tower>>
+     37 CMD   <<VO_HIKER Tower 4>>
+     38 SAY   "I... I don't even know where to start. I went out to explore the area and lost track of time."
+     39 OPT   '...Green' -> L19shortcutoption_Hiker1_1
+     40 SHOW_OPTIONS 
+     41 JUMP 
+  L19shortcutoption_Hiker1_1:
+     42 JUMP_TO 'L18group_end'
+  L18group_end:
+     43 POP 
+     44 CMD   <<PlaySFX1 Tower>>
+     45 CMD   <<VO_HIKER Tower 5>>
+     46 SAY   "And now it's dark, and I can't remember the trail back to my truck"
+     47 OPT   '...Green' -> L21shortcutoption_Hiker1_1
+     48 SHOW_OPTIONS 
+     49 JUMP 
+  L21shortcutoption_Hiker1_1:
+     50 JUMP_TO 'L20group_end'
+  L20group_end:
+     51 POP 
+     52 CMD   <<PlaySFX1 Tower>>
+     53 CMD   <<VO_HIKER Tower 6>>
+     54 SAY   "I think... I think I'm lost"
+     55 OPT   'Can you describe your clothing?Green' -> L23shortcutoption_Hiker1_1
+     56 OPT   'What is your current location?Green' -> L24shortcutoption_Hiker1_2
+     57 OPT   'What equipments do you have with you?Green' -> L25shortcutoption_Hiker1_3
+     58 SHOW_OPTIONS 
+     59 JUMP 
+  L23shortcutoption_Hiker1_1:
+     60 CMD   <<PlaySFX1 Tower>>
+     61 CMD   <<VO_HIKER Tower 7>>
+     62 SAY   "I'm wearing a red jacket, camo pants, and a green backpack."
+     63 OPT   'What equipments do you have with you?Green' -> L27shortcutoption_Hiker1_1
+     64 OPT   'What is your current location?Green' -> L28shortcutoption_Hiker1_2
+     65 SHOW_OPTIONS 
+     66 JUMP 
+  L27shortcutoption_Hiker1_1:
+     67 CMD   <<PlaySFX1 Tower>>
+     68 CMD   <<VO_HIKER Tower 8>>
+     69 SAY   'I have a flashlight, a compass, a fully charged two-way radio, a flare gun, and some of my camping equipments'
+     70 OPT   'What is your current location?Green' -> L30shortcutoption_Hiker1_1
+     71 SHOW_OPTIONS 
+     72 JUMP 
+  L30shortcutoption_Hiker1_1:
+     73 JUMP_TO 'L29group_end'
+  L29group_end:
+     74 POP 
+     75 JUMP_TO 'L26group_end'
+  L28shortcutoption_Hiker1_2:
+     76 JUMP_TO 'L26group_end'
+  L26group_end:
+     77 POP 
+     78 JUMP_TO 'L22group_end'
+  L24shortcutoption_Hiker1_2:
+     79 JUMP_TO 'L22group_end'
+  L25shortcutoption_Hiker1_3:
+     80 CMD   <<PlaySFX1 Tower>>
+     81 CMD   <<VO_HIKER Tower 8>>
+     82 SAY   'I have a flashlight, a compass, a fully charged two-way radio, a flare gun, and my camping equipments'
+     83 OPT   'Can you describe your clothing?Green' -> L32shortcutoption_Hiker1_1
+     84 OPT   'What is your current location?Green' -> L33shortcutoption_Hiker1_2
+     85 SHOW_OPTIONS 
+     86 JUMP 
+  L32shortcutoption_Hiker1_1:
+     87 CMD   <<PlaySFX1 Tower>>
+     88 CMD   <<VO_HIKER Tower 7>>
+     89 SAY   "I'm wearing a red jacket, camo pants, and a green backpack."
+     90 OPT   'What is your current location?Green' -> L35shortcutoption_Hiker1_1
+     91 SHOW_OPTIONS 
+     92 JUMP 
+  L35shortcutoption_Hiker1_1:
+     93 JUMP_TO 'L34group_end'
+  L34group_end:
+     94 POP 
+     95 JUMP_TO 'L31group_end'
+  L33shortcutoption_Hiker1_2:
+     96 JUMP_TO 'L31group_end'
+  L31group_end:
+     97 POP 
+     98 JUMP_TO 'L22group_end'
+  L22group_end:
+     99 POP 
+    100 CMD   <<PlaySFX1 Tower>>
+    101 CMD   <<VO_HIKER Tower 9>>
+    102 SAY   "I-I'm in the middle of the woods, on this trail surrounded by trees. Everything looks different at night."
+    103 OPT   '...Green' -> L37shortcutoption_Hiker1_1
+    104 SHOW_OPTIONS 
+    105 JUMP 
+  L37shortcutoption_Hiker1_1:
+    106 JUMP_TO 'L36group_end'
+  L36group_end:
+    107 POP 
+    108 CMD   <<PlaySFX1 Tower>>
+    109 CMD   <<VO_HIKER Tower 11>>
+    110 SAY   "I thought shooting a few flare gun shots might get someone's attention, but no one's come yet."
+    111 OPT   '...Green' -> L39shortcutoption_Hiker1_1
+    112 SHOW_OPTIONS 
+    113 JUMP 
+  L39shortcutoption_Hiker1_1:
+    114 JUMP_TO 'L38group_end'
+  L38group_end:
+    115 POP 
+    116 CMD   <<PlaySFX1 Tower>>
+    117 CMD   <<VO_HIKER Tower 10>>
+    118 SAY   'all it did was light up the trees and make everything look even scarier. I just want to find a way out of here.'
+    119 OPT   'Can you describe your surroundings?Green' -> L41shortcutoption_Hiker1_1
+    120 OPT   'Do you remember any landmarks?Green' -> L42shortcutoption_Hiker1_2
+    121 OPT   'What direction are you facing right now?Green' -> L43shortcutoption_Hiker1_3
+    122 SHOW_OPTIONS 
+    123 JUMP 
+  L41shortcutoption_Hiker1_1:
+    124 CMD   <<PlaySFX1 Tower>>
+    125 CMD   <<VO_HIKER Tower 12>>
+    126 SAY   "I'm surrounded by trees, and I remember passing a small stream earlier"
+    127 OPT   'What direction are you facing right now?Green' -> L45shortcutoption_Hiker1_1
+    128 SHOW_OPTIONS 
+    129 JUMP 
+  L45shortcutoption_Hiker1_1:
+    130 CMD   <<PlaySFX1 Tower>>
+    131 CMD   <<VO_HIKER Tower 13>>
+    132 SAY   "I'm walking towards west right now 'cause I remember walking east when I came here"
+    133 OPT   '...Green' -> L47shortcutoption_Hiker1_1
+    134 SHOW_OPTIONS 
+    135 JUMP 
+  L47shortcutoption_Hiker1_1:
+    136 JUMP_TO 'L46group_end'
+  L46group_end:
+    137 POP 
+    138 JUMP_TO 'L44group_end'
+  L44group_end:
+    139 POP 
+    140 JUMP_TO 'L40group_end'
+  L42shortcutoption_Hiker1_2:
+    141 CMD   <<PlaySFX1 Tower>>
+    142 CMD   <<VO_HIKER Tower 14>>
+    143 SAY   'I remember passing a small stream earlier'
+    144 OPT   'What direction are you facing right now?Green' -> L49shortcutoption_Hiker1_1
+    145 SHOW_OPTIONS 
+    146 JUMP 
+  L49shortcutoption_Hiker1_1:
+    147 CMD   <<PlaySFX1 Tower>>
+    148 CMD   <<VO_HIKER Tower 13>>
+    149 SAY   "I'm walking towards west right now 'cause I remember walking east when I came here"
+    150 OPT   '...Green' -> L51shortcutoption_Hiker1_1
+    151 SHOW_OPTIONS 
+    152 JUMP 
+  L51shortcutoption_Hiker1_1:
+    153 JUMP_TO 'L50group_end'
+  L50group_end:
+    154 POP 
+    155 JUMP_TO 'L48group_end'
+  L48group_end:
+    156 POP 
+    157 JUMP_TO 'L40group_end'
+  L43shortcutoption_Hiker1_3:
+    158 CMD   <<PlaySFX1 Tower>>
+    159 CMD   <<VO_HIKER Tower 13>>
+    160 SAY   "I'm walking towards west right now 'cause I remember walking towards east when I came here"
+    161 OPT   'Do you remember any landmarks?Green' -> L53shortcutoption_Hiker1_1
+    162 SHOW_OPTIONS 
+    163 JUMP 
+  L53shortcutoption_Hiker1_1:
+    164 CMD   <<PlaySFX1 Tower>>
+    165 CMD   <<VO_HIKER Tower 14>>
+    166 SAY   'I remember passing a small stream earlier'
+    167 OPT   '...Green' -> L55shortcutoption_Hiker1_1
+    168 SHOW_OPTIONS 
+    169 JUMP 
+  L55shortcutoption_Hiker1_1:
+    170 JUMP_TO 'L54group_end'
+  L54group_end:
+    171 POP 
+    172 JUMP_TO 'L52group_end'
+  L52group_end:
+    173 POP 
+    174 JUMP_TO 'L40group_end'
+  L40group_end:
+    175 POP 
+    176 CMD   <<PlaySFX1 Tower>>
+    177 CMD   <<PlayMysteryBuilder Tower>>
+    178 CMD   <<VO_HIKER Tower 15>>
+    179 SAY   'Oh thank goodness.. I see it'
+    180 OPT   'see what?Green' -> L57shortcutoption_Hiker1_1
+    181 OPT   'what is it?Green' -> L58shortcutoption_Hiker1_2
+    182 SHOW_OPTIONS 
+    183 JUMP 
+  L57shortcutoption_Hiker1_1:
+    184 JUMP_TO 'L56group_end'
+  L58shortcutoption_Hiker1_2:
+    185 JUMP_TO 'L56group_end'
+  L56group_end:
+    186 POP 
+    187 CMD   <<PlaySFX1 Tower>>
+    188 CMD   <<VO_HIKER Tower 16>>
+    189 SAY   "I'm at a trail intersection now but I can't remember if I should take the right trail or the left to get back to the trailhead?<br>Can you help me?"
+    190 OPT   'Take the right trailGreen' -> L60shortcutoption_Hiker1_1
+    191 OPT   'Take the left trailGreen' -> L61shortcutoption_Hiker1_2
+    192 OPT   '^exit+ let me scan the map and get back to youGreen' -> L62shortcutoption_Hiker1_3
+    193 SHOW_OPTIONS 
+    194 JUMP 
+  L60shortcutoption_Hiker1_1:
+    195 CMD   <<PlaySFX1 Tower>>
+    196 CMD   <<CamperDead Tower>>
+    197 CMD   <<VO_HIKER Tower 17>>
+    198 SAY   "I'm going to be honest, I had my suspicions on the left trail, but if you say so - right one it is!"
+    199 OPT   '...Green' -> L64shortcutoption_Hiker1_1
+    200 SHOW_OPTIONS 
+    201 JUMP 
+  L64shortcutoption_Hiker1_1:
+    202 JUMP_TO 'L63group_end'
+  L63group_end:
+    203 POP 
+    204 JUMP_TO 'L59group_end'
+  L61shortcutoption_Hiker1_2:
+    205 CMD   <<PlaySFX1 Tower>>
+    206 CMD   <<CamperNotDead Tower>>
+    207 CMD   <<VO_HIKER Tower 18>>
+    208 SAY   'Aha! I knew it! I thought it looked familiar'
+    209 OPT   '...Green' -> L66shortcutoption_Hiker1_1
+    210 SHOW_OPTIONS 
+    211 JUMP 
+  L66shortcutoption_Hiker1_1:
+    212 JUMP_TO 'L65group_end'
+  L65group_end:
+    213 POP 
+    214 JUMP_TO 'L59group_end'
+  L62shortcutoption_Hiker1_3:
+    215 CMD   <<AnxiousConvo Tower>>
+    216 CMD   <<ExitRadio Tower>>
+    217 JUMP_TO 'L59group_end'
+  L59group_end:
+    218 POP 
+    219 CMD   <<PlaySFX1 Tower>>
+    220 CMD   <<VO_HIKER Tower 19>>
+    221 SAY   "I couldn't have trusted myself with this decision. Thanks for helping me through this!"
+    222 OPT   "You're welcomeGreen" -> L68shortcutoption_Hiker1_1
+    223 OPT   'Making decisions in the dark can be challengingGreen' -> L69shortcutoption_Hiker1_2
+    224 OPT   'Hope you reach the trailhead safelyGreen' -> L70shortcutoption_Hiker1_3
+    225 SHOW_OPTIONS 
+    226 JUMP 
+  L68shortcutoption_Hiker1_1:
+    227 JUMP_TO 'L67group_end'
+  L69shortcutoption_Hiker1_2:
+    228 JUMP_TO 'L67group_end'
+  L70shortcutoption_Hiker1_3:
+    229 JUMP_TO 'L67group_end'
+  L67group_end:
+    230 POP 
+    231 CMD   <<PlaySFX1 Tower>>
+    232 SAY   '...'
+    233 OPT   '...Green' -> L72shortcutoption_Hiker1_1
+    234 SHOW_OPTIONS 
+    235 JUMP 
+  L72shortcutoption_Hiker1_1:
+    236 JUMP_TO 'L71group_end'
+  L71group_end:
+    237 POP 
+    238 CMD   <<PlaySFX1 Tower>>
+    239 SAY   '...'
+    240 OPT   '...Green' -> L74shortcutoption_Hiker1_1
+    241 SHOW_OPTIONS 
+    242 JUMP 
+  L74shortcutoption_Hiker1_1:
+    243 JUMP_TO 'L73group_end'
+  L73group_end:
+    244 POP 
+    245 CMD   <<PlaySFX1 Tower>>
+    246 CMD   <<VO_HIKER Tower 20>>
+    247 SAY   "I'M RIGHT HERE"
+    248 OPT   'What?Green' -> L76shortcutoption_Hiker1_1
+    249 OPT   'What do you mean?Green' -> L77shortcutoption_Hiker1_2
+    250 SHOW_OPTIONS 
+    251 JUMP 
+  L76shortcutoption_Hiker1_1:
+    252 JUMP_TO 'L75group_end'
+  L77shortcutoption_Hiker1_2:
+    253 JUMP_TO 'L75group_end'
+  L75group_end:
+    254 POP 
+    255 CMD   <<PlaySFX1 Tower>>
+    256 CMD   <<PlaySpookySiren Tower>>
+    257 CMD   <<VO_HIKER Tower 21>>
+    258 SAY   'I hear you'
+    259 OPT   '...Green' -> L79shortcutoption_Hiker1_1
+    260 SHOW_OPTIONS 
+    261 JUMP 
+  L79shortcutoption_Hiker1_1:
+    262 JUMP_TO 'L78group_end'
+  L78group_end:
+    263 POP 
+    264 CMD   <<PlaySFX1 Tower>>
+    265 CMD   <<PlayScaryViolin Tower>>
+    266 CMD   <<VO_HIKER Tower 22>>
+    267 SAY   'I hear your whistles'
+    268 OPT   "That's not meGreen" -> L81shortcutoption_Hiker1_1
+    269 OPT   "I'm in my tower right nowGreen" -> L82shortcutoption_Hiker1_2
+    270 SHOW_OPTIONS 
+    271 JUMP 
+  L81shortcutoption_Hiker1_1:
+    272 JUMP_TO 'L80group_end'
+  L82shortcutoption_Hiker1_2:
+    273 JUMP_TO 'L80group_end'
+  L80group_end:
+    274 POP 
+    275 CMD   <<PlaySFX1 Tower>>
+    276 CMD   <<VO_HIKER Tower 23>>
+    277 SAY   'What? I SEE YOU behind the trees to my right'
+    278 OPT   'Are you sure?Green' -> L84shortcutoption_Hiker1_1
+    279 OPT   "That's not meGreen" -> L85shortcutoption_Hiker1_2
+    280 SHOW_OPTIONS 
+    281 JUMP 
+  L84shortcutoption_Hiker1_1:
+    282 JUMP_TO 'L83group_end'
+  L85shortcutoption_Hiker1_2:
+    283 JUMP_TO 'L83group_end'
+  L83group_end:
+    284 POP 
+    285 CMD   <<PlaySFX1 Tower>>
+    286 CMD   <<StartKnocking Tower>>
+    287 CMD   <<VO_HIKER Tower 24>>
+    288 SAY   "you're freaking me out now tower guy"
+    289 OPT   'Stay right were you areGreen' -> L87shortcutoption_Hiker1_1
+    290 OPT   'Make a runGreen' -> L88shortcutoption_Hiker1_2
+    291 OPT   'What does it look likeGreen' -> L89shortcutoption_Hiker1_3
+    292 SHOW_OPTIONS 
+    293 JUMP 
+  L87shortcutoption_Hiker1_1:
+    294 JUMP_TO 'L86group_end'
+  L88shortcutoption_Hiker1_2:
+    295 JUMP_TO 'L86group_end'
+  L89shortcutoption_Hiker1_3:
+    296 JUMP_TO 'L86group_end'
+  L86group_end:
+    297 POP 
+    298 CMD   <<ExitRadio Tower>>
+    299 STOP 
+=== NODE Anxious ===
+      0 CMD   <<SetupName UIManager Hiker>>
+      1 CMD   <<PlayStatic Tower>>
+      2 CMD   <<PlaySFX2 Tower>>
+      3 CMD   <<PlaySFX1 Tower>>
+      4 CMD   <<VO_HIKER Tower 29>>
+      5 SAY   'Hello?'
+      6 OPT   '...Green' -> L92shortcutoption_Anxious_1
+      7 SHOW_OPTIONS 
+      8 JUMP 
+  L92shortcutoption_Anxious_1:
+      9 JUMP_TO 'L91group_end'
+  L91group_end:
+     10 POP 
+     11 CMD   <<PlaySFX1 Tower>>
+     12 CMD   <<VO_HIKER Tower 26>>
+     13 SAY   'Are you still there?'
+     14 OPT   '...Green' -> L94shortcutoption_Anxious_1
+     15 SHOW_OPTIONS 
+     16 JUMP 
+  L94shortcutoption_Anxious_1:
+     17 JUMP_TO 'L93group_end'
+  L93group_end:
+     18 POP 
+     19 CMD   <<PlaySFX1 Tower>>
+     20 CMD   <<VO_HIKER Tower 27>>
+     21 SAY   'Both of these trails seem pretty similar'
+     22 OPT   '...Green' -> L96shortcutoption_Anxious_1
+     23 SHOW_OPTIONS 
+     24 JUMP 
+  L96shortcutoption_Anxious_1:
+     25 JUMP_TO 'L95group_end'
+  L95group_end:
+     26 POP 
+     27 CMD   <<PlaySFX1 Tower>>
+     28 CMD   <<VO_HIKER Tower 28>>
+     29 SAY   "I'm just so anxious about making a mistake and going further away from the road. Please help."
+     30 OPT   '...Green' -> L98shortcutoption_Anxious_1
+     31 SHOW_OPTIONS 
+     32 JUMP 
+  L98shortcutoption_Anxious_1:
+     33 JUMP_TO 'L97group_end'
+  L97group_end:
+     34 POP 
+     35 CMD   <<ExitRadio Tower>>
+     36 STOP 
+=== NODE Hiker2 ===
+      0 CMD   <<SetupName UIManager ???>>
+      1 CMD   <<PlayStatic Tower>>
+      2 CMD   <<PlaySFX2 Tower>>
+      3 CMD   <<SetupName UIManager Hiker>>
+      4 CMD   <<PlaySFX1 Tower>>
+      5 CMD   <<VO_HIKER Tower 16>>
+      6 SAY   "I'm at a trail intersection now but I can't remember if I should take the right trail or the left to get back to the trailhead?<br>Can you help me?"
+      7 OPT   'Take the right trailGreen' -> L101shortcutoption_Hiker2_1
+      8 OPT   'Take the left trailGreen' -> L102shortcutoption_Hiker2_2
+      9 OPT   '^exit+ let me scan the map and get back to youGreen' -> L103shortcutoption_Hiker2_3
+     10 SHOW_OPTIONS 
+     11 JUMP 
+  L101shortcutoption_Hiker2_1:
+     12 CMD   <<PlaySFX1 Tower>>
+     13 CMD   <<CamperDead Tower>>
+     14 CMD   <<VO_HIKER Tower 17>>
+     15 SAY   "I'm going to be honest, I had my suspicions on the left trail, but if you say so - right one it is!"
+     16 OPT   '...Green' -> L105shortcutoption_Hiker2_1
+     17 SHOW_OPTIONS 
+     18 JUMP 
+  L105shortcutoption_Hiker2_1:
+     19 JUMP_TO 'L104group_end'
+  L104group_end:
+     20 POP 
+     21 JUMP_TO 'L100group_end'
+  L102shortcutoption_Hiker2_2:
+     22 CMD   <<PlaySFX1 Tower>>
+     23 CMD   <<CamperNotDead Tower>>
+     24 CMD   <<VO_HIKER Tower 18>>
+     25 SAY   'Aha! I knew it! I thought it looked familiar'
+     26 OPT   '...Green' -> L107shortcutoption_Hiker2_1
+     27 SHOW_OPTIONS 
+     28 JUMP 
+  L107shortcutoption_Hiker2_1:
+     29 JUMP_TO 'L106group_end'
+  L106group_end:
+     30 POP 
+     31 JUMP_TO 'L100group_end'
+  L103shortcutoption_Hiker2_3:
+     32 CMD   <<AnxiousConvo Tower>>
+     33 CMD   <<ExitRadio Tower>>
+     34 JUMP_TO 'L100group_end'
+  L100group_end:
+     35 POP 
+     36 CMD   <<PlaySFX1 Tower>>
+     37 CMD   <<VO_HIKER Tower 19>>
+     38 SAY   "I couldn't have trusted myself with this decision. Thanks for helping me through this!"
+     39 OPT   "You're welcomeGreen" -> L109shortcutoption_Hiker2_1
+     40 OPT   'Making decisions in the dark can be challengingGreen' -> L110shortcutoption_Hiker2_2
+     41 OPT   'Hope you reach back to the trailhead safelyGreen' -> L111shortcutoption_Hiker2_3
+     42 SHOW_OPTIONS 
+     43 JUMP 
+  L109shortcutoption_Hiker2_1:
+     44 JUMP_TO 'L108group_end'
+  L110shortcutoption_Hiker2_2:
+     45 JUMP_TO 'L108group_end'
+  L111shortcutoption_Hiker2_3:
+     46 JUMP_TO 'L108group_end'
+  L108group_end:
+     47 POP 
+     48 CMD   <<PlaySFX1 Tower>>
+     49 SAY   '...'
+     50 OPT   '...Green' -> L113shortcutoption_Hiker2_1
+     51 SHOW_OPTIONS 
+     52 JUMP 
+  L113shortcutoption_Hiker2_1:
+     53 JUMP_TO 'L112group_end'
+  L112group_end:
+     54 POP 
+     55 CMD   <<PlaySFX1 Tower>>
+     56 SAY   '...'
+     57 OPT   '...Green' -> L115shortcutoption_Hiker2_1
+     58 SHOW_OPTIONS 
+     59 JUMP 
+  L115shortcutoption_Hiker2_1:
+     60 JUMP_TO 'L114group_end'
+  L114group_end:
+     61 POP 
+     62 CMD   <<PlaySFX1 Tower>>
+     63 SAY   '...'
+     64 OPT   '...Green' -> L117shortcutoption_Hiker2_1
+     65 SHOW_OPTIONS 
+     66 JUMP 
+  L117shortcutoption_Hiker2_1:
+     67 JUMP_TO 'L116group_end'
+  L116group_end:
+     68 POP 
+     69 CMD   <<PlaySFX1 Tower>>
+     70 CMD   <<VO_HIKER Tower 20>>
+     71 SAY   "I'M RIGHT HERE"
+     72 OPT   'What?Green' -> L119shortcutoption_Hiker2_1
+     73 OPT   'What do you mean?Green' -> L120shortcutoption_Hiker2_2
+     74 SHOW_OPTIONS 
+     75 JUMP 
+  L119shortcutoption_Hiker2_1:
+     76 JUMP_TO 'L118group_end'
+  L120shortcutoption_Hiker2_2:
+     77 JUMP_TO 'L118group_end'
+  L118group_end:
+     78 POP 
+     79 CMD   <<PlaySFX1 Tower>>
+     80 CMD   <<PlaySpookySiren Tower>>
+     81 CMD   <<VO_HIKER Tower 21>>
+     82 SAY   'I hear you'
+     83 OPT   '...Green' -> L122shortcutoption_Hiker2_1
+     84 SHOW_OPTIONS 
+     85 JUMP 
+  L122shortcutoption_Hiker2_1:
+     86 JUMP_TO 'L121group_end'
+  L121group_end:
+     87 POP 
+     88 CMD   <<PlaySFX1 Tower>>
+     89 CMD   <<PlayScaryViolin Tower>>
+     90 CMD   <<VO_HIKER Tower 22>>
+     91 SAY   'I hear your whistles'
+     92 OPT   "That's not meGreen" -> L124shortcutoption_Hiker2_1
+     93 OPT   "I'm in my tower right nowGreen" -> L125shortcutoption_Hiker2_2
+     94 SHOW_OPTIONS 
+     95 JUMP 
+  L124shortcutoption_Hiker2_1:
+     96 JUMP_TO 'L123group_end'
+  L125shortcutoption_Hiker2_2:
+     97 JUMP_TO 'L123group_end'
+  L123group_end:
+     98 POP 
+     99 CMD   <<PlaySFX1 Tower>>
+    100 CMD   <<VO_HIKER Tower 23>>
+    101 SAY   'What? I SEE YOU behind the trees to my right'
+    102 OPT   'Are you sure?Green' -> L127shortcutoption_Hiker2_1
+    103 OPT   "That's not meGreen" -> L128shortcutoption_Hiker2_2
+    104 SHOW_OPTIONS 
+    105 JUMP 
+  L127shortcutoption_Hiker2_1:
+    106 JUMP_TO 'L126group_end'
+  L128shortcutoption_Hiker2_2:
+    107 JUMP_TO 'L126group_end'
+  L126group_end:
+    108 POP 
+    109 CMD   <<PlaySFX1 Tower>>
+    110 CMD   <<StartKnocking Tower>>
+    111 CMD   <<VO_HIKER Tower 24>>
+    112 SAY   "you're freaking me out now tower guy"
+    113 OPT   'Stay right were you areGreen' -> L130shortcutoption_Hiker2_1
+    114 OPT   'Make a runGreen' -> L131shortcutoption_Hiker2_2
+    115 OPT   'What does it look likeGreen' -> L132shortcutoption_Hiker2_3
+    116 SHOW_OPTIONS 
+    117 JUMP 
+  L130shortcutoption_Hiker2_1:
+    118 JUMP_TO 'L129group_end'
+  L131shortcutoption_Hiker2_2:
+    119 JUMP_TO 'L129group_end'
+  L132shortcutoption_Hiker2_3:
+    120 JUMP_TO 'L129group_end'
+  L129group_end:
+    121 POP 
+    122 CMD   <<ExitRadio Tower>>
+    123 STOP 
+=== NODE Seq7Connor ===
+      0 CMD   <<PlayStatic Tower>>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<SetupName UIManager "Connor Hawkins">>
+      3 CMD   <<PlaySFX1 Tower>>
+      4 CMD   <<VO_SEQ7 Tower 0>>
+      5 SAY   'New guy, you got a minute?'
+      6 OPT   'SureGreen' -> L2shortcutoption_Seq7Connor_1
+      7 OPT   "I'm listeningGreen" -> L3shortcutoption_Seq7Connor_2
+      8 OPT   'What is it?Green' -> L4shortcutoption_Seq7Connor_3
+      9 SHOW_OPTIONS 
+     10 JUMP 
+  L2shortcutoption_Seq7Connor_1:
+     11 JUMP_TO 'L1group_end'
+  L3shortcutoption_Seq7Connor_2:
+     12 JUMP_TO 'L1group_end'
+  L4shortcutoption_Seq7Connor_3:
+     13 JUMP_TO 'L1group_end'
+  L1group_end:
+     14 POP 
+     15 CMD   <<PlaySFX1 Tower>>
+     16 CMD   <<VO_SEQ7 Tower 1>>
+     17 SAY   "Well, good news, just heard from the HQ, they say we've got a new system update on the computer."
+     18 OPT   '...Green' -> L6shortcutoption_Seq7Connor_1
+     19 SHOW_OPTIONS 
+     20 JUMP 
+  L6shortcutoption_Seq7Connor_1:
+     21 JUMP_TO 'L5group_end'
+  L5group_end:
+     22 POP 
+     23 CMD   <<PlaySFX1 Tower>>
+     24 CMD   <<VO_SEQ7 Tower 2>>
+     25 SAY   "Mitch wanted me to let you know, They say it's an important security update."
+     26 OPT   '...Green' -> L8shortcutoption_Seq7Connor_1
+     27 SHOW_OPTIONS 
+     28 JUMP 
+  L8shortcutoption_Seq7Connor_1:
+     29 JUMP_TO 'L7group_end'
+  L7group_end:
+     30 POP 
+     31 CMD   <<PlaySFX1 Tower>>
+     32 CMD   <<VO_SEQ7 Tower 3>>
+     33 SAY   'No more snoopers, I guess.'
+     34 OPT   '^EXIT+ thanks for letting me know.Green' -> L10shortcutoption_Seq7Connor_1
+     35 OPT   'How do I update the computer?Green' -> L11shortcutoption_Seq7Connor_2
+     36 OPT   'What is it about?Green' -> L12shortcutoption_Seq7Connor_3
+     37 SHOW_OPTIONS 
+     38 JUMP 
+  L10shortcutoption_Seq7Connor_1:
+     39 CMD   <<ExitRadio Tower>>
+     40 JUMP_TO 'L9group_end'
+  L11shortcutoption_Seq7Connor_2:
+     41 PUSH_STRING 'Seq7Update'
+     42 RUN_NODE 
+     43 JUMP_TO 'L9group_end'
+  L12shortcutoption_Seq7Connor_3:
+     44 CMD   <<PlaySFX1 Tower>>
+     45 CMD   <<VO_SEQ7 Tower 4>>
+     46 SAY   "Well, they say they've optimized the reporting software, improved the communication system, and some much required security patches."
+     47 OPT   '...Green' -> L14shortcutoption_Seq7Connor_1
+     48 SHOW_OPTIONS 
+     49 JUMP 
+  L14shortcutoption_Seq7Connor_1:
+     50 CMD   <<PlaySFX1 Tower>>
+     51 CMD   <<VO_SEQ7 Tower 5>>
+     52 SAY   'But if you ask, it all looks the same to my eyes'
+     53 OPT   'How do I update the computer?Green' -> L16shortcutoption_Seq7Connor_1
+     54 SHOW_OPTIONS 
+     55 JUMP 
+  L16shortcutoption_Seq7Connor_1:
+     56 PUSH_STRING 'Seq7Update'
+     57 RUN_NODE 
+     58 JUMP_TO 'L15group_end'
+  L15group_end:
+     59 POP 
+     60 JUMP_TO 'L13group_end'
+  L13group_end:
+     61 POP 
+     62 JUMP_TO 'L9group_end'
+  L9group_end:
+     63 POP 
+     64 STOP 
+=== NODE Seq7Update ===
+      0 CMD   <<PlaySFX1 Tower>>
+      1 CMD   <<VO_SEQ7 Tower 6>>
+      2 SAY   "Well, to be honest with you - all this new technology ...it's not really my thing"
+      3 OPT   '...Green' -> L19shortcutoption_Seq7Update_1
+      4 SHOW_OPTIONS 
+      5 JUMP 
+  L19shortcutoption_Seq7Update_1:
+      6 JUMP_TO 'L18group_end'
+  L18group_end:
+      7 POP 
+      8 CMD   <<PlaySFX1 Tower>>
+      9 CMD   <<VO_SEQ7 Tower 7>>
+     10 SAY   'Dare I say it, these computers are probably going to take all of our jobs one day'
+     11 OPT   '...Green' -> L21shortcutoption_Seq7Update_1
+     12 SHOW_OPTIONS 
+     13 JUMP 
+  L21shortcutoption_Seq7Update_1:
+     14 JUMP_TO 'L20group_end'
+  L20group_end:
+     15 POP 
+     16 CMD   <<PlaySFX1 Tower>>
+     17 CMD   <<VO_SEQ7 Tower 8>>
+     18 SAY   'Anyways, for now use the console to run the new system update.'
+     19 OPT   '...Green' -> L23shortcutoption_Seq7Update_1
+     20 SHOW_OPTIONS 
+     21 JUMP 
+  L23shortcutoption_Seq7Update_1:
+     22 JUMP_TO 'L22group_end'
+  L22group_end:
+     23 POP 
+     24 CMD   <<PlaySFX1 Tower>>
+     25 CMD   <<VO_SEQ7 Tower 9>>
+     26 SAY   "I'm sure a young man like you can figure it out"
+     27 OPT   '^EXIT+ Thanks, I got it.Green' -> L25shortcutoption_Seq7Update_1
+     28 OPT   '^EXIT+ Thanks for letting me know.Green' -> L26shortcutoption_Seq7Update_2
+     29 OPT   '^EXIT+ On it.Green' -> L27shortcutoption_Seq7Update_3
+     30 SHOW_OPTIONS 
+     31 JUMP 
+  L25shortcutoption_Seq7Update_1:
+     32 JUMP_TO 'L24group_end'
+  L26shortcutoption_Seq7Update_2:
+     33 JUMP_TO 'L24group_end'
+  L27shortcutoption_Seq7Update_3:
+     34 JUMP_TO 'L24group_end'
+  L24group_end:
+     35 POP 
+     36 CMD   <<ExitRadio Tower>>
+     37 STOP 
+=== NODE Seq7AskAgain ===
+      0 CMD   <<PlayStatic Tower>>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<SetupName UIManager "Connor Hawkins">>
+      3 CMD   <<PlaySFX1 Tower>>
+      4 SAY   '^STATIC+'
+      5 OPT   '...Green' -> L30shortcutoption_Seq7AskAgain_1
+      6 OPT   'How to I update the computer?Green' -> L31shortcutoption_Seq7AskAgain_2
+      7 SHOW_OPTIONS 
+      8 JUMP 
+  L30shortcutoption_Seq7AskAgain_1:
+      9 CMD   <<ExitRadio Tower>>
+     10 JUMP_TO 'L29group_end'
+  L31shortcutoption_Seq7AskAgain_2:
+     11 PUSH_STRING 'Seq7Update'
+     12 RUN_NODE 
+     13 JUMP_TO 'L29group_end'
+  L29group_end:
+     14 POP 
+     15 STOP 
+=== NODE Seq8Connor ===
+      0 CMD   <<PlayStatic Tower>>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<SetupName UIManager "Connor Hawkins">>
+      3 CMD   <<PlaySFX1 Tower>>
+      4 CMD   <<VO_SEQ8 Tower 0>>
+      5 SAY   '*SIGH* We got another one'
+      6 OPT   '...Green' -> L2shortcutoption_Seq8Connor_1
+      7 SHOW_OPTIONS 
+      8 JUMP 
+  L2shortcutoption_Seq8Connor_1:
+      9 JUMP_TO 'L1group_end'
+  L1group_end:
+     10 POP 
+     11 CMD   <<PlaySFX1 Tower>>
+     12 CMD   <<VO_SEQ8 Tower 1>>
+     13 SAY   "I know it's late but you're gonna wanna see this one, Jack"
+     14 OPT   '...Green' -> L4shortcutoption_Seq8Connor_1
+     15 SHOW_OPTIONS 
+     16 JUMP 
+  L4shortcutoption_Seq8Connor_1:
+     17 JUMP_TO 'L3group_end'
+  L3group_end:
+     18 POP 
+     19 CMD   <<PlaySFX1 Tower>>
+     20 CMD   <<VO_SEQ8 Tower 2>>
+     21 SAY   '*SIGH*'
+     22 OPT   '...Green' -> L6shortcutoption_Seq8Connor_1
+     23 SHOW_OPTIONS 
+     24 JUMP 
+  L6shortcutoption_Seq8Connor_1:
+     25 JUMP_TO 'L5group_end'
+  L5group_end:
+     26 POP 
+     27 CMD   <<PlaySFX1 Tower>>
+     28 CMD   <<VO_SEQ8 Tower 3>>
+     29 SAY   'Jack?'
+     30 OPT   '...Green' -> L8shortcutoption_Seq8Connor_1
+     31 SHOW_OPTIONS 
+     32 JUMP 
+  L8shortcutoption_Seq8Connor_1:
+     33 JUMP_TO 'L7group_end'
+  L7group_end:
+     34 POP 
+     35 CMD   <<PlaySFX1 Tower>>
+     36 CMD   <<VO_SEQ8 Tower 4>>
+     37 SAY   'JACK?'
+     38 OPT   '...Green' -> L10shortcutoption_Seq8Connor_1
+     39 SHOW_OPTIONS 
+     40 JUMP 
+  L10shortcutoption_Seq8Connor_1:
+     41 JUMP_TO 'L9group_end'
+  L9group_end:
+     42 POP 
+     43 CMD   <<PlaySFX1 Tower>>
+     44 CMD   <<VO_SEQ8 Tower 5>>
+     45 SAY   'I need you to wake up'
+     46 OPT   '...Green' -> L12shortcutoption_Seq8Connor_1
+     47 SHOW_OPTIONS 
+     48 JUMP 
+  L12shortcutoption_Seq8Connor_1:
+     49 JUMP_TO 'L11group_end'
+  L11group_end:
+     50 POP 
+     51 CMD   <<PlaySFX1 Tower>>
+     52 CMD   <<VO_SEQ8 Tower 6>>
+     53 SAY   'Do you copy?'
+     54 OPT   '...Green' -> L14shortcutoption_Seq8Connor_1
+     55 SHOW_OPTIONS 
+     56 JUMP 
+  L14shortcutoption_Seq8Connor_1:
+     57 JUMP_TO 'L13group_end'
+  L13group_end:
+     58 POP 
+     59 CMD   <<Blink Tower>>
+     60 CMD   <<ExitRadio Tower>>
+     61 STOP 
+=== NODE Seq8SitDown ===
+      0 CMD   <<PlayStatic Tower>>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<SetupName UIManager "Connor Hawkins">>
+      3 CMD   <<PlaySFX1 Tower>>
+      4 CMD   <<VO_SEQ8 Tower 7>>
+      5 SAY   'Jack, do you copy?'
+      6 OPT   'right here, connorGreen' -> L17shortcutoption_Seq8SitDown_1
+      7 OPT   'why are you still upGreen' -> L18shortcutoption_Seq8SitDown_2
+      8 SHOW_OPTIONS 
+      9 JUMP 
+  L17shortcutoption_Seq8SitDown_1:
+     10 JUMP_TO 'L16group_end'
+  L18shortcutoption_Seq8SitDown_2:
+     11 JUMP_TO 'L16group_end'
+  L16group_end:
+     12 POP 
+     13 CMD   <<PlaySFX1 Tower>>
+     14 CMD   <<VO_SEQ8 Tower 8>>
+     15 SAY   "Okay, tell you what- I don't have the energy to do this right now"
+     16 OPT   '...Green' -> L20shortcutoption_Seq8SitDown_1
+     17 OPT   'What happened?Green' -> L21shortcutoption_Seq8SitDown_2
+     18 SHOW_OPTIONS 
+     19 JUMP 
+  L20shortcutoption_Seq8SitDown_1:
+     20 JUMP_TO 'L19group_end'
+  L21shortcutoption_Seq8SitDown_2:
+     21 JUMP_TO 'L19group_end'
+  L19group_end:
+     22 POP 
+     23 CMD   <<PlaySFX1 Tower>>
+     24 CMD   <<VO_SEQ8 Tower 9>>
+     25 SAY   "I've been here busting my ass here, working on that old piece of garbage generator"
+     26 OPT   '...Green' -> L23shortcutoption_Seq8SitDown_1
+     27 SHOW_OPTIONS 
+     28 JUMP 
+  L23shortcutoption_Seq8SitDown_1:
+     29 JUMP_TO 'L22group_end'
+  L22group_end:
+     30 POP 
+     31 CMD   <<PlaySFX1 Tower>>
+     32 CMD   <<VO_SEQ8 Tower 10>>
+     33 SAY   "And now I'm seeing this.."
+     34 OPT   '...Green' -> L25shortcutoption_Seq8SitDown_1
+     35 SHOW_OPTIONS 
+     36 JUMP 
+  L25shortcutoption_Seq8SitDown_1:
+     37 JUMP_TO 'L24group_end'
+  L24group_end:
+     38 POP 
+     39 CMD   <<PlaySFX1 Tower>>
+     40 CMD   <<VO_SEQ8 Tower 11>>
+     41 SAY   'I’m seeing another smoke to my west, looks like we got another camper.'
+     42 OPT   '...Green' -> L27shortcutoption_Seq8SitDown_1
+     43 SHOW_OPTIONS 
+     44 JUMP 
+  L27shortcutoption_Seq8SitDown_1:
+     45 JUMP_TO 'L26group_end'
+  L26group_end:
+     46 POP 
+     47 CMD   <<PlaySFX1 Tower>>
+     48 CMD   <<VO_SEQ8 Tower 12>>
+     49 SAY   'It appears to be in your sector, can you see the campsite from your end?'
+     50 OPT   '...Green' -> L29shortcutoption_Seq8SitDown_1
+     51 OPT   '^EXIT+ Let me have a lookGreen' -> L30shortcutoption_Seq8SitDown_2
+     52 SHOW_OPTIONS 
+     53 JUMP 
+  L29shortcutoption_Seq8SitDown_1:
+     54 JUMP_TO 'L28group_end'
+  L30shortcutoption_Seq8SitDown_2:
+     55 JUMP_TO 'L28group_end'
+  L28group_end:
+     56 POP 
+     57 CMD   <<ExitRadio Tower>>
+     58 STOP 
+=== NODE Seq8SitDownLoop ===
+      0 CMD   <<PlayStatic Tower>>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<SetupName UIManager "Connor Hawkins">>
+      3 CMD   <<PlaySFX1 Tower>>
+      4 CMD   <<VO_SEQ8 Tower 11>>
+      5 SAY   'I’m seeing another smoke to my west, looks like we got another camper.'
+      6 OPT   '...Green' -> L33shortcutoption_Seq8SitDownLoop_1
+      7 SHOW_OPTIONS 
+      8 JUMP 
+  L33shortcutoption_Seq8SitDownLoop_1:
+      9 JUMP_TO 'L32group_end'
+  L32group_end:
+     10 POP 
+     11 CMD   <<PlaySFX1 Tower>>
+     12 CMD   <<VO_SEQ8 Tower 12>>
+     13 SAY   'It appears to be in your sector, can you see the campsite from your end?'
+     14 OPT   '...Green' -> L35shortcutoption_Seq8SitDownLoop_1
+     15 OPT   '^EXIT+ Let me have a lookGreen' -> L36shortcutoption_Seq8SitDownLoop_2
+     16 SHOW_OPTIONS 
+     17 JUMP 
+  L35shortcutoption_Seq8SitDownLoop_1:
+     18 JUMP_TO 'L34group_end'
+  L36shortcutoption_Seq8SitDownLoop_2:
+     19 JUMP_TO 'L34group_end'
+  L34group_end:
+     20 POP 
+     21 CMD   <<ExitRadio Tower>>
+     22 STOP 
+=== NODE Seq8StandUp ===
+      0 CMD   <<PlayStatic Tower>>
+      1 CMD   <<PlaySFX2 Tower>>
+      2 CMD   <<SetupName UIManager "Connor Hawkins">>
+      3 CMD   <<PlaySFX1 Tower>>
+      4 SAY   '[nomarkup][STATIC][/nomarkup]'
+      5 OPT   '...Green' -> L39shortcutoption_Seq8StandUp_1
+      6 SHOW_OPTIONS 
+      7 JUMP 
+  L39shortcutoption_Seq8StandUp_1:
+      8 JUMP_TO 'L38group_end'
+  L38group_end:
+      9 POP 
+     10 CMD   <<PlaySFX1 Tower>>
+     11 SAY   '...'
+     12 OPT   '...Green' -> L41shortcutoption_Seq8StandUp_1
+     13 SHOW_OPTIONS 
+     14 JUMP 
+  L41shortcutoption_Seq8StandUp_1:
+     15 JUMP_TO 'L40group_end'
+  L40group_end:
+     16 POP 
+     17 CMD   <<PlaySFX1 Tower>>
+     18 CMD   <<VO_SEQ8 Tower 13>>
+     19 SAY   'You know what...'
+     20 OPT   '...Green' -> L43shortcutoption_Seq8StandUp_1
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L43shortcutoption_Seq8StandUp_1:
+     23 JUMP_TO 'L42group_end'
+  L42group_end:
+     24 POP 
+     25 CMD   <<PlaySFX1 Tower>>
+     26 CMD   <<VO_SEQ8 Tower 14>>
+     27 SAY   "I don't have it in me to deal with this crap tonight. I'm gonna let you deal with this one."
+     28 OPT   '...Green' -> L45shortcutoption_Seq8StandUp_1
+     29 SHOW_OPTIONS 
+     30 JUMP 
+  L45shortcutoption_Seq8StandUp_1:
+     31 JUMP_TO 'L44group_end'
+  L44group_end:
+     32 POP 
+     33 CMD   <<PlaySFX1 Tower>>
+     34 CMD   <<VO_SEQ8 Tower 15>>
+     35 SAY   "If they don't run away this time, take their photos and IDs."
+     36 OPT   '...Green' -> L47shortcutoption_Seq8StandUp_1
+     37 SHOW_OPTIONS 
+     38 JUMP 
+  L47shortcutoption_Seq8StandUp_1:
+     39 JUMP_TO 'L46group_end'
+  L46group_end:
+     40 POP 
+     41 CMD   <<PlaySFX1 Tower>>
+     42 CMD   <<VO_SEQ8 Tower 16>>
+     43 SAY   "And if things get worse, don't hesitate to call HQ for help."
+     44 OPT   '...Green' -> L49shortcutoption_Seq8StandUp_1
+     45 SHOW_OPTIONS 
+     46 JUMP 
+  L49shortcutoption_Seq8StandUp_1:
+     47 JUMP_TO 'L48group_end'
+  L48group_end:
+     48 POP 
+     49 CMD   <<PlaySFX1 Tower>>
+     50 CMD   <<VO_SEQ8 Tower 17>>
+     51 SAY   "Update me tomorrow morning.<br>I'm gonna get some rest."
+     52 OPT   '...Green' -> L51shortcutoption_Seq8StandUp_1
+     53 SHOW_OPTIONS 
+     54 JUMP 
+  L51shortcutoption_Seq8StandUp_1:
+     55 JUMP_TO 'L50group_end'
+  L50group_end:
+     56 POP 
+     57 CMD   <<PlaySFX1 Tower>>
+     58 SAY   '[nomarkup][STATIC][/nomarkup]'
+     59 OPT   '...Green' -> L53shortcutoption_Seq8StandUp_1
+     60 SHOW_OPTIONS 
+     61 JUMP 
+  L53shortcutoption_Seq8StandUp_1:
+     62 JUMP_TO 'L52group_end'
+  L52group_end:
+     63 POP 
+     64 CMD   <<ExitRadio Tower>>
+     65 STOP 
+=== NODE Test ===
+      0 SAY   'hello'
+      1 OPT   'hi' -> L2shortcutoption_Test_1
+      2 SHOW_OPTIONS 
+      3 JUMP 
+  L2shortcutoption_Test_1:
+      4 JUMP_TO 'L1group_end'
+  L1group_end:
+      5 POP 
+      6 SAY   'sup'
+      7 OPT   'nm' -> L4shortcutoption_Test_1
+      8 SHOW_OPTIONS 
+      9 JUMP 
+  L4shortcutoption_Test_1:
+     10 JUMP_TO 'L3group_end'
+  L3group_end:
+     11 POP 
+     12 STOP 
+=== NODE TrailStart ===
+      0 SAY   'Holy moly! You scared me, I thought you were one of them-'
+      1 OPT   'you scared ME' -> L2shortcutoption_TrailStart_1
+      2 OPT   'one of who?' -> L3shortcutoption_TrailStart_2
+      3 OPT   'what do you mean?' -> L4shortcutoption_TrailStart_3
+      4 SHOW_OPTIONS 
+      5 JUMP 
+  L2shortcutoption_TrailStart_1:
+      6 JUMP_TO 'L1group_end'
+  L3shortcutoption_TrailStart_2:
+      7 CMD   <<WhatWereYouDoing DialogueSFX>>
+      8 JUMP_TO 'L1group_end'
+  L4shortcutoption_TrailStart_3:
+      9 CMD   <<WhatWereYouDoing DialogueSFX>>
+     10 JUMP_TO 'L1group_end'
+  L1group_end:
+     11 POP 
+     12 SAY   'May lord have mercy'
+     13 OPT   '...' -> L6shortcutoption_TrailStart_1
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L6shortcutoption_TrailStart_1:
+     16 JUMP_TO 'L5group_end'
+  L5group_end:
+     17 POP 
+     18 SAY   '...'
+     19 OPT   '...' -> L8shortcutoption_TrailStart_1
+     20 SHOW_OPTIONS 
+     21 JUMP 
+  L8shortcutoption_TrailStart_1:
+     22 JUMP_TO 'L7group_end'
+  L7group_end:
+     23 POP 
+     24 SAY   'Anyways, can I see your permit please'
+     25 OPT   "Oh, I'm not a camper" -> L10shortcutoption_TrailStart_1
+     26 OPT   "you're billy right?" -> L11shortcutoption_TrailStart_2
+     27 SHOW_OPTIONS 
+     28 JUMP 
+  L10shortcutoption_TrailStart_1:
+     29 CMD   <<EnableBadGuy ParkRanger>>
+     30 JUMP_TO 'L9group_end'
+  L11shortcutoption_TrailStart_2:
+     31 CMD   <<EnableBadGuy ParkRanger>>
+     32 JUMP_TO 'L9group_end'
+  L9group_end:
+     33 POP 
+     34 SAY   '...'
+     35 OPT   "I'm the new transferred fire lookout" -> L13shortcutoption_TrailStart_1
+     36 OPT   'I was told to report here' -> L14shortcutoption_TrailStart_2
+     37 SHOW_OPTIONS 
+     38 JUMP 
+  L13shortcutoption_TrailStart_1:
+     39 JUMP_TO 'L12group_end'
+  L14shortcutoption_TrailStart_2:
+     40 SAY   'what for?'
+     41 OPT   "I'm the new transferred fire lookout staffer" -> L16shortcutoption_TrailStart_1
+     42 SHOW_OPTIONS 
+     43 JUMP 
+  L16shortcutoption_TrailStart_1:
+     44 JUMP_TO 'L15group_end'
+  L15group_end:
+     45 POP 
+     46 JUMP_TO 'L12group_end'
+  L12group_end:
+     47 POP 
+     48 SAY   "is that correct? I didn't know we were hiring this season"
+     49 OPT   '...' -> L18shortcutoption_TrailStart_1
+     50 SHOW_OPTIONS 
+     51 JUMP 
+  L18shortcutoption_TrailStart_1:
+     52 JUMP_TO 'L17group_end'
+  L17group_end:
+     53 POP 
+     54 SAY   'Hang on, Let me check on that.'
+     55 OPT   '...' -> L20shortcutoption_TrailStart_1
+     56 SHOW_OPTIONS 
+     57 JUMP 
+  L20shortcutoption_TrailStart_1:
+     58 JUMP_TO 'L19group_end'
+  L19group_end:
+     59 POP 
+     60 CMD   <<ExitConversationPR ParkRanger CheckComputer>>
+     61 STOP 
+=== NODE RangerKeys ===
+      0 SAY   "Okay pal your're good to go, you're staffed at fire tower 11"
+      1 OPT   '...' -> L23shortcutoption_RangerKeys_1
+      2 SHOW_OPTIONS 
+      3 JUMP 
+  L23shortcutoption_RangerKeys_1:
+      4 JUMP_TO 'L22group_end'
+  L22group_end:
+      5 POP 
+      6 SAY   'I apologize for the confusion, I was under the impression that the tower would be left unstaffed for the season but here are your keys'
+      7 OPT   '^TAKE KEYS+' -> L25shortcutoption_RangerKeys_1
+      8 SHOW_OPTIONS 
+      9 JUMP 
+  L25shortcutoption_RangerKeys_1:
+     10 CMD   <<TakeKeys ParkRanger>>
+     11 JUMP_TO 'L24group_end'
+  L24group_end:
+     12 POP 
+     13 STOP 
+=== NODE RangerAfterKeys ===
+      0 SAY   'Let me open the trail gate for you'
+      1 OPT   '...' -> L28shortcutoption_RangerAfterKeys_1
+      2 SHOW_OPTIONS 
+      3 JUMP 
+  L28shortcutoption_RangerAfterKeys_1:
+      4 JUMP_TO 'L27group_end'
+  L27group_end:
+      5 POP 
+      6 CMD   <<ExitConversationPR ParkRanger OpenGate>>
+      7 STOP 
+=== NODE RangerFlashLight ===
+      0 SAY   "Since you're arriving this late, you might also need this flashlight for the long hike to your lookout"
+      1 OPT   'Thank you billy' -> L31shortcutoption_RangerFlashLight_1
+      2 OPT   'Thought I might need one' -> L32shortcutoption_RangerFlashLight_2
+      3 SHOW_OPTIONS 
+      4 JUMP 
+  L31shortcutoption_RangerFlashLight_1:
+      5 JUMP_TO 'L30group_end'
+  L32shortcutoption_RangerFlashLight_2:
+      6 JUMP_TO 'L30group_end'
+  L30group_end:
+      7 POP 
+      8 SAY   'You be careful, take this'
+      9 OPT   '^TAKE FLASHLIGHT+' -> L34shortcutoption_RangerFlashLight_1
+     10 SHOW_OPTIONS 
+     11 JUMP 
+  L34shortcutoption_RangerFlashLight_1:
+     12 CMD   <<TakeFlashLight ParkRanger>>
+     13 JUMP_TO 'L33group_end'
+  L33group_end:
+     14 POP 
+     15 STOP 
+=== NODE RangerAfterFlashLight ===
+      0 SAY   'Welcome to Ironbark, pal'
+      1 OPT   '...' -> L37shortcutoption_RangerAfterFlashLight_1
+      2 SHOW_OPTIONS 
+      3 JUMP 
+  L37shortcutoption_RangerAfterFlashLight_1:
+      4 JUMP_TO 'L36group_end'
+  L36group_end:
+      5 POP 
+      6 SAY   'Now for our purposes- when you get to your tower be sure to make your first weather report from your system just so we know you clocked in safely'
+      7 OPT   '...' -> L39shortcutoption_RangerAfterFlashLight_1
+      8 SHOW_OPTIONS 
+      9 JUMP 
+  L39shortcutoption_RangerAfterFlashLight_1:
+     10 JUMP_TO 'L38group_end'
+  L38group_end:
+     11 POP 
+     12 SAY   'If need be, you can reach out to tower 12 during your staffing, nice enough guy'
+     13 OPT   '...' -> L41shortcutoption_RangerAfterFlashLight_1
+     14 SHOW_OPTIONS 
+     15 JUMP 
+  L41shortcutoption_RangerAfterFlashLight_1:
+     16 JUMP_TO 'L40group_end'
+  L40group_end:
+     17 POP 
+     18 SAY   "He'll be your closest contact in case of any emergency"
+     19 OPT   'thank you billy' -> L43shortcutoption_RangerAfterFlashLight_1
+     20 OPT   'you have a good day' -> L44shortcutoption_RangerAfterFlashLight_2
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L43shortcutoption_RangerAfterFlashLight_1:
+     23 JUMP_TO 'L42group_end'
+  L44shortcutoption_RangerAfterFlashLight_2:
+     24 JUMP_TO 'L42group_end'
+  L42group_end:
+     25 POP 
+     26 CMD   <<ExitConversationPR ParkRanger End>>
+     27 STOP 
+=== NODE RangerAfterEnd ===
+      0 CMD   <<SubtleTension DialogueSFX>>
+      1 SAY   '...'
+      2 OPT   '...' -> L47shortcutoption_RangerAfterEnd_1
+      3 SHOW_OPTIONS 
+      4 JUMP 
+  L47shortcutoption_RangerAfterEnd_1:
+      5 JUMP_TO 'L46group_end'
+  L46group_end:
+      6 POP 
+      7 SAY   'Hey'
+      8 OPT   '...' -> L49shortcutoption_RangerAfterEnd_1
+      9 SHOW_OPTIONS 
+     10 JUMP 
+  L49shortcutoption_RangerAfterEnd_1:
+     11 JUMP_TO 'L48group_end'
+  L48group_end:
+     12 POP 
+     13 SAY   "Just a piece of advice.. <br>Don't travel any further than half a mile or so north of your tower"
+     14 OPT   'you got it' -> L51shortcutoption_RangerAfterEnd_1
+     15 OPT   'why?' -> L52shortcutoption_RangerAfterEnd_2
+     16 SHOW_OPTIONS 
+     17 JUMP 
+  L51shortcutoption_RangerAfterEnd_1:
+     18 JUMP_TO 'L50group_end'
+  L52shortcutoption_RangerAfterEnd_2:
+     19 SAY   'Dangerous woods that way pal'
+     20 OPT   '...' -> L54shortcutoption_RangerAfterEnd_1
+     21 SHOW_OPTIONS 
+     22 JUMP 
+  L54shortcutoption_RangerAfterEnd_1:
+     23 JUMP_TO 'L53group_end'
+  L53group_end:
+     24 POP 
+     25 JUMP_TO 'L50group_end'
+  L50group_end:
+     26 POP 
+     27 SAY   'bob cats and bears'
+     28 OPT   '...' -> L56shortcutoption_RangerAfterEnd_1
+     29 SHOW_OPTIONS 
+     30 JUMP 
+  L56shortcutoption_RangerAfterEnd_1:
+     31 JUMP_TO 'L55group_end'
+  L55group_end:
+     32 POP 
+     33 SAY   'nasty business'
+     34 OPT   'you got it' -> L58shortcutoption_RangerAfterEnd_1
+     35 OPT   'see you around' -> L59shortcutoption_RangerAfterEnd_2
+     36 SHOW_OPTIONS 
+     37 JUMP 
+  L58shortcutoption_RangerAfterEnd_1:
+     38 JUMP_TO 'L57group_end'
+  L59shortcutoption_RangerAfterEnd_2:
+     39 JUMP_TO 'L57group_end'
+  L57group_end:
+     40 POP 
+     41 CMD   <<ExitConversationPR ParkRanger End2>>
+     42 STOP 
