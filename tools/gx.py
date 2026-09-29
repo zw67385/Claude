@@ -37,7 +37,7 @@ def triangles(pos, nrm, uv, tris, tex_size, flat=True, color=None):
     cmds = [(CMD_BEGIN, [0])]
     w, h = tex_size
     last_n = None
-    q = np.clip(np.round(pos * 4096.0), -32768, 32767).astype(np.int32)
+    q = np.clip(np.round(pos * 4096.0), -32768, 32767).astype(np.int64)
     for t in tris:
         if flat:
             a, b, c = pos[t[0]], pos[t[1]], pos[t[2]]
@@ -55,8 +55,8 @@ def triangles(pos, nrm, uv, tris, tex_size, flat=True, color=None):
             if uv is not None:
                 s = int(np.clip(round(uv[vi, 0] * w * 16), -32768, 32767)) & 0xFFFF
                 tt = int(np.clip(round(uv[vi, 1] * h * 16), -32768, 32767)) & 0xFFFF
-                cmds.append((CMD_TEXCOORD, [s | (tt << 16)]))
+                cmds.append((CMD_TEXCOORD, [int(s) | (int(tt) << 16)]))
             x, y, z = q[vi]
-            cmds.append((CMD_VTX16, [(x & 0xFFFF) | ((y & 0xFFFF) << 16), z & 0xFFFF]))
+            x, y, z = int(x), int(y), int(z); cmds.append((CMD_VTX16, [(x & 0xFFFF) | ((y & 0xFFFF) << 16), z & 0xFFFF]))
     cmds.append((CMD_END, []))
     return cmds

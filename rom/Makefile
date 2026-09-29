@@ -12,9 +12,9 @@ ARM_NONE_EABI_PATH	?= $(WONDERFUL_TOOLCHAIN)/toolchain/gcc-arm-none-eabi/bin/
 # ===========
 
 NAME		:= $(shell basename $(CURDIR))
-GAME_TITLE	:= 3D dual screen template
-GAME_SUBTITLE	:= Fears to Fathom Ep.4 DS port
-GAME_AUTHOR	:= Nitro Engine + BlocksDS
+GAME_TITLE	:= Ironbark Lookout
+GAME_SUBTITLE	:= DS port
+GAME_AUTHOR	:= Fears to Fathom Ep.4 DS
 GAME_ICON	:= $(BLOCKSDS)/sys/icon.bmp
 
 # DLDI and internal SD slot of DSi
@@ -29,8 +29,8 @@ SDIMAGE		:= image.bin
 # -----------------
 
 NE		:= ../third_party/nitro-engine
-SOURCEDIRS	:= source $(NE)/source
-INCLUDEDIRS	:= source $(NE)/include $(NE)/source/libdsf
+SOURCEDIRS	:= source
+INCLUDEDIRS	:= source
 GFXDIRS		:=
 BINDIRS		:=
 AUDIODIRS	:=
@@ -40,7 +40,7 @@ NITROFSDIR	:= nitrofs
 # Defines passed to all files
 # ---------------------------
 
-DEFINES		:= -DNE_BLOCKSDS
+DEFINES		:=
 
 # Libraries
 # ---------

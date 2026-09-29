@@ -42,5 +42,8 @@ A faithful 1:1 port is not possible (Unity HDRP game vs 4 MB RAM, 2048 polys/fra
 4. Test in DeSmuME: boot, screenshot, check fps; then Yarn VM + dialogue UI + Main Menu/intro text, then Seq 1 to 8 logic ported from WatchTowerManager, then the other scenes, audio (mmutil/maxmod, ADPCM), zombie minigame, credits.
 5. Commit and push often to the branch; do not commit `/tmp` assets, `*.nds`, or generated bulk data unless small.
 
-## Last action
-Was reading `NETexture.h` (API for loading textures from memory) before writing `texconv.py`. Uncommitted at handoff time: `tools/{meshio,matio,gx,survey}.py` (committed in the handoff commit below).
+## Last action / progress (updated)
+- `tools/bake_level.py Scene xmin xmax ymin ymax zmin zmax outdir [texsize]` works: handles static batching, decimates per renderer (meshopt simplify + sloppy fallback, budget env BUDGET, default 3500 tris), quantizes textures to 256 colours, writes `level.bin` (`LVL0`, group table + pal/tex/display-list blob). Cabin: `Watchtower 311 319 43.5 47 323 331` gives 2170 tris, 103 groups, 237 KB.
+- `rom/source/main.c` (plain libnds, Nitro Engine no longer compiled in): loads `nitro:/tower.bin`, uploads textures, renders with light, D-pad move, stylus/face-button look. Verified in DeSmuME: `docs/slice1_cabin.png` shows a recognisable textured cabin interior. NitroFS reads work.
+- Build: `cd rom && WONDERFUL_TOOLCHAIN=/opt/wonderful BLOCKSDS=/opt/wonderful/thirdparty/blocksds/core PATH=/opt/wonderful/bin:$PATH make`; regenerate data with `/tmp/venv/bin/python tools/bake_level.py ... /tmp/bake1 64 && cp /tmp/bake1/level.bin rom/nitrofs/tower.bin`.
+- Next: per-sequence object groups (toggle by seq), BoxCollider collision, fps/poly measurement, texture-VRAM budget check, bottom-screen UI, Yarn VM + text, then sequences.
