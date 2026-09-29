@@ -225,7 +225,11 @@ static void dlg_show(void)
     consoleClear();
     if (speaker[0]) printf("[%s]\n", speaker);
     if (dtype == YE_LINE) { wrap_print(dev.text); printf("\n[A] next"); }
-    else for (int i = 0; i < dev.nopt; i++) { printf("%c ", i == dsel ? '>' : ' '); wrap_print(dev.opt[i]); }
+    else for (int i = 0; i < dev.nopt; i++) {   /* "^exit+" marks the original's leave-conversation option */
+        const char *o = dev.opt[i];
+        if (!strncmp(o, "^exit+", 6)) { o += 6; while (*o == ' ') o++; if (!*o) o = "..."; }
+        printf("%c ", i == dsel ? '>' : ' '); wrap_print(o);
+    }
 }
 
 static void dlg_advance(void)
