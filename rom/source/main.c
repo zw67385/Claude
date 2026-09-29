@@ -6,6 +6,7 @@
 
 typedef struct { u32 w, h, col, flags, dlwords, paloff, texoff, dloff; } Group;
 
+static int stat_v, stat_p;
 static u8 *lvl;
 static Group *grp;
 static u32 ngrp;
@@ -115,11 +116,13 @@ int main(void)
         glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | POLY_FORMAT_LIGHT0 | POLY_ID(1));
         draw_level();
         glFlush(0);
+        while (GFX_STATUS & BIT(27)) ;
+        stat_v = GFX_VERTEX_RAM_USAGE; stat_p = GFX_POLYGON_RAM_USAGE;
 
         frames++;
         swiWaitForVBlank(); swiWaitForVBlank(); swiWaitForVBlank();
         if (keysDown() & KEY_START) break;
-        if ((frames % 20) == 0) { consoleClear(); printf("frame %d\npos %d %d\nvtx %d poly %d\n", frames, px >> 8, pz >> 8, 0, 0); }
+        if ((frames % 20) == 0) { consoleClear(); printf("frame %d\npos %d %d\nvtx %d poly %d\n", frames, px >> 8, pz >> 8, stat_v, stat_p); }
     }
     return 0;
 }
