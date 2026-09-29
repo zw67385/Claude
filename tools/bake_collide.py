@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """bake_collide.py Scene xmin xmax ymin ymax zmin zmax out.bin  -- solid BoxColliders as AABBs (DS space, centre-relative, 20.12)."""
-import sys, struct, itertools
+import sys, os, struct, itertools
 import numpy as np
 import unity
 from bake_level import quat_mat
 def run(scn, lo, hi, out):
-    lo = np.array(lo); hi = np.array(hi); ctr = (lo + hi) / 2
+    lo = np.array(lo); hi = np.array(hi); ctr = np.array([315, 45.25, 327.0]) if os.environ.get("ORIGIN") else (lo + hi) / 2
     s = unity.Scene(scn); boxes = []; nmesh = 0
     for gf, g in s.go.items():
         if "tf" not in g or not s.active_in_hierarchy(gf): continue

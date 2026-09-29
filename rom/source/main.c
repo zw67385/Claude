@@ -32,10 +32,12 @@ static void collide(int *px, int *pz, int feet, int head)
             if (m == l) *px -= l; else if (m == r) *px += r; else if (m == d) *pz -= d; else *pz += u;
         }
 }
-static u8 *lvl;
-static Group *grp;
-static u32 ngrp;
-static int texid[256];
+typedef struct {
+    u8 *data; Group *grp; u32 n;
+    s32 scale, tx, ty, tz;          /* 20.12: scale, translation from ORIGIN to level centre */
+    int tex[160];
+} Level;
+static Level L_in, L_out;
 
 static int texsize_enum(int n)
 {
@@ -43,40 +45,84 @@ static int texsize_enum(int n)
                  case 64: return TEXTURE_SIZE_64; case 128: return TEXTURE_SIZE_128; default: return TEXTURE_SIZE_256; }
 }
 
-static int load_level(const char *path)
+static u8 *load_file(const char *path, long *szp)
 {
     FILE *f = fopen(path, "rb");
-    if (!f) return 0;
+    if (!f) return NULL;
     fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, 0, SEEK_SET);
-    lvl = memalign(4, sz);
-    if (!lvl || fread(lvl, 1, sz, f) != (size_t)sz) return 0;
+    u8 *d = memalign(4, sz);
+    if (d && fread(d, 1, sz, f) != (size_t)sz) { free(d); d = NULL; }
     fclose(f);
-    ngrp = ((u32 *)lvl)[1];
-    grp = (Group *)(lvl + 8);
-    for (u32 i = 0; i < ngrp; i++) {
-        Group *g = &grp[i];
-        texid[i] = -1;
+    if (szp) *szp = sz;
+    return d;
+}
+
+/* LVL1: 'LVL1', u32 n, s32 scale, cx, cy, cz (world centre, z negated), n x Group, blob */
+#define ORG_X (315 * 4096)
+#define ORG_Y (45 * 4096 + 1024)
+#define ORG_Z (327 * 4096)
+static int load_level(Level *L, const char *path)
+{
+    u8 *d = load_file(path, NULL);
+    if (!d || memcmp(d, "LVL1", 4)) return 0;
+    s32 *h = (s32 *)d;
+    L->data = d; L->n = h[1]; L->grp = (Group *)(d + 24);
+    L->scale = h[2]; L->tx = h[3] - ORG_X; L->ty = h[4] - ORG_Y; L->tz = h[5] + ORG_Z;
+    for (u32 i = 0; i < L->n && i < 160; i++) {
+        Group *g = &L->grp[i];
+        L->tex[i] = 0;
         if (g->flags & 1) {
-            glGenTextures(1, &texid[i]);
-            glBindTexture(0, texid[i]);
+            glGenTextures(1, &L->tex[i]);
+            glBindTexture(0, L->tex[i]);
             u32 fl = TEXGEN_TEXCOORD | GL_TEXTURE_WRAP_S | GL_TEXTURE_WRAP_T;
             if (g->flags & 2) fl |= GL_TEXTURE_COLOR0_TRANSPARENT;
-            glTexImage2D(0, 0, GL_RGB256, texsize_enum(g->w), texsize_enum(g->h), 0, fl, lvl + g->texoff);
-            glColorTableEXT(0, 0, 256, 0, 0, (u16 *)(lvl + g->paloff));
+            if (!glTexImage2D(0, 0, GL_RGB256, texsize_enum(g->w), texsize_enum(g->h), 0, fl, d + g->texoff))
+                printf("tex vram full %lu\n", i);
+            glColorTableEXT(0, 0, (g->flags >> 8) & 0x1FF, 0, 0, (u16 *)(d + g->paloff));
         }
     }
     return 1;
 }
 
-static void draw_level(void)
+/* pass 0: opaque groups, pass 1: translucent groups (drawn after every opaque one) */
+static void draw_level(Level *L, int pass)
 {
-    for (u32 i = 0; i < ngrp; i++) {
-        Group *g = &grp[i];
-        if (g->flags & 1) glBindTexture(0, texid[i]); else glBindTexture(0, 0);
+    glPushMatrix();
+    glTranslatef32(L->tx, L->ty, L->tz);
+    if (L->scale != 4096) glScalef32(L->scale, L->scale, L->scale);
+    for (u32 i = 0; i < L->n; i++) {
+        Group *g = &L->grp[i];
+        int a = g->flags >> 24;
+        if ((a < 31) != pass) continue;
+        if (pass) glPolyFmt(POLY_ALPHA(a) | POLY_CULL_NONE | POLY_FORMAT_LIGHT0 | POLY_ID(2 + (i & 31)));
+        glBindTexture(0, (g->flags & 1) ? L->tex[i] : 0);
         glMaterialf(GL_DIFFUSE, g->col | BIT(15));
         glMaterialf(GL_AMBIENT, RGB15(12, 12, 12));
-        glCallList((u32 *)(lvl + g->dloff));
+        glCallList((u32 *)(L->data + g->dloff));
     }
+    glPopMatrix(1);
+}
+
+/* FLR1 walkable heightfield: 'FLR1', s32 gx0, gz0, u32 nx, nz, u16 starts[nx*nz+1], s16 heights (1/256 m) */
+static u8 *flr; static s32 fgx0, fgz0; static u32 fnx, fnz; static u16 *fstart; static s16 *fh;
+static int load_floor(const char *path)
+{
+    if (!(flr = load_file(path, NULL)) || memcmp(flr, "FLR1", 4)) return 0;
+    s32 *h = (s32 *)flr;
+    fgx0 = h[1]; fgz0 = h[2]; fnx = h[3]; fnz = h[4];
+    fstart = (u16 *)(flr + 20); fh = (s16 *)(flr + 20 + 2 * (fnx * fnz + 1));
+    return 1;
+}
+#define NOFLOOR (-0x7FFFFFFF)
+/* highest walkable surface at (x,z) not above 'lim' (20.12) */
+static int floor_at(int x, int z, int lim)
+{
+    if (!flr) return NOFLOOR;
+    int ix = (x - fgx0) >> 10, iz = (z - fgz0) >> 10;
+    if (ix < 0 || iz < 0 || ix >= (int)fnx || iz >= (int)fnz) return NOFLOOR;
+    int c = iz * fnx + ix, best = NOFLOOR;
+    for (int i = fstart[c]; i < fstart[c + 1]; i++) { int y = fh[i] << 4; if (y <= lim) best = y; }
+    return best;
 }
 
 static void init_hw(void)
@@ -155,10 +201,18 @@ static void dlg_input(u32 d)
     }
 }
 
+#define EYE 6300        /* eye height 1.54 m */
+#define STEPUP 1843     /* 0.45 m */
+/* cabin interior box (origin frame): draw the interior level inside it, the exterior outside */
+#define INSIDE(x, y, z) ((x) > -11500 && (x) < 11500 && (z) > -12000 && (z) < 11200 && (y) > -8000)
 static void run_cabin(void)
 {
     if (!nboxes) load_col("nitro:/tower.col");
-    int px = -9830, py = 400, pz = 4550;          // 20.12 (Player Inside spawn)
+    if (!flr) load_floor("nitro:/tower.flr");
+    int px = -9830, pz = 4550;          // 20.12 (Player Inside spawn)
+    int fy = floor_at(px, pz, -4000);   // feet
+    if (fy == NOFLOOR) fy = -5800;
+    int py;
     int yaw = 0, pitch = 0;              // 15-bit angle
     int frames = 0;
     touchPosition t0, t1; int wasTouch = 0;
@@ -179,9 +233,19 @@ static void run_cabin(void)
                 fwd = ((k & KEY_UP) ? 1 : 0) - ((k & KEY_DOWN) ? 1 : 0);
                 str = ((k & KEY_RIGHT) ? 1 : 0) - ((k & KEY_LEFT) ? 1 : 0);
             }
+            int ox = px, oz = pz;
             px += ((-s * fwd + c * str) * sp) >> 12;
             pz += ((-c * fwd - s * str) * sp) >> 12;
-            collide(&px, &pz, py - 6200, py + 400);
+            collide(&px, &pz, fy, fy + 6600);
+            /* walkable-floor check: step up <= 0.45 m, never walk off a >0.7 m drop */
+            int f = floor_at(px, pz, fy + STEPUP);
+            if (f == NOFLOOR || f < fy - 2900) {
+                int fx = floor_at(px, oz, fy + STEPUP), fz = floor_at(ox, pz, fy + STEPUP);   /* slide along the edge */
+                if (fx != NOFLOOR && fx >= fy - 2900) { pz = oz; f = fx; }
+                else if (fz != NOFLOOR && fz >= fy - 2900) { px = ox; f = fz; }
+                else { px = ox; pz = oz; f = floor_at(px, pz, fy + STEPUP); }
+            }
+            if (f != NOFLOOR) { if (f > fy) fy = f; else { fy -= 800; if (fy < f) fy = f; } }
             if (kd & KEY_A) {
                 for (int i = 0; i < NINTERACT; i++) {
                     long long dx = INTERACTS[i].x - px, dz = INTERACTS[i].z - pz;
@@ -200,15 +264,20 @@ static void run_cabin(void)
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        gluPerspective(70, 256.0 / 192.0, 0.05, 30);
+        gluPerspective(70, 256.0 / 192.0, 0.05, 80);
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
         glRotateXi(pitch);
         glRotateYi(-yaw);
+        py = fy + EYE;
         glTranslatef32(-px, -py, -pz);
         glLight(0, RGB15(31, 31, 29), floattov10(0.4), floattov10(-0.8), floattov10(-0.3));
         glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | POLY_FORMAT_LIGHT0 | POLY_ID(1));
-        draw_level();
+        int in = INSIDE(px, fy, pz);
+        for (int pass = 0; pass < 2; pass++) {
+            if (in) draw_level(&L_in, pass);
+            draw_level(&L_out, pass);
+        }
         glFlush(0);
         while (GFX_STATUS & BIT(27)) ;
         stat_v = GFX_VERTEX_RAM_USAGE; stat_p = GFX_POLYGON_RAM_USAGE;
@@ -216,7 +285,7 @@ static void run_cabin(void)
         frames++;
         swiWaitForVBlank(); swiWaitForVBlank(); swiWaitForVBlank();
         if (keysDown() & KEY_START) break;
-        if (!dtype && (frames % 20) == 0) { consoleClear(); printf("A: interact  Y+pad: look\nStylus: look  R: run\npos %d %d yaw %d\n", px >> 8, pz >> 8, yaw); }
+        if (!dtype && (frames % 20) == 0) { consoleClear(); printf("A: interact  Y+pad: look\nStylus: look  R: run\npos %d %d %d yaw %d\n", px >> 8, fy >> 8, pz >> 8, yaw); }
     }
 }
 
@@ -294,7 +363,7 @@ int main(void)
         u32 d = keysDown();
         if (d & (KEY_UP | KEY_DOWN)) sel ^= 1;
         if (d & KEY_A) {
-            if (sel == 0) { if (!lvl && !load_level("nitro:/tower.bin")) { printf("no level\n"); continue; } run_cabin(); }
+            if (sel == 0) { if (!L_in.data && (!load_level(&L_in, "nitro:/tower.bin") || !load_level(&L_out, "nitro:/outside.bin"))) { printf("no level\n"); continue; } run_cabin(); }
             else story_reader();
         }
     }

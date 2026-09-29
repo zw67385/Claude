@@ -60,3 +60,23 @@ def triangles(pos, nrm, uv, tris, tex_size, flat=True, color=None):
             x, y, z = int(x), int(y), int(z); cmds.append((CMD_VTX16, [(x & 0xFFFF) | ((y & 0xFFFF) << 16), z & 0xFFFF]))
     cmds.append((CMD_END, []))
     return cmds
+
+
+def quads(pos, uv, qs, tex_size):
+    """flat-shaded quads (DS GL_QUADS, one polygon each)."""
+    cmds = [(CMD_BEGIN, [1])]
+    w, h = tex_size
+    q = np.clip(np.round(pos * 4096.0), -32768, 32767).astype(np.int64)
+    for t in qs:
+        a, b, c = pos[t[0]], pos[t[1]], pos[t[2]]
+        fn = np.cross(b - a, c - a); ln = np.linalg.norm(fn)
+        cmds.append((CMD_NORMAL, [pack_normal(fn / ln if ln > 1e-12 else np.array([0, 1.0, 0]))]))
+        for vi in t:
+            if uv is not None:
+                s = int(np.clip(round(uv[vi, 0] * w * 16), -32768, 32767)) & 0xFFFF
+                tt = int(np.clip(round(uv[vi, 1] * h * 16), -32768, 32767)) & 0xFFFF
+                cmds.append((CMD_TEXCOORD, [s | (tt << 16)]))
+            x, y, z = (int(v) for v in q[vi])
+            cmds.append((CMD_VTX16, [(x & 0xFFFF) | ((y & 0xFFFF) << 16), z & 0xFFFF]))
+    cmds.append((CMD_END, []))
+    return cmds
