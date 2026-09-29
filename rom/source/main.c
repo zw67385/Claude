@@ -181,8 +181,12 @@ static void init_hw(void)
     glClearPolyID(63);
     glClearDepth(0x7FFF);
     glViewport(0, 0, 255, 191);
-
+    /* distance fog: 32-step ramp covering ~3 m .. ~40 m of the depth buffer (near 0.05, far 80) */
+    glFogShift(4);
+    glFogOffset(0x7C00);
+    for (int i = 0; i < 32; i++) glFogDensity(i, i < 8 ? 0 : (i - 8) * 6 > 124 ? 124 : (i - 8) * 6);
 }
+static void sky(int r, int g, int b) { glClearColor(r, g, b, 31); glFogColor(r, g, b, 31); }
 
 static void wrap_print(const char *t);
 static void game_cmd(const char *c);
@@ -1048,11 +1052,11 @@ static void run_game(int start)
         /* lighting per time of day; flashlight is a view-space light; cabin light when powered */
         int cabin = in && G.gen && G.light;
         u32 sun = RGB15(6, 7, 11), amb = RGB15(4, 4, 6);
-        if (seq == 3) { sun = RGB15(28, 19, 11); amb = RGB15(11, 8, 7); glClearColor(20, 12, 8, 31); }
-        else if (seq == 6) { sun = RGB15(28, 28, 25); amb = RGB15(13, 13, 13); glClearColor(15, 20, 27, 31); }
-        else if (G.flare) { sun = RGB15(31, 8, 6); amb = RGB15(12, 3, 3); glClearColor(14, 3, 2, 31); }
-        else glClearColor(2, 2, 3, 31);
-        if (seq == 7) { sun = RGB15(4, 5, 8); amb = RGB15(3, 3, 5); }
+        if (seq == 3) { sun = RGB15(28, 19, 11); amb = RGB15(11, 8, 7); sky(20, 12, 8); }
+        else if (seq == 6) { sun = RGB15(28, 28, 25); amb = RGB15(13, 13, 13); sky(15, 20, 27); }
+        else if (G.flare) { sun = RGB15(31, 8, 6); amb = RGB15(12, 3, 3); sky(14, 3, 2); }
+        else sky(2, 2, 3);
+        if (seq == 7) { sun = RGB15(4, 5, 8); amb = RGB15(3, 3, 5); sky(3, 3, 4); }
         g_amb = cabin ? RGB15(13, 12, 10) : amb;
         /* ambience loop + generator hum (louder when close to it) */
         amb_set(seq == 3 ? SFX_AMB_EVENING : seq == 7 ? SFX_AMB_RAIN : seq == 8 && G.cult_seen ? SFX_AMB_DRONE : seq == 6 ? SFX_AMB_WIND : SFX_AMB_NIGHT);
@@ -1060,7 +1064,8 @@ static void run_game(int start)
             int dx = (px + 12970) >> 12, dz = (pz - 11000) >> 12, d = abs(dx) + abs(dz) + (in ? 6 : 0);
             gen_snd(G.gen, d > 40 ? 20 : 180 - d * 4);
         }
-        g_lights = POLY_FORMAT_LIGHT0 | (G.flash ? POLY_FORMAT_LIGHT1 : 0);
+        g_lights = POLY_FORMAT_LIGHT0 | POLY_FOG | (G.flash ? POLY_FORMAT_LIGHT1 : 0);
+        if (bino) glDisable(GL_FOG); else glEnable(GL_FOG);
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
