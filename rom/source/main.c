@@ -201,7 +201,7 @@ static void dlg_advance(void)
                 const char *a = dev.text + 9; while (*a == ' ') a++;
                 while (*a && *a != ' ') a++;   /* skip the speaker object id */
                 while (*a == ' ') a++;
-                strncpy(speaker, a, sizeof speaker - 1); speaker[sizeof speaker - 1] = 0;
+                { int n = 0; while (*a && n < (int)sizeof speaker - 1) { if (*a != '"') speaker[n++] = *a; a++; } speaker[n] = 0; }
             } else if (!strncmp(dev.text, "ExitRadio", 9)) exit_radio = 1;
             continue;   /* PlayStatic/StopStatic/PlaySFX/VO_*: audio, not ported yet */
         }

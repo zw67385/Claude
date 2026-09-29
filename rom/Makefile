@@ -294,3 +294,19 @@ $(SOURCES_S) $(SOURCES_C) $(SOURCES_CPP): $(HEADERS_ASSETS)
 # --------------------------------------
 
 -include $(DEPS)
+
+# R4 (original R4 DS / M3 Simply) flashcart build
+# ------------------------------------------------
+# `make r4` DLDI-patches a copy of the ROM with the R4 driver and assembles a microSD
+# root in r4sd/: the R4 kernel files from R4DIR plus the patched game.
+R4DIR	?= ../R4CardFilesStuff
+R4DLDI	?= $(BLOCKSDS)/sys/dldi_r4/r4tf.dldi
+R4ROM	:= r4sd/IronbarkLookout.nds
+
+.PHONY: r4
+r4: $(ROM)
+	@echo "  R4      $(R4ROM)"
+	$(V)rm -rf r4sd && mkdir -p r4sd
+	$(V)if [ -d "$(R4DIR)" ]; then cp -r "$(R4DIR)"/. r4sd/; else echo "  (R4DIR $(R4DIR) not found: only the game is copied)"; fi
+	$(V)cp $(ROM) $(R4ROM)
+	$(V)$(BLOCKSDS)/tools/dlditool/dlditool $(R4DLDI) $(R4ROM)
