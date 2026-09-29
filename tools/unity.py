@@ -106,8 +106,8 @@ class Scene:
                 r = d.get("m_LocalRotation", {"x": 0, "y": 0, "z": 0, "w": 1})
                 s = d.get("m_LocalScale", {"x": 1, "y": 1, "z": 1})
                 self.tf[f] = {"go": fid(d["m_GameObject"]), "parent": fid(d.get("m_Father", {})),
-                              "pos": (p["x"], p["y"], p["z"]), "rot": (r["x"], r["y"], r["z"], r["w"]),
-                              "scale": (s["x"], s["y"], s["z"]), "rt": c == 224, "children": [fid(x) for x in d.get("m_Children", [])]}
+                              "pos": (float(p["x"]), float(p["y"]), float(p["z"])), "rot": (float(r["x"]), float(r["y"]), float(r["z"]), float(r["w"])),
+                              "scale": (float(s["x"]), float(s["y"]), float(s["z"])), "rt": c == 224, "children": [fid(x) for x in d.get("m_Children", [])]}
         for f, t in self.tf.items():
             if t["go"] in self.go:
                 self.go[t["go"]]["tf"] = f

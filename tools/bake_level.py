@@ -158,7 +158,7 @@ def emit(groups, out):
             texoff = len(blob); blob += tex["data"]
         tp = np.clip(tp, -7.99, 7.99)
         pos = tp.reshape(-1, 3); uvs = uv.reshape(-1, 2)
-        tris = np.arange(len(pos)).reshape(-1, 3)
+        tris = np.arange(len(pos)).reshape(-1, 3)[:, ::-1]
         cmds = gx.triangles(pos, None, uvs if tex else None, tris, (w or 1, h or 1))
         dl = gx.encode(cmds)
         while len(blob) % 4: blob += b"\0"
@@ -170,4 +170,5 @@ def emit(groups, out):
     open(os.path.join(out, "level.bin"), "wb").write(b"LVL0" + struct.pack("<I", ngr) + hdr2 + bytes(blob))
     print("level.bin", 8 + 32*ngr + len(blob), "bytes,", ngr, "groups")
 
-main()
+if __name__ == "__main__":
+    main()

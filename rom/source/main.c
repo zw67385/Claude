@@ -9,6 +9,29 @@
 typedef struct { u32 w, h, col, flags, dlwords, paloff, texoff, dloff; } Group;
 
 static int stat_v, stat_p;
+typedef struct { s32 x0, x1, y0, y1, z0, z1; } Box;
+static Box *boxes; static int nboxes;
+static int load_col(const char *path)
+{
+    FILE *f = fopen(path, "rb");
+    if (!f) return 0;
+    u32 n; if (fread(&n, 4, 1, f) != 1) { fclose(f); return 0; }
+    boxes = malloc(n * sizeof(Box)); nboxes = fread(boxes, sizeof(Box), n, f);
+    fclose(f); return 1;
+}
+#define PR 1100          /* player radius 0.27m in 20.12 */
+static void collide(int *px, int *pz, int feet, int head)
+{
+    for (int it = 0; it < 2; it++)
+        for (int i = 0; i < nboxes; i++) {
+            Box *b = &boxes[i];
+            if (b->y1 <= feet + 1200 || b->y0 >= head) continue;
+            if (*px + PR <= b->x0 || *px - PR >= b->x1 || *pz + PR <= b->z0 || *pz - PR >= b->z1) continue;
+            int l = *px + PR - b->x0, r = b->x1 - (*px - PR), d = *pz + PR - b->z0, u = b->z1 - (*pz - PR);
+            int m = l; if (r < m) m = r; if (d < m) m = d; if (u < m) m = u;
+            if (m == l) *px -= l; else if (m == r) *px += r; else if (m == d) *pz -= d; else *pz += u;
+        }
+}
 static u8 *lvl;
 static Group *grp;
 static u32 ngrp;
@@ -77,7 +100,8 @@ static void init_hw(void)
 
 static void run_cabin(void)
 {
-    int px = 0, py = 0, pz = 0;          // 20.12
+    if (!nboxes) load_col("nitro:/tower.col");
+    int px = -9830, py = 400, pz = 4550;          // 20.12 (Player Inside spawn)
     int yaw = 0, pitch = 0;              // 15-bit angle
     int frames = 0;
     touchPosition t0, t1; int wasTouch = 0;
@@ -91,8 +115,7 @@ static void run_cabin(void)
         int s = sinLerp(yaw), c = cosLerp(yaw);
         px += ((-s * fwd + c * str) * sp) >> 12;
         pz += ((-c * fwd - s * str) * sp) >> 12;
-        if (px > 3 * 4096) px = 3 * 4096; if (px < -3 * 4096) px = -3 * 4096;
-        if (pz > 3 * 4096) pz = 3 * 4096; if (pz < -3 * 4096) pz = -3 * 4096;
+        collide(&px, &pz, py - 6200, py + 400);
         if (k & KEY_Y) yaw += 500;
         if (k & KEY_A) yaw -= 500;
         if (k & KEY_X) pitch += 300;
