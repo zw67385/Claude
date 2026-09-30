@@ -84,8 +84,10 @@ static void trail_hud(void)
 
 static void ts_draw(int pass)
 {
-    glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
+    /* the guard house shell is single-sided (roof, some walls): draw both faces */
+    glPolyFmt(POLY_ALPHA(31) | POLY_CULL_NONE | g_lights | POLY_ID(1));
     draw_model(&T_guard, TX(633), 0, TZ(440), 0, pass);
+    glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
     draw_model(&T_door, TX(634.13), 0, TZ(440.29), TS.door, pass);
     draw_model(&T_gate, TX(637.51), 0, TZ(433.68), TS.gate, pass);
     if (TS.rs == R_SIT || TS.rs == R_SITFINAL) draw_model(&T_rsit, TX(632.95), U(0.33), TZ(442.42), -8154, pass);

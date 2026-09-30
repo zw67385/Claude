@@ -86,7 +86,8 @@ static void rv_render(RV *r, u16 amb, void (*draw)(int pass))
     for (int pass = 0; pass < 2; pass++) {
         glPushMatrix();
         glTranslatef32(r->x, r->y, r->z); glRotateYi(r->yaw); glRotateXi(-r->pitch_rv);
-        glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | POLY_FORMAT_LIGHT0 | POLY_FORMAT_LIGHT1 | POLY_ID(1));
+        /* the RV body is a single-sided shell facing out: from the driver seat both sides must draw */
+        glPolyFmt(POLY_ALPHA(31) | POLY_CULL_NONE | POLY_FORMAT_LIGHT0 | POLY_FORMAT_LIGHT1 | POLY_ID(1));
         draw_level(&L_rv, pass);
         glPopMatrix(1);
         if (draw) draw(pass);

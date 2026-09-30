@@ -12,7 +12,7 @@ MARK="Door Trigger,Player Outside,Player Inside,Conversation Trigger,Invisible w
 lvl() { $PY bake_level.py "$S" ${RR:-${R[@]}} $W/$1 ${2:-32} | tail -1; cp $W/$1/level.bin $OUT/$1.bin; }
 # guard house + gate posts (static)
 PIVOT=633,0,440 ONLY="GuardHouse/,TRAIL GATE/entry gate_Baked.001,TRAIL GATE/entry gate_Baked.002" \
-  SKIP="$MARK,ParkRanger,BadGuy,GuardHouse/Door$" BUDGET=1400 lvl guard 64
+  SKIP="$MARK,ParkRanger,BadGuy,GuardHouse/Door$" BUDGET=1900 lvl guard 64
 PIVOT=634.13,0,440.29 ONLY="GuardHouse/Door$" BUDGET=60 lvl gdoor
 PIVOT=637.51,0,433.68 ONLY="TRAIL GATE/entry gate_Baked$" BUDGET=200 lvl gate
 # walking data (world frame)
