@@ -120,6 +120,54 @@ static void diner_use(int id)
     hud_dirty = 1;
 }
 
+#ifdef AUTOPLAY
+/* recording build only: plays the diner stop the way the original intends */
+static void bot_diner(u32 *k, u32 *kd)
+{
+    static int st, t, dt, saw;
+    static const struct { float x, z; } P[] = {
+        { 1112.5, 959.2 }, { 1116.58, 965.3 },                     /* 0-1 to the door */
+        { 1116.8, 951.4 }, { 1120.0, 951.4 },                      /* 2-3 washroom */
+        { 1116.8, 951.4 }, { 1116.4, 960.46 },                     /* 4-5 back to booth 1 */
+        { 1116.5, 962.6 }, { 1112.5, 959.0 } };                    /* 6-7 out to the RV */
+    #define PRESS(lbl) do { if (prompt && !strcmp(prompt, lbl) && ++t > 15) { *kd |= KEY_A; t = 0; st++; } } while (0)
+    #define WALK(i) do { static int lx, lz, still; \
+        if (bot_walk(&dw, k, DX(P[i].x), DZ(P[i].z)) || still > 20) { st++; still = 0; } \
+        else if (abs(dw.x - lx) + abs(dw.z - lz) < 40) still++; else still = 0; \
+        lx = dw.x; lz = dw.z; } while (0)
+    #define FACE(x, z) bot_face(&dw, DX(x), DZ(z))
+    *k = 0; *kd = 0;
+    if (!DN.in && !DN.started) { if (st > 3) st = 0; }
+    if (dlg_active) { saw = 1; if (++dt > 55) { dt = 0; *kd = KEY_A; } return; }
+    dt = 0;
+    switch (st) {
+    case 0: if (++t > 40) { t = 0; st++; } break;
+    case 1: WALK(0); break;
+    case 2: WALK(1); break;
+    case 3: if (FACE(1116.6, 963.6)) PRESS("Enter the diner"); break;
+    case 4: saw = 0; st++; break;
+    case 5: if (saw && ++t > 30) { t = 0; st++; } break;           /* the waitress greets you */
+    case 6: WALK(2); break;
+    case 7: WALK(3); break;
+    case 8: if (FACE(1121.41, 951.86)) PRESS("Use the toilet"); break;
+    case 9: WALK(4); break;
+    case 10: WALK(5); break;
+    case 11: if (FACE(1115.25, 960.46)) PRESS("Sit down"); break;
+    case 12: if (DN.served && ++t > 30) { t = 0; st++; } break;    /* order, wait for the food */
+    case 13: if (FACE(1115.36, BOOTH[DN.booth].tz)) PRESS("Eat"); break;
+    case 14: if (DN.paid && ++t > 60) { t = 0; st++; } break;      /* after eating, the check */
+    case 15: *kd = KEY_B; st++; break;
+    case 16: WALK(6); break;
+    case 17: if (FACE(1116.6, 963.6)) PRESS("Leave"); break;
+    case 18: if (++t > 20) { t = 0; st++; } break;
+    case 19: WALK(7); break;
+    case 20: if (FACE(1107.25, 960.9)) PRESS("Get in the RV"); break;
+    }
+    #undef PRESS
+    #undef WALK
+    #undef FACE
+}
+#endif
 static void diner_scene(void)
 {
     consoleClear(); printf("\n\n\n   Loading...\n");
@@ -147,6 +195,9 @@ static void diner_scene(void)
     while (ok && !DN.leave) {
         scanKeys();
         u32 k = keysHeld(), kd = keysDown();
+#ifdef AUTOPLAY
+        bot_diner(&k, &kd);
+#endif
         dw.grass = !DN.in;
         int talking = dlg_active;   /* the A press that ends a conversation must not also use a hotspot */
         if (dlg_active) dlg_input(kd);

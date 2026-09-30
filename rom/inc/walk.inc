@@ -137,3 +137,23 @@ static int npc_step(int *x, int *z, int *yaw, int tx, int tz, int sp)
     *yaw += dy / 4;
     return 0;
 }
+
+#ifdef AUTOPLAY
+/* recording build only: steer a walker toward (tx, tz) by feeding it Up; returns 1 when there */
+static int bot_walk(Walker *w, u32 *k, int tx, int tz)
+{
+    int dx = tx - w->x, dz = tz - w->z;
+    if (abs(dx) < U(0.2) && abs(dz) < U(0.2)) return 1;
+    int d = (short)(yaw_to(dx, dz) - w->yaw);
+    w->yaw += d / 4; w->pitch -= w->pitch / 8;
+    if (abs(d) < 3000) *k |= KEY_UP;
+    return 0;
+}
+/* turn to face (tx, tz); returns 1 once facing it */
+static int bot_face(Walker *w, int tx, int tz)
+{
+    int d = (short)(yaw_to(tx - w->x, tz - w->z) - w->yaw);
+    w->yaw += d / 5;
+    return abs(d) < 400;
+}
+#endif

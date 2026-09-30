@@ -44,6 +44,37 @@ static void drive_hud(int speed)
 #endif
 }
 
+#ifdef AUTOPLAY
+#include "../inc/autowp.inc"
+/* recording build only: follow the road centreline to the diner, park, get out */
+static void bot_drive(RV *r, u32 *k, u32 *kd, int done)
+{
+    static int i;
+    const int n = sizeof autowp / sizeof *autowp;
+    *k = 0; *kd = 0;
+    if (done) { *k = KEY_DOWN; return; }
+    /* nearest waypoint in a window ahead, aim two past it */
+    long long bd = -1; int bi = i;
+    for (int q = i; q < n && q < i + 8; q++) {
+        long long dx = U(autowp[q][0]) - r->x, dz = -U(autowp[q][1]) - r->z, d2 = dx * dx + dz * dz;
+        if (bd < 0 || d2 < bd) { bd = d2; bi = q; }
+    }
+    i = bi;
+    int j = i + 2 < n ? i + 2 : n - 1;
+    int d = (short)(yaw_to(U(autowp[j][0]) - r->x, -U(autowp[j][1]) - r->z) - r->yaw);
+    int want = d * 2; if (want > 1800) want = 1800; if (want < -1800) want = -1800;
+    if (want > r->steer + 60) *k |= KEY_LEFT; else if (want < r->steer - 60) *k |= KEY_RIGHT;
+    /* slow for bends: heading change over the next ~40 m */
+    int j2 = i + 5 < n ? i + 5 : n - 1;
+    int h1 = yaw_to(U(autowp[j][0] - autowp[i][0]), -U(autowp[j][1] - autowp[i][1]));
+    int h2 = yaw_to(U(autowp[j2][0] - autowp[j][0]), -U(autowp[j2][1] - autowp[j][1]));
+    int bend = abs((short)(h2 - h1)), vmax = bend > 3000 ? U(6.0) / 20 : bend > 1500 ? U(9.0) / 20 : U(16.0) / 20;
+    if (abs(d) > 2500 && vmax > U(6.0) / 20) vmax = U(6.0) / 20;
+    if (prompt) { static int w; if (++w > 20) { w = 0; *kd = KEY_X; } return; }
+    if (i >= n - 3) { if (r->spd > 0) *k |= KEY_DOWN; }
+    else if (r->spd < vmax) *k |= KEY_UP; else if (r->spd > vmax + U(1.0) / 20) *k |= KEY_DOWN;
+}
+#endif
 static void first_scene(void)
 {
     /* free the tower data: this scene needs the texture memory */
@@ -82,6 +113,9 @@ static void first_scene(void)
     for (;;) {
         scanKeys();
         u32 k = keysHeld(), kd = keysDown();
+#ifdef AUTOPLAY
+        bot_drive(&r, &k, &kd, diner_done);
+#endif
         if (dlg_active) dlg_input(kd);
         rv_update(&r, k, dlg_active);
         /* ---- triggers */
