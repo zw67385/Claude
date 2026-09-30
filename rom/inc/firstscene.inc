@@ -52,7 +52,7 @@ static void bot_drive(RV *r, u32 *k, u32 *kd, int done)
     static int i;
     const int n = sizeof autowp / sizeof *autowp;
     *k = 0; *kd = 0;
-    if (done) { *k = KEY_DOWN; return; }
+    if (done) { static int t; *k = KEY_DOWN; if (++t > 100) *kd = KEY_START; return; }   /* the rest of the road is not in the take */
     /* nearest waypoint in a window ahead, aim two past it */
     long long bd = -1; int bi = i;
     for (int q = i; q < n && q < i + 8; q++) {
