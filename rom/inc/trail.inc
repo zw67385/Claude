@@ -106,6 +106,7 @@ static void trail_drive(void)
     sub_t = 0; prompt = NULL; drive_hint = "Park at the trailhead"; drive_title = "Ironbark Trailhead";
     w_far = U(72); hud_dirty = 1;
     int hud_t = 0, lastkmh = -1;
+    radio_start(RAD_TRAIL, RAD_TRAIL_LEN, 1);
     fade(0);
     for (;;) {
         scanKeys();
@@ -127,6 +128,7 @@ static void trail_drive(void)
         dbg_x = r.x; dbg_y = r.y; dbg_z = r.z;
         if (hud_dirty) { drive_hud(kmh); hud_dirty = 0; }
     }
+    sfx(SFX_HANDBRAKE); radio_stop();
     fade(1);
     TS.rvx = r.x; TS.rvz = r.z; TS.rvyaw = r.yaw; TS.rvy = r.y;
 }
@@ -208,7 +210,7 @@ static void trail_scene(void)
         int locked = dlg_active || TS.rs == R_RUSH;
         if (!locked) walker_update(&tw, k);
         else walker_update(&tw, k & KEY_TOUCH);
-        if (TS.flash && !dlg_active && (kd & KEY_X)) { TS.flash_on ^= 1; sfx(SFX_CLICK); hud_dirty = 1; }
+        if (TS.flash && !dlg_active && (kd & KEY_X)) { TS.flash_on ^= 1; sfx(TS.flash_on ? SFX_FLASH_ON : SFX_FLASH_OFF); hud_dirty = 1; }
         TS.inside = ts_in_house(tw.x, tw.z);
         tw.grass = !TS.inside;
         /* look at the ranger's face while he talks (and during the jumpscare) */
@@ -270,7 +272,7 @@ static void trail_scene(void)
             break;
         case R_GATE:
             if (++TS.rt == 10) sfx(SFX_DOOR_OPEN);
-            if (TS.rt > 10 && TS.gate > -8192) TS.gate -= 8192 / 30;
+            if (TS.rt > 10 && TS.gate > -8192) { if (TS.gate == 0) sfx(SFX_TGATE); TS.gate -= 8192 / 30; }
             if (TS.rt > 50) { TS.rs = R_GOPLAYER; TS.rt = 0; ts_route(tw.x, tw.z); }
             break;
         case R_STAND:

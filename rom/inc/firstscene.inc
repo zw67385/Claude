@@ -116,7 +116,7 @@ static void first_scene(void)
     int hud_t = 0, lastkmh = -1; hud_dirty = 1;
     music_set(-1); sfx(SFX_RV_START);
     mm_sfxhand eng = sfx_play(SFX_RV_ENGINE, 110);
-    music_set(SFX_CAR_RADIO);   /* the RV radio */
+    radio_start(RAD_FIRST, RAD_FIRST_LEN, 3);   /* the RV radio is on from the start of the drive */
     fade(0);
     for (;;) {
         scanKeys();
@@ -131,7 +131,7 @@ static void first_scene(void)
         if (h >= 0) switch (tr[h].id) {
             case TR_DRIVESUB: sub(S("SolitaryLife"), 7); sq_add(140, "MemoriesAtBay", 6); break;
             case TR_LOVEJOB: sub(S("LovedOutdoors"), 5); sq_add(100, "NatureGaveHappiness", 6); sq_add(220, "WoodsIsHome", 6); break;
-            case TR_NOTIF1: case TR_NOTIF2: sfx_play(SFX_RADIO_BEEP, 200); sub("Kayla Nelson: 1 Text Message", 5); break;
+            case TR_NOTIF1: case TR_NOTIF2: sfx_play(SFX_NOTIF, 220); sub("Kayla Nelson: 1 Text Message", 5); break;
             case TR_LOOKDINER: look_t = 60; sub(S("GetFood"), 5); break;
             case TR_SLOW: r.maxspd = U(7.0) / 20; break;
             case TR_CLOSE: close = 1; break;
@@ -151,7 +151,7 @@ static void first_scene(void)
             level_free(&L_rv); world_free(); glResetTextures();
             mmEffectCancel(eng);
             diner_scene();
-            sfx(SFX_RV_START); eng = sfx_play(SFX_RV_ENGINE, 110); music_set(SFX_CAR_RADIO);
+            sfx(SFX_RV_START); eng = sfx_play(SFX_RV_ENGINE, 110); rad_pl = NULL; radio_start(RAD_FIRST, RAD_FIRST_LEN, 3);
             consoleClear(); printf("\n\n\n   Loading...\n");
             world_load("nitro:/drive1.wld"); load_model(&L_rv, "nitro:/rv.bin");
             int ml = r.maxspd; rv_place(&r, U(1107.25), U(-960.9), -8192); r.maxspd = ml;
@@ -176,7 +176,7 @@ static void first_scene(void)
         if ((kd & KEY_START) && !dlg_active) break;
     }
 out:
-    music_set(-1); mmEffectCancel(eng); sfx_free(SFX_RV_ENGINE); sfx_free(SFX_RV_START);
+    sfx(SFX_HANDBRAKE); radio_stop(); mmEffectCancel(eng); sfx_free(SFX_RV_ENGINE); sfx_free(SFX_RV_START);
     fade(1);
     level_free(&L_rv); world_free(); glResetTextures();
     setBrightness(3, 0);

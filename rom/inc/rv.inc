@@ -70,6 +70,7 @@ static void rv_eye(const RV *r, int *cx, int *cy, int *cz)
 static void rv_render(RV *r, u16 amb, void (*draw)(int pass))
 {
     int camx, camy, camz; rv_eye(r, &camx, &camy, &camz);
+    radio_tick(keysDown());
     g_lights = POLY_FORMAT_LIGHT0 | POLY_FORMAT_LIGHT1 | POLY_FOG;
     g_amb = amb;
     glEnable(GL_FOG);

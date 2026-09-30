@@ -41,6 +41,27 @@ static void music_set(int id)   /* one looping music track at a time */
     if (mus_cur >= 0) { mmEffectCancel(mus_h); sfx_free(mus_cur); }
     mus_cur = id; mus_h = id >= 0 ? sfx_play(id, 190) : 0;
 }
+/* the RV radio (Radio.cs): plays its songs in turn, SELECT mutes / unmutes it (the song runs on silently) */
+static const short *rad_pl, *rad_len; static int rad_n, rad_i, rad_mute; static u32 rad_t0;
+static volatile u32 vb_total;
+static void radio_start(const short *pl, const short *len, int n)
+{
+    if (rad_pl == pl) return;
+    rad_pl = pl; rad_len = len; rad_n = n; rad_i = 0; rad_t0 = vb_total; music_set(pl[0]); if (rad_mute) mmEffectVolume(mus_h, 0);
+}
+static void radio_stop(void) { rad_pl = NULL; music_set(-1); }
+static void radio_tick(u32 kd)
+{
+    if (!rad_pl) return;
+    if (kd & KEY_SELECT) { rad_mute ^= 1; sfx(SFX_CLICK); mmEffectVolume(mus_h, rad_mute ? 0 : 190); }
+    if (mus_cur >= 0 && vb_total - rad_t0 > (u32)rad_len[rad_i] * 60) {   /* song over: next one */
+        rad_t0 = vb_total;
+        mmEffectCancel(mus_h); sfx_free(mus_cur); mus_cur = -1;
+        rad_i = (rad_i + 1) % rad_n; music_set(rad_pl[rad_i]); if (rad_mute) mmEffectVolume(mus_h, 0);
+    }
+}
+static const short RAD_FIRST[] = { SFX_RAD1, SFX_RAD2, SFX_RAD3 }, RAD_TRAIL[] = { SFX_RAD_TUE };
+static const short RAD_FIRST_LEN[] = { 82, 93, 80 }, RAD_TRAIL_LEN[] = { 54 };   /* seconds */
 static void gen_snd(int on, int vol)
 {
     if (on && !gen_on_snd) { gen_h = sfx_play(SFX_GEN_RUN, vol); gen_on_snd = 1; }
@@ -52,7 +73,7 @@ typedef struct { u32 w, h, col, flags, dlwords, paloff, texoff, dloff; } Group;
 
 static int stat_v, stat_p, stat_vb;
 static volatile int vb_count;
-static void on_vblank(void) { vb_count++; }
+static void on_vblank(void) { vb_count++; vb_total++; }
 typedef struct { s32 x0, x1, y0, y1, z0, z1; } Box;
 static Box *boxes; static int nboxes;
 static int skipbox = -1;   /* collider disabled this frame (open door) */
@@ -840,9 +861,11 @@ static void ending(void)
     setBrightness(3, 0);
     for (int i = 1; i <= 15; i++) { snprintf(k, sizeof k, "ep4_intro.Seq8Outro%d", i); if (typed(T(k))) break; }
     typed(T("ep4_intro.PleaseBeSafe"));
+    music_set(SFX_CREDITS);
     consoleClear();
     printf("\n\n\n\n\n     %s\n\n     %s\n\n\n   Thanks for playing.\n\n   Press A", T("ep4_intro.ni"), T("ep4_intro.IronbarkLookout"));
     do { swiWaitForVBlank(); scanKeys(); } while (!(keysDown() & KEY_A));
+    music_set(-1);
 }
 
 static const char *chapter(void)
@@ -1056,7 +1079,7 @@ static void run_game(int start)
                 ti = (ti + 1) % 7;
                 hud_dirty = 1;
             }
-            if (kd & KEY_X) { G.flash ^= 1; hud_dirty = 1; }
+            if (kd & KEY_X) { G.flash ^= 1; sfx(G.flash ? SFX_FLASH_ON : SFX_FLASH_OFF); hud_dirty = 1; }
 #ifdef DEBUG_POS
             if ((kd & KEY_L) && seq == 6) { G.eaten = G.report_done = 1; G.knock = 1; px = WX(306.5); pz = WZ(311.5); fy = WY(27.2); yaw = yaw_to(WX(306) - px, WZ(305.5) - pz); }
             else if ((kd & KEY_L) && seq == 8) { G.convo2 = 1; for (int i = 0; i < 11; i++) G.blinds[i] = 0; px = WX(317.3); pz = WZ(329.4); fy = WY(43.72); yaw = yaw_to(CULT_X - px, CULT_Z - pz); pitch = 250; }

@@ -154,7 +154,7 @@ static void camp_scene(void)
             int want = -iatan2(U(52.35) - (cw.fy + EYE), dist < U(1) ? U(1) : dist);
             cw.pitch += (want - cw.pitch) / 8;
         }
-        if (!dlg_active && (kd & KEY_X)) { CS.flash_on ^= 1; sfx(SFX_CLICK); hud_dirty = 1; }
+        if (!dlg_active && (kd & KEY_X)) { CS.flash_on ^= 1; sfx(CS.flash_on ? SFX_FLASH_ON : SFX_FLASH_OFF); hud_dirty = 1; }
 
         /* ---- triggers */
         for (int i = 0; i < 9; i++) {

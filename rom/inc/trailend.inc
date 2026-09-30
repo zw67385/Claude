@@ -42,7 +42,7 @@ static int trail_end_run(void)
         u32 k = keysHeld(), kd = keysDown();
         int frozen = TE.st == TE_LOOK || TE.st == TE_SCARE || TE.st == TE_SAFE;
         walker_update(&tw, frozen ? (k & KEY_TOUCH) : k);
-        if ((kd & KEY_X) && !frozen) { TS.flash_on ^= 1; sfx(SFX_CLICK); hud_dirty = 1; }
+        if ((kd & KEY_X) && !frozen) { TS.flash_on ^= 1; sfx(TS.flash_on ? SFX_FLASH_ON : SFX_FLASH_OFF); hud_dirty = 1; }
         TS.inside = ts_in_house(tw.x, tw.z);
 #ifdef DEBUG_POS
         if (kd & KEY_L) { tw.x = TX(621.0); tw.z = TZ(415.2); tw.yaw = 16384; TE.st = TE_CHASE; TE.cx = TX(645); TE.cz = TZ(436); }
@@ -51,7 +51,7 @@ static int trail_end_run(void)
         switch (TE.st) {
         case TE_WALK:   /* the chase trigger west of the guard house */
             if (tw.x < TX(629.6) && abs(tw.z - TZ(436.8)) < U(6.15)) {
-                TE.st = TE_LOOK; TE.t = 0; TE.yaw0 = tw.yaw; amb_set(-1);
+                TE.st = TE_LOOK; TE.t = 0; TE.yaw0 = tw.yaw; amb_set(-1); music_set(SFX_CHASE);
                 sfx_play(SFX_SCARE, 127);
             }
             break;
@@ -102,7 +102,7 @@ static int trail_end_run(void)
         if ((kd & KEY_A) && best >= 0) {
             if (H[best].id == H_GDOOR) sub(S("ItWasLocked"), 3);
             else if (TE.st == TE_CHASE || TE.st == TE_WALK) {   /* in, door slammed and locked */
-                sfx(SFX_DOOR_CLOSE); TE.st = TE_SAFE; TE.t = 0; prompt = NULL;
+                sfx(SFX_DOOR_CLOSE); sfx(SFX_KNOCKS); music_set(-1); TE.st = TE_SAFE; TE.t = 0; prompt = NULL;
                 amb_set(-1); fade(1);   /* the outro fades in the dark while he pounds on the door */
             }
             hud_dirty = 1;
@@ -144,7 +144,7 @@ static int trail_end_run(void)
         if (hud_dirty) { te_hud(); hud_dirty = 0; }
     }
 out:
-    amb_set(-1);
+    amb_set(-1); music_set(-1);
     return TE.st == TE_SAFE;
 }
 

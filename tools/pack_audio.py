@@ -33,7 +33,13 @@ SFX = [  # name, file, loop seconds (0 = one-shot), max seconds, gain
     # First Scene: RV engine / start, diner jukebox, menu music, till
     ("rv_engine", "van_engine", 1.5, 0, 0.7), ("rv_start", "RV Start", 0, 3.4, 1),
     ("diner_music", "DedLighter Diner_Music_version_1", 45, 0, 0.7), ("menu_music", "menu music", 45, 0, 0.7),
-    ("coins", "diner change sound", 0, 1, 1), ("car_radio", "jazz1_1", 45, 0, 0.6),
+    ("coins", "diner change sound", 0, 1, 1),
+    # RV radio playlists (Radio.cs: First Scene plays clips 1,2,0 in turn; Trail Start one song), chase, credits, stingers
+    ("rad1", "Master Distant Final (1)", 0, 0, 0.7, 8000), ("rad2", "Miss Me", 0, 0, 0.7, 8000), ("rad3", "come home", 0, 0, 0.7, 8000),
+    ("rad_tue", "tuesday (108bpm)", 0, 0, 0.7, 8000), ("chase", "GET_TO_THE_CAR_VERSION_3", 0, 0, 0.8, 8000),
+    ("credits", "Nostalgic Ending Credits 4", 0, 0, 0.7, 8000), ("knocks", "hard knocks outside rv", 0, 0, 1),
+    ("tgate", "Trail gate open", 0, 0, 1), ("handbrake", "handbreak", 0, 0, 1), ("notif", "notif", 0, 0, 1),
+    ("flash_on", "flashlight on", 0, 0, 1), ("flash_off", "flashlight off", 0, 0, 1), ("horn", "Horn", 0, 2, 1),
 ]
 STEPS = [("step_wood%d" % i, "Carpet-%02d" % i) for i in (1, 2, 3, 4)] + [("step_grass%d" % i, "Grass_%02d" % i) for i in (1, 2, 3, 4)]
 
@@ -45,17 +51,17 @@ def find(stem):
         if os.path.splitext(f)[0].lower() == stem.lower() and not f.endswith(".meta"): return os.path.join(AC, f)
     raise FileNotFoundError(stem)
 
-def load(path, gain=1.0):
+def load(path, gain=1.0, rate=RATE):
     d, sr = sf.read(path, always_2d=True)
     d = d.mean(1)
-    n = int(len(d) * RATE / sr)
+    n = int(len(d) * rate / sr)
     d = np.interp(np.linspace(0, len(d) - 1, n), np.arange(len(d)), d)   # plain resample (low-passed by 8-bit anyway)
     pk = np.abs(d).max() or 1
     return d / pk * 0.95 * gain
 
-def write(name, d, loop=False):
+def write(name, d, loop=False, rate=RATE):
     pcm = np.clip(d * 127 + 128, 0, 255).astype(np.uint8).tobytes()
-    fmt = struct.pack("<HHIIHH", 1, 1, RATE, RATE, 1, 8)
+    fmt = struct.pack("<HHIIHH", 1, 1, rate, rate, 1, 8)
     chunks = b"fmt " + struct.pack("<I", len(fmt)) + fmt
     if loop:   # before 'data': mmutil stops reading chunks once it has the samples
         smpl = struct.pack("<9I", 0, 0, 1000000000 // RATE, 60, 0, 0, 0, 1, 0) + struct.pack("<6I", 0, 0, 0, len(pcm) - 1, 0, 0)
@@ -67,8 +73,9 @@ def write(name, d, loop=False):
 def main():
     os.makedirs(OUT, exist_ok=True)
     total = 0
-    for name, stem, loop, mx, gain in SFX:
-        d = load(find(stem), gain)
+    for name, stem, loop, mx, gain, *rt in SFX:
+        rate = rt[0] if rt else RATE
+        d = load(find(stem), gain, rate)
         if loop:   # take 'loop' seconds from the middle, crossfade the tail into the head
             L = int(loop * RATE); X = RATE // 2
             st = 0 if loop >= 20 else max(0, len(d) // 2 - (L + X) // 2); seg = d[st:st + L + X]   # music: from the top
@@ -79,7 +86,7 @@ def main():
         else:
             d = d[:int(mx * RATE)] if mx else d
             d[-min(200, len(d)):] *= np.linspace(1, 0, min(200, len(d)))
-            total += write(name, d)
+            total += write(name, d, rate=rate)
     for name, stem in STEPS:
         total += write(name, load(find(stem), 0.5)[:RATE // 2])
     # radio voice-over
