@@ -48,6 +48,7 @@ static void rv_update(RV *r, u32 k, int lock)
         if (qx != bx || qz != bz) { r->x += qx - bx; r->z += qz - bz; spd = spd * 3 / 4; }
     }
     int f = world_floor(r->x, r->z);
+    if (f == NOFLOOR && world_floor(ox, oz) == NOFLOOR) f = r->y;   /* spawned on an unbaked cell: drive out of it */
     if (f == NOFLOOR) { r->x = ox; r->z = oz; spd = 0; f = world_floor(r->x, r->z); if (f == NOFLOOR) f = r->y; }
     r->y += (f - r->y) / 2;
     {   /* body pitch from the ground 3 m ahead / behind */

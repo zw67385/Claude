@@ -47,10 +47,14 @@ static void drive_hud(int speed)
 #ifdef AUTOPLAY
 #include "../inc/autowp.inc"
 /* recording build only: follow the road centreline to the diner, park, get out */
-static void bot_drive(RV *r, u32 *k, u32 *kd, int done)
+static const short trailwp[][2] = {{584,153}, {585,161}, {585,170}, {587,175}, {591,182}, {594,191}, {597,200}, {598,208},
+    {598,217}, {598,223}, {598,232}, {598,240}, {599,250}, {599,261}, {600,270}, {601,278}, {602,288}, {603,295}, {604,305},
+    {605,314}, {606,322}, {607,331}, {607,337}, {608,346}, {608,352}, {607,360}, {606,369}, {605,375}, {604,381}, {603,390},
+    {601,398}, {604,408}, {605,413}, {607,419}, {614,421}, {621,420}};
+static void bot_drive_wp(RV *r, u32 *k, u32 *kd, int done, const short (*autowp)[2], int n)
 {
-    static int i;
-    const int n = sizeof autowp / sizeof *autowp;
+    static int i; static const void *cur;
+    if (cur != autowp) { cur = autowp; i = 0; }
     *k = 0; *kd = 0;
     if (done) { static int t; *k = KEY_DOWN; if (++t > 100) *kd = KEY_START; return; }   /* the rest of the road is not in the take */
     /* nearest waypoint in a window ahead, aim two past it */
@@ -74,6 +78,7 @@ static void bot_drive(RV *r, u32 *k, u32 *kd, int done)
     if (i >= n - 3) { if (r->spd > 0) *k |= KEY_DOWN; }
     else if (r->spd < vmax) *k |= KEY_UP; else if (r->spd > vmax + U(1.0) / 20) *k |= KEY_DOWN;
 }
+#define bot_drive(r, k, kd, done) bot_drive_wp(r, k, kd, done, autowp, sizeof autowp / sizeof *autowp)
 #endif
 static void first_scene(void)
 {

@@ -110,6 +110,9 @@ static void trail_drive(void)
     for (;;) {
         scanKeys();
         u32 k = keysHeld(), kd = keysDown();
+#ifdef AUTOPLAY
+        bot_drive_wp(&r, &k, &kd, 0, trailwp, sizeof trailwp / sizeof *trailwp);
+#endif
         rv_update(&r, k, 0);
         int near = abs(r.x - PX) < U(16) && abs(r.z - PZ) < U(16);
         const char *p = near && abs(r.spd) < U(1) / 20 ? "Get up" : NULL;
@@ -167,8 +170,34 @@ static void trail_scene(void)
         u32 k = keysHeld(), kd = keysDown();
         int talking = dlg_active;
         if (dlg_active) dlg_input(kd);
-#ifdef TRAIL_TEST
-        { static int at; if (dlg_active && ++at > 12) { at = 0; dlg_input(KEY_A); } }
+#if defined(TRAIL_TEST) || defined(AUTOPLAY)
+        { static int at; if (dlg_active && ++at > (40)) { at = 0; dlg_input(KEY_A); } }
+#endif
+#ifdef AUTOPLAY
+        if (!dlg_active) {   /* recording bot: bag, knock at the guard house, let the ranger do his rounds, then the trail */
+            static int st, t, lx, lz, still;
+            int s = sinLerp(TS.rvyaw), c = cosLerp(TS.rvyaw), tx = 0, tz = 0, walk = 0;
+            k = 0; kd = 0;
+            switch (st) {
+            case 0: if (++t > 40) { t = 0; st++; } break;
+            case 1: tx = TS.rvx + ((-s * U(1.35) + c * U(1.3)) >> 12); tz = TS.rvz + ((-c * U(1.35) - s * U(1.3)) >> 12);
+                    if (TS.bag) st++; else if (abs(tw.x - tx) + abs(tw.z - tz) < U(1.2)) { if (bot_face(&tw, tx, tz) && prompt && ++t > 15) { t = 0; kd = KEY_A; } }
+                    else walk = 1; break;
+            case 2: tx = TX(633.55); tz = TZ(438.9); walk = 1; break;
+            case 3: bot_face(&tw, TX(633.56), TZ(441.5)); if (prompt && !strcmp(prompt, "Open the door") && ++t > 15) { t = 0; kd = KEY_A; }
+                    if (TS.door_open && ++t > 20) { t = 0; st = 10; } break;
+            case 10: tx = TX(633.6); tz = TZ(441.6); walk = 1; break;   /* step inside: the ranger bursts in */
+            case 11: st = 4; break;
+            case 4: if (TS.flash && TS.gate <= -8192 && ++t > 60) { t = 0; st++; } break;   /* keys, flashlight, gate */
+            case 5: tx = TX(640); tz = TZ(436); walk = 1; break;
+            case 6: tx = TX(662); tz = TZ(436); walk = 1; break;
+            }
+            if (walk) {
+                if (bot_walk(&tw, &k, tx, tz) || still > 30) { st++; still = 0; }
+                else if (abs(tw.x - lx) + abs(tw.z - lz) < 40) still++; else still = 0;
+                lx = tw.x; lz = tw.z;
+            }
+        }
 #endif
 #ifdef DEBUG_POS
         if ((kd & KEY_L) && !dlg_active) {   /* past the open gate with everything, facing the trail */

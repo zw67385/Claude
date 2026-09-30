@@ -71,6 +71,7 @@ static void world_collide(int *px, int *pz, int feet, int head, int rad)
         for (u32 i = 0; i < W.nbox; i++) {
             Box *b = &W.box[i];
             if (b->y1 <= feet + 1200 || b->y0 >= head) continue;
+            if (rad > 4096 && b->x1 - b->x0 < 1640 && b->z1 - b->z0 < 1640) continue;   /* stray pole colliders on the road: not for the RV */
             if (*px + rad <= b->x0 || *px - rad >= b->x1 || *pz + rad <= b->z0 || *pz - rad >= b->z1) continue;
             int l = *px + rad - b->x0, r = b->x1 - (*px - rad), d = *pz + rad - b->z0, u = b->z1 - (*pz - rad);
             int m = l; if (r < m) m = r; if (d < m) m = d; if (u < m) m = u;
