@@ -130,7 +130,7 @@ typedef struct {
     u8 *data; Group *grp; u32 n;
     s32 scale, tx, ty, tz;          /* 20.12: scale, translation from ORIGIN to level centre */
     int tex[160];
-    Cell *cell; u32 *cdl; int ncell;
+    Cell *cell; u32 *cdl; int ncell, bud;   /* bud: scenery, drawn under the budget */
 } Level;
 /* Per-frame geometry budget. The DS keeps at most 6144 vertices / 2048 polygons a frame (the rest vanish) and
    can only rasterise so many polygons per scanline (past that, lines show the clear colour): everything that
@@ -152,13 +152,22 @@ static void rd_adapt(void)
 #define glFlush(x) (rd_adapt(), g_sv = g_sp = g_since = 0, glFlush(x))
 /* The geometry engine drops back faces and off-screen polygons before storing them, so the budget is kept
    against its own vertex/polygon RAM counters, re-read (after the FIFO drains) every few hundred vertices. */
+/* Only scenery (the streamed world, the big level shells) is budgeted; models - the cab, props, people -
+   always draw and are sent first, and scenery gets what is left, but never less than its nearest ~250 polygons. */
+static int g_bud, g_pfloor;
+static void bud_sync(void)
+{
+    while (GFX_STATUS & BIT(27)) ;
+    g_sv = GFX_VERTEX_RAM_USAGE; g_sp = GFX_POLYGON_RAM_USAGE; g_since = 0;
+}
+static void bud_begin(void) { bud_sync(); g_pfloor = g_sp + 250; g_bud = 1; }
+static void bud_end(void) { g_bud = 0; }
 static int budget_take(int nv)
 {
-    if (g_since + nv > 240) {
-        while (GFX_STATUS & BIT(27)) ;
-        g_sv = GFX_VERTEX_RAM_USAGE; g_sp = GFX_POLYGON_RAM_USAGE; g_since = 0;
-    }
-    if (g_sv + g_since + nv > g_vbudget || g_sp + (g_since + nv) / 3 > g_pbudget) return 0;
+    if (!g_bud) { g_since += nv; return 1; }
+    if (g_since + nv > 240) bud_sync();
+    int pmax = g_pbudget > g_pfloor ? g_pbudget : g_pfloor;
+    if (g_sv + g_since + nv > g_vbudget || g_sp + (g_since + nv) / 3 > pmax) return 0;
     g_since += nv; return 1;
 }
 static Level L_in, L_out, L_door;
@@ -357,6 +366,7 @@ static void draw_level_rot(Level *L, int pass, int rot)
         vw[b] = w; vis[b] = i;
     }
     int last = -1;
+    if (L->bud) bud_begin();
     for (int n = 0; n < nv; n++) {
         Cell *c = &L->cell[vis[n]];
         if (!budget_take(c->nv)) continue;
@@ -370,6 +380,7 @@ static void draw_level_rot(Level *L, int pass, int rot)
         }
         glCallList(c->dl);
     }
+    bud_end();
     g_fmt = fmt;
     glPopMatrix(1);
 }
@@ -447,9 +458,10 @@ static void sky_col(void)
     glFogColor(SK.hor & 31, (SK.hor >> 5) & 31, SK.hor >> 10, 31);
 }
 /* call with the camera rotation loaded and the translation not yet applied */
+static int sky_hide;   /* indoors: the roof covers it, the clear colour shows through the windows */
 static void sky_dome(float far)
 {
-    if (!SK.on) return;
+    if (!SK.on || sky_hide) return;
     sky_col();
     glPushMatrix();
     int R = floattof32(far * 0.9f);
@@ -1097,6 +1109,7 @@ static int load_tower(void)
 {
     if (!L_in.data && (!load_level(&L_in, "nitro:/tower.bin") || !load_level(&L_out, "nitro:/outside.bin"))) return 0;
     if (!L_door.data) load_level(&L_door, "nitro:/door.bin");
+    L_in.bud = L_out.bud = 1;
     return 1;
 }
 static void prologue(void)
@@ -1595,7 +1608,7 @@ int main(void)
 #ifdef CAMP_TEST
     campsite();
 #endif
-#ifdef TRAIL_WALK
+#if defined(TRAIL_WALK) || defined(TRAIL_DRIVE)
     trail_scene();
 #endif
 #ifdef END_TEST

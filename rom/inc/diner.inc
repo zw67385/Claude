@@ -191,9 +191,10 @@ static void diner_scene(void)
     int ok = load_model(&D_lvl, "nitro:/diner/diner.bin") && load_model(&D_door, "nitro:/diner/wdoor.bin")
           && load_model(&D_wait, "nitro:/diner/waitress.bin") && load_model(&D_bad, "nitro:/diner/badguy.bin")
           && load_model(&D_badsit, "nitro:/diner/badguy_sit.bin") && load_model(&D_food, "nitro:/diner/food.bin")
-          && load_model(&D_plg, "nitro:/diner/plg.bin") && load_model(&D_rv, "nitro:/rv.bin")
+          && load_model(&D_plg, "nitro:/diner/plg.bin") && load_model(&D_rv, "nitro:/rvx.bin")
           && load_wal("nitro:/diner/diner.wal") && load_floor("nitro:/diner/diner.flr");
     for (int i = 0; i < 4; i++) ok = ok && load_model(&D_npc[i], npc[i]);
+    D_lvl.bud = 1;
     if (!ok) { printf("diner data missing\n"); for (int i = 0; i < 120; i++) swiWaitForVBlank(); }
     memset(&DN, 0, sizeof DN); memset(&dw, 0, sizeof dw);
     DN.wx = DX(1117.0); DN.wz = DZ(958.7); DN.wyaw = 0;

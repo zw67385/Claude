@@ -5,13 +5,13 @@
 #define RANGER_F0 7790                      /* the baked ranger faces DS yaw +7790 */
 
 enum { R_HIDE, R_RUSH, R_TALK, R_GOCHAIR, R_SIT, R_GOPLAYER, R_GOGATE, R_GATE, R_STAND, R_GOCHAIRFINAL, R_SITFINAL };
-static Level T_guard, T_door, T_gate, T_ranger, T_rsit, T_bagguy;
+static Level T_guard, T_gprops, T_door, T_gate, T_ranger, T_rsit, T_bagguy;
 static struct {
     int rs, rx, rz, ryaw, rt, stage;       /* ranger state, position, facing, timer, which talk comes next */
     int px[4], pz[4], np;                  /* ranger path */
     int door, door_open, gate, gate_t;     /* guard house door / gate angles (DS yaw units) */
     int scared, bag, flash, flash_on, bad_t, done, look_t, serious_t, inside;
-    int rvx, rvz, rvyaw, rvy;
+    int rvx, rvz, rvyaw, rvy, rvagain;
 } TS;
 static Walker tw;
 
@@ -83,9 +83,13 @@ static void trail_hud(void)
 
 static void ts_draw(int pass)
 {
-    /* the guard house shell is single-sided (roof, some walls): draw both faces */
-    glPolyFmt(POLY_ALPHA(31) | POLY_CULL_NONE | g_lights | POLY_ID(1));
+    /* the guard house shell is single-sided (roof, some walls): from inside draw both faces; from outside its
+       outward faces are all that can show. The furnishings only from the doorway in: from outside they are
+       rasterised behind the walls for nothing */
+    int near = TS.inside || abs(tw.x - TX(633.6)) + abs(tw.z - TZ(440.3)) < U(3.5);
+    glPolyFmt(POLY_ALPHA(31) | (near ? POLY_CULL_NONE : POLY_CULL_BACK) | g_lights | POLY_ID(1));
     draw_model(&T_guard, TX(633), 0, TZ(440), 0, pass);
+    if (near) draw_model(&T_gprops, TX(633), 0, TZ(440), 0, pass);
     glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
     draw_model(&T_door, TX(634.13), 0, TZ(440.29), TS.door, pass);
     draw_model(&T_gate, TX(637.51), 0, TZ(433.68), TS.gate, pass);
@@ -98,14 +102,14 @@ static void ts_draw(int pass)
 }
 
 /* the drive from the highway turn-off to the trailhead lot; returns with the RV parked */
-static void trail_drive(void)
+static void trail_drive(int resume)   /* resume: back in the parked RV to move it */
 {
-    RV r; rv_place(&r, U(584.2), U(-153.0), -2731);
+    RV r; if (resume) rv_place(&r, TS.rvx, TS.rvz, TS.rvyaw); else rv_place(&r, U(584.2), U(-153.0), -2731);
     const int PX = TX(621.2), PZ = TZ(420.47);
     sub_t = 0; prompt = NULL; drive_hint = "Park at the trailhead"; drive_title = "Ironbark Trailhead";
     w_far = U(72); hud_dirty = 1;
     int hud_t = 0, lastkmh = -1;
-    radio_start(RAD_TRAIL, RAD_TRAIL_LEN, 1);
+    if (!resume) radio_start(RAD_TRAIL, RAD_TRAIL_LEN, 1);
     fade(0);
     for (;;) {
         scanKeys();
@@ -138,8 +142,8 @@ static void trail_scene(void)
     level_free(&L_in); level_free(&L_out); level_free(&L_door);
     glResetTextures();
     consoleClear(); printf("\n\n\n   Loading...\n");
-    int ok = world_load("nitro:/trail.wld") && load_model(&L_rv, "nitro:/rv.bin")
-          && load_model(&T_guard, "nitro:/trail/guard.bin") && load_model(&T_door, "nitro:/trail/gdoor.bin")
+    int ok = world_load("nitro:/trail.wld") && rv_load(1)
+          && load_model(&T_guard, "nitro:/trail/guard.bin") && load_model(&T_gprops, "nitro:/trail/gprops.bin") && load_model(&T_door, "nitro:/trail/gdoor.bin")
           && load_model(&T_gate, "nitro:/trail/gate.bin") && load_model(&T_ranger, "nitro:/trail/ranger.bin")
           && load_model(&T_rsit, "nitro:/trail/ranger_sit.bin") && load_model(&T_bagguy, "nitro:/trail/bagguy.bin")
           && load_wal("nitro:/trail/trail.wal") && load_floor("nitro:/trail/trail.flr");
@@ -147,12 +151,13 @@ static void trail_scene(void)
     memset(&TS, 0, sizeof TS); memset(&tw, 0, sizeof tw);
     TS.rx = TX(635.28); TS.rz = TZ(441.40); TS.ryaw = RANGER_F0;
     walk_world = 1; walk_block = ts_block;
-    amb_set(SFX_AMB_BELL); amb2_set(SFX_CRICKETS);
 #ifdef TRAIL_WALK
     TS.rvx = TX(621.2); TS.rvz = TZ(420.47); TS.rvyaw = -7163; TS.rvy = world_floor(TS.rvx, TS.rvz);
 #else
-    trail_drive();
+    trail_drive(0);
 #endif
+    amb_set(SFX_AMB_BELL); amb2_set(SFX_CRICKETS);   /* the lot's ambience starts once the radio is off and the door opens */
+out_of_rv:
     {   /* out of the RV's side door */
         int s = sinLerp(TS.rvyaw), c = cosLerp(TS.rvyaw);
         tw.x = TS.rvx + ((-s * U(1.35) + c * U(1.8)) >> 12); tw.z = TS.rvz + ((-c * U(1.35) - s * U(1.8)) >> 12);
@@ -164,7 +169,7 @@ static void trail_scene(void)
 #endif
     scene_cmd = trail_cmd;
     prompt = NULL; sub_t = 0; hud_dirty = 1;
-    sub(S("GetBag"), 4);
+    if (!TS.bag) sub(S("GetBag"), 4);
     const char *last = NULL;
     fade(0);
     while (!TS.done) {
@@ -182,8 +187,9 @@ static void trail_scene(void)
             k = 0; kd = 0;
             switch (st) {
             case 0: if (++t > 40) { t = 0; st++; } break;
+            case 20: if (prompt && !strcmp(prompt, "Get in the RV") && ++t > 15) { t = 0; TS.rvagain = 1; st = 1; kd = KEY_A; } break;   /* try the RV once */
             case 1: tx = TS.rvx + ((-s * U(1.35) + c * U(1.3)) >> 12); tz = TS.rvz + ((-c * U(1.35) - s * U(1.3)) >> 12);
-                    if (TS.bag) st++; else if (abs(tw.x - tx) + abs(tw.z - tz) < U(1.2)) { if (bot_face(&tw, tx, tz) && prompt && ++t > 15) { t = 0; kd = KEY_A; } }
+                    if (TS.bag) st = TS.rvagain ? 2 : 20; else if (abs(tw.x - tx) + abs(tw.z - tz) < U(1.2)) { if (bot_face(&tw, tx, tz) && prompt && ++t > 15) { t = 0; kd = KEY_A; } }
                     else walk = 1; break;
             case 2: tx = TX(633.55); tz = TZ(438.9); walk = 1; break;
             case 3: bot_face(&tw, TX(633.56), TZ(441.5)); if (prompt && !strcmp(prompt, "Open the door") && ++t > 15) { t = 0; kd = KEY_A; }
@@ -223,17 +229,24 @@ static void trail_scene(void)
             tw.pitch += (want - tw.pitch) / 4;
         }
         /* ---- hotspots */
-        enum { H_BAG = 1, H_DOOR };
+        enum { H_BAG = 1, H_DOOR, H_RV };
         int sR = sinLerp(TS.rvyaw), cR = cosLerp(TS.rvyaw);
         Hot H[] = {
             { TS.rvx + ((-sR * U(1.35) + cR * U(1.3)) >> 12), TS.rvy + U(1.3), TS.rvz + ((-cR * U(1.35) - sR * U(1.3)) >> 12), TS.bag ? NULL : "Take your bag", H_BAG },
             { TX(633.56), U(1.4), TZ(440.29), TS.door_open ? "Close the door" : "Open the door", H_DOOR },
+            /* the side door, once the bag is out: until the guard house, the RV can be moved again */
+            { TS.rvx + ((-sR * U(1.35) + cR * U(1.3)) >> 12), TS.rvy + U(1.3), TS.rvz + ((-cR * U(1.35) - sR * U(1.3)) >> 12), TS.bag && !TS.scared ? "Get in the RV" : NULL, H_RV },
         };
         int best = -1;
-        if (!dlg_active && !talking && TS.rs != R_RUSH) best = hot_pick(&tw, H, 2, U(2.2));
+        if (!dlg_active && !talking && TS.rs != R_RUSH) best = hot_pick(&tw, H, 3, U(2.2));
         prompt = best >= 0 ? H[best].label : NULL;
         if (prompt != last) { last = prompt; hud_dirty = 1; }
         if ((kd & KEY_A) && best >= 0) {
+            if (H[best].id == H_RV) {
+                sfx(SFX_IDOOR_OPEN); fade(1);
+                trail_drive(1);
+                goto out_of_rv;
+            }
             if (H[best].id == H_BAG) { sfx(SFX_PICKUP); TS.bag = 1; sub("Got the bag.", 2); }
             else { TS.door_open ^= 1; sfx(TS.door_open ? SFX_IDOOR_OPEN : SFX_IDOOR_SHUT); }
             hud_dirty = 1;
@@ -306,14 +319,18 @@ static void trail_scene(void)
         g_amb = TS.inside ? RGB15(11, 10, 8) : RGB15(7, 7, 9);
         glMatrixMode(GL_MODELVIEW); glLoadIdentity();
         glLight(1, TS.flash_on ? RGB15(26, 25, 20) : RGB15(4, 4, 5), 0, floattov10(-0.15), floattov10(-0.98));   /* flashlight (view space) */
+        sky_hide = TS.inside;
         cam_setup(tw.x, tw.fy + EYE, tw.z, tw.yaw, tw.pitch, 64);
         glLight(0, TS.inside ? RGB15(18, 14, 10) : RGB15(11, 13, 18), floattov10(0.4), floattov10(-0.8), floattov10(-0.4));
         glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
-        w_far = U(60);
-        world_draw(tw.x, tw.z, tw.yaw);
-        for (int pass = 0; pass < 2; pass++) {
+        w_far = TS.inside ? U(3) : U(60);   /* inside, the world only shows through the door and windows */
+        for (int pass = 0; pass < 2; pass++) {   /* models first: the world takes what is left of the budget */
             ts_draw(pass);
-            draw_model(&L_rv, TS.rvx, TS.rvy, TS.rvz, TS.rvyaw, pass);
+            draw_model(&L_rvx, TS.rvx, TS.rvy, TS.rvz, TS.rvyaw, pass);
+            if (!pass) {   /* the guard house hides what is behind it */
+                occ_set(!TS.inside, tw.x, tw.fy + EYE, tw.z, TX(630.84), U(-1), TZ(440.6), TX(635.57), U(2.4), TZ(443.12));
+                world_draw(tw.x, tw.z, tw.yaw); occ_on = 0;
+            }
         }
         glFlush(0);
         stat_vb = vb_count; while (vb_count < 3) swiWaitForVBlank();
@@ -325,8 +342,8 @@ static void trail_scene(void)
     }
 done:
     fade(1);
-    scene_cmd = NULL; prompt = NULL; amb_set(-1);
-    level_free(&T_guard); level_free(&T_door); level_free(&T_gate); level_free(&T_ranger); level_free(&T_rsit); level_free(&T_bagguy);
-    level_free(&L_rv); world_free(); walk_free(); glResetTextures(); sfx_flush();
+    scene_cmd = NULL; prompt = NULL; amb_set(-1); sky_hide = 0;
+    level_free(&T_guard); level_free(&T_gprops); level_free(&T_door); level_free(&T_gate); level_free(&T_ranger); level_free(&T_rsit); level_free(&T_bagguy);
+    rv_free(); world_free(); walk_free(); glResetTextures(); sfx_flush();
     setBrightness(3, 0);
 }

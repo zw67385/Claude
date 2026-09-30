@@ -11,8 +11,11 @@ R=(615 650 -2 8 415 460)
 MARK="Door Trigger,Player Outside,Player Inside,Conversation Trigger,Invisible wall,Enter Trigger,Colliders,GuardHouse/GameObject"
 lvl() { $PY bake_level.py "$S" ${RR:-${R[@]}} $W/$1 ${2:-32} | tail -1; cp $W/$1/level.bin $OUT/$1.bin; }
 # guard house + gate posts (static)
+# split: the shell (walls, floor, roof, gate posts) always, the furnishings inside only when close
+HOUSE="630.8,635.6,0.5,2.2,440.55,443.15"
 PIVOT=633,0,440 ONLY="GuardHouse/,TRAIL GATE/entry gate_Baked.001,TRAIL GATE/entry gate_Baked.002" \
-  SKIP="$MARK,ParkRanger,BadGuy,GuardHouse/Door$" BUDGET=1900 lvl guard 64
+  SKIP="$MARK,ParkRanger,BadGuy,GuardHouse/Door$" EXCL=$HOUSE BUDGET=800 lvl guard 64
+PIVOT=633,0,440 ONLY="GuardHouse/" SKIP="$MARK,ParkRanger,BadGuy,GuardHouse/Door$" INCL=$HOUSE BUDGET=1100 lvl gprops 64
 PIVOT=634.13,0,440.29 ONLY="GuardHouse/Door$" BUDGET=60 lvl gdoor
 PIVOT=637.51,0,433.68 ONLY="TRAIL GATE/entry gate_Baked$" BUDGET=200 lvl gate
 # walking data (world frame)

@@ -465,12 +465,13 @@ def main():
     buckets = collections.defaultdict(lambda: ([], [], [], []))  # key -> (tri lists of (3,3) pos, uv (3,2))
     items, nrend = collect(scene, lo, hi)
     NM = {id(t): n for (_, t, _), n in zip(items, NAMES)}
-    excl = os.environ.get("EXCL")
+    excl = os.environ.get("EXCL") or os.environ.get("INCL")   # drop (EXCL) / keep only (INCL) triangles centred in a box
     if excl:
         e = [float(v) for v in excl.split(",")]; elo = np.array(e[0::2]); ehi = np.array(e[1::2])
         items2 = []
         for key, tpk, uvk in items:
-            c = tpk.mean(axis=1); ok = ~np.all((c >= elo) & (c <= ehi), axis=1)
+            c = tpk.mean(axis=1); ok = np.all((c >= elo) & (c <= ehi), axis=1)
+            if not os.environ.get("INCL"): ok = ~ok
             if ok.any(): items2.append((key, tpk[ok], uvk[ok]))
         items = items2
     if os.environ.get("VISEYE"):   # a fixed camera (the RV driver's seat): drop every triangle it can never see

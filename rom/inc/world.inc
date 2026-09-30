@@ -91,6 +91,48 @@ static void world_collide(int *px, int *pz, int feet, int head, int rad)
 }
 
 /* draw every chunk in range and roughly inside the view cone (camera at cx,cz looking along yaw) */
+/* One box occluder (a building): world cells wholly behind it, seen from occ_eye, are skipped. The set of
+   points whose segment from the eye meets a convex box is convex, so a cell whose 8 corners are all hidden is
+   hidden. Units: 1/16 m. */
+static int occ_on, occ_eye[3], occ_lo[3], occ_hi[3];
+static void occ_set(int on, int ex, int ey, int ez, int x0, int y0, int z0, int x1, int y1, int z1)
+{
+    occ_on = on; occ_eye[0] = ex >> 8; occ_eye[1] = ey >> 8; occ_eye[2] = ez >> 8;
+    occ_lo[0] = (x0 < x1 ? x0 : x1) >> 8; occ_hi[0] = (x0 < x1 ? x1 : x0) >> 8;
+    occ_lo[1] = (y0 < y1 ? y0 : y1) >> 8; occ_hi[1] = (y0 < y1 ? y1 : y0) >> 8;
+    occ_lo[2] = (z0 < z1 ? z0 : z1) >> 8; occ_hi[2] = (z0 < z1 ? z1 : z0) >> 8;
+}
+static int occ_seg(const int *c)   /* does the segment eye -> c pass through the box? */
+{
+    s32 n0 = 0, d0 = 1, n1 = 1, d1 = 1;   /* t interval [n0/d0, n1/d1] */
+    for (int k = 0; k < 3; k++) {
+        int d = c[k] - occ_eye[k];
+        if (d == 0) { if (occ_eye[k] < occ_lo[k] || occ_eye[k] > occ_hi[k]) return 0; continue; }
+        s32 an = occ_lo[k] - occ_eye[k], bn = occ_hi[k] - occ_eye[k], dd = d;
+        if (d < 0) { s32 t = -an; an = -bn; bn = t; dd = -d; }
+        if ((s64)an * d0 > (s64)n0 * dd) { n0 = an; d0 = dd; }
+        if ((s64)bn * d1 < (s64)n1 * dd) { n1 = bn; d1 = dd; }
+        if ((s64)n1 * d0 < (s64)n0 * d1) return 0;
+    }
+    return 1;
+}
+static int occ_hidden(const WChunk *ch, const WGroup *g)
+{
+    int lo[3], hi[3], c[3];
+    const s16 *b = &g->x0;
+    for (int k = 0; k < 3; k++) {
+        s32 o = k == 0 ? ch->cx : k == 1 ? ch->cy : ch->cz;
+        lo[k] = (o + (s32)(((s64)b[k] * ch->scale) >> 12)) >> 8;
+        hi[k] = (o + (s32)(((s64)b[k + 3] * ch->scale) >> 12)) >> 8;
+        c[k] = (lo[k] + hi[k]) >> 1;
+    }
+    if (!occ_seg(c)) return 0;
+    for (int i = 0; i < 8; i++) {
+        c[0] = i & 1 ? hi[0] : lo[0]; c[1] = i & 2 ? hi[1] : lo[1]; c[2] = i & 4 ? hi[2] : lo[2];
+        if (!occ_seg(c)) return 0;
+    }
+    return 1;
+}
 static void world_draw(int cx, int cz, int yaw)
 {
     if (!W.d) return;
@@ -134,13 +176,17 @@ static void world_draw(int cx, int cz, int yaw)
         glScalef32(ch->scale, ch->scale, ch->scale);
         for (u32 q = 0; q < ch->ng && nu < 640; q++, g++) {
             if (!BoxTest(g->x0, g->y0, g->z0, g->x1 - g->x0 + 1, g->y1 - g->y0 + 1, g->z1 - g->z0 + 1)) continue;
+            if (occ_on && occ_hidden(ch, g)) continue;
             PosTest((g->x0 + g->x1) / 2, (g->y0 + g->y1) / 2, (g->z0 + g->z1) / 2);
-            int w = PosTestWresult(), b = nu++;
+            int w = PosTestWresult(), b;
+            if (w > w_far + 6 * 4096) continue;        /* per cell too: terrain chunks are far wider than w_far */
+            b = nu++;
             while (b > 0 && un[b - 1].w > w) { un[b] = un[b - 1]; b--; }
             un[b].ch = vis[n]; un[b].g = q; un[b].w = w;
         }
         glPopMatrix(1);
     }
+    bud_begin();
     for (int pass = 0; pass < 2; pass++)
         for (int n = 0; n < nu; n++) {
             WChunk *ch = &W.ch[un[n].ch];
@@ -159,7 +205,8 @@ static void world_draw(int cx, int cz, int yaw)
             glCallList((u32 *)(W.blob + g->dloff));
             glPopMatrix(1);
         }
-    g_fmt = fmt;
+    bud_end();
+    glPolyFmt(fmt);
 }
 
 /* ---- models: LVL1 files drawn at a transform (RV, NPCs, props). Geometry is relative to the bake pivot. */

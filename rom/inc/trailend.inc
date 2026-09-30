@@ -124,16 +124,19 @@ static int trail_end_run(void)
         glLight(0, RGB15(5, 6, 9), floattov10(0.4), floattov10(-0.8), floattov10(-0.4));
         glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
         w_far = U(44);
-        world_draw(tw.x, tw.z, tw.yaw);
-        for (int pass = 0; pass < 2; pass++) {
+        for (int pass = 0; pass < 2; pass++) {   /* models first: the world takes what is left of the budget */
             ts_draw(pass);
-            draw_model(&L_rv, TS.rvx, TS.rvy, TS.rvz, TS.rvyaw, pass);
+            draw_model(&L_rvx, TS.rvx, TS.rvy, TS.rvz, TS.rvyaw, pass);
             if (TE.st != TE_WALK && TE.st != TE_SAFE) {
                 int f = world_floor(TE.cx, TE.cz); if (f == NOFLOOR) f = tw.fy;
                 u32 a0 = g_amb; g_amb = RGB15(12, 11, 10);   /* his lantern (the scene's light beam) keeps him visible */
                 glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(2));
                 draw_model(&C_cult, TE.cx, f, TE.cz, TE.cyaw - CULT_F0, pass);
                 g_amb = a0;
+            }
+            if (!pass) {   /* the guard house hides what is behind it */
+                occ_set(!TS.inside, tw.x, tw.fy + EYE, tw.z, TX(630.84), U(-1), TZ(440.6), TX(635.57), U(2.4), TZ(443.12));
+                world_draw(tw.x, tw.z, tw.yaw); occ_on = 0;
             }
         }
         glFlush(0);
@@ -154,8 +157,8 @@ static void trail_end_scene(void)
     level_free(&L_in); level_free(&L_out); level_free(&L_door);
     glResetTextures();
     consoleClear(); printf("\n\n\n   Loading...\n");
-    int ok = world_load("nitro:/trail.wld") && load_model(&L_rv, "nitro:/rv.bin")
-          && load_model(&T_guard, "nitro:/trail/guard.bin") && load_model(&T_door, "nitro:/trail/gdoor.bin")
+    int ok = world_load("nitro:/trail.wld") && load_model(&L_rvx, "nitro:/rvx.bin")
+          && load_model(&T_guard, "nitro:/trail/guard.bin") && load_model(&T_gprops, "nitro:/trail/gprops.bin") && load_model(&T_door, "nitro:/trail/gdoor.bin")
           && load_model(&T_gate, "nitro:/trail/gate.bin") && load_model(&C_cult, "nitro:/camp/cultist.bin")
           && load_wal("nitro:/trail/trail.wal") && load_floor("nitro:/trail/trail.flr");
     if (ok) while (!trail_end_run()) {
@@ -164,6 +167,6 @@ static void trail_end_scene(void)
         do { swiWaitForVBlank(); scanKeys(); } while (!(keysDown() & KEY_A));
     }
     prompt = NULL;
-    level_free(&T_guard); level_free(&T_door); level_free(&T_gate); level_free(&C_cult);
-    level_free(&L_rv); world_free(); walk_free(); glResetTextures(); sfx_flush();
+    level_free(&T_guard); level_free(&T_gprops); level_free(&T_door); level_free(&T_gate); level_free(&C_cult);
+    level_free(&L_rvx); world_free(); walk_free(); glResetTextures(); sfx_flush();
 }

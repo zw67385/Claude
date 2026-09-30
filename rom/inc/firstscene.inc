@@ -38,7 +38,7 @@ static void drive_hud(int speed)
     if (prompt) printf("X: %s\n", prompt);
     printf("\x1b[17;0H");
     if (drive_hint) printf("%s\n", drive_hint);
-    printf("Up/A: gas  Down/B: brake\nLeft/Right: steer  Y+pad: look\n%3d km/h", speed);
+    printf("Up/A/R: gas  Down/B: brake\nLeft/Right: steer  Y+pad: look\n%3d km/h", speed);
 #ifdef DEBUG_POS
     printf("  ch %d vb %d p %d v %d\n%d %d %d", w_drawn, stat_vb, stat_p, stat_v, dbg_x >> 12, dbg_y >> 12, dbg_z >> 12);
 #endif
@@ -89,7 +89,7 @@ static void first_scene(void)
     diner_scene();
 #endif
     consoleClear(); printf("\n\n\n   Loading...\n");
-    if (!world_load("nitro:/drive1.wld") || !load_model(&L_rv, "nitro:/rv.bin")) { printf("drive data missing\n"); for (int i = 0; i < 120; i++) swiWaitForVBlank(); return; }
+    if (!world_load("nitro:/drive1.wld") || !rv_load(0)) { printf("drive data missing\n"); for (int i = 0; i < 120; i++) swiWaitForVBlank(); return; }
     Trig tr[] = {
         { U(644.4), U(-500.2), U(14.3), U(3), TR_DRIVESUB, 1, 0 },
         { U(611.0), U(-390.8), U(14.3), U(3), TR_NOTIF1, 1, 0 },
@@ -149,12 +149,12 @@ static void first_scene(void)
         if ((kd & KEY_X) && prompt && !dlg_active) {
             /* the diner stop: park, walk the diner in 3D, come back to the RV */
             fade(1);
-            level_free(&L_rv); world_free(); glResetTextures();
+            rv_free(); world_free(); glResetTextures();
             mmEffectCancel(eng);
             diner_scene();
             sfx(SFX_RV_START); eng = sfx_play(SFX_RV_ENGINE, 110); rad_pl = NULL; radio_start(RAD_FIRST, RAD_FIRST_LEN, 3);
             consoleClear(); printf("\n\n\n   Loading...\n");
-            world_load("nitro:/drive1.wld"); load_model(&L_rv, "nitro:/rv.bin");
+            world_load("nitro:/drive1.wld"); rv_load(0);
             int ml = r.maxspd; rv_place(&r, U(1107.25), U(-960.9), -8192); r.maxspd = ml;
             setBrightness(1, 0);
             diner_done = 1; close = 0; prompt = NULL; hud_dirty = 1;
@@ -180,6 +180,6 @@ static void first_scene(void)
 out:
     sfx(SFX_HANDBRAKE); radio_stop(); mmEffectCancel(eng); sfx_free(SFX_RV_ENGINE); sfx_free(SFX_RV_START);
     fade(1);
-    level_free(&L_rv); world_free(); glResetTextures();
+    rv_free(); world_free(); glResetTextures();
     setBrightness(3, 0);
 }

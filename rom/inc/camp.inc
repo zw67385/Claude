@@ -248,8 +248,10 @@ static void camp_scene(void)
         glLight(0, RGB15(5, 6, 9), floattov10(0.4), floattov10(-0.8), floattov10(-0.4));                          /* moonlight */
         glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
         w_far = U(44);
-        world_draw(cw.x, cw.z, cw.yaw);
-        for (int pass = 0; pass < 2; pass++) camp_draw(pass);
+        for (int pass = 0; pass < 2; pass++) {   /* models first: the world takes what is left of the budget */
+            camp_draw(pass);
+            if (!pass) world_draw(cw.x, cw.z, cw.yaw);
+        }
         if (CS.fire_on) camp_flames();
         glFlush(0);
         stat_vb = vb_count; while (vb_count < 3) swiWaitForVBlank();

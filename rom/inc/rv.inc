@@ -4,7 +4,13 @@ typedef struct {
     int x, z, y, yaw, spd, steer, pitch_rv, lookyaw, lookpitch, maxspd, wasTouch;
     touchPosition t0;
 } RV;
-static Level L_rv;
+static Level L_rv, L_rvw, L_rvx;   /* cab (driver's seat view), steering wheel, closed exterior */
+static int rv_load(int outside)
+{
+    return load_model(&L_rv, "nitro:/rv.bin") && load_model(&L_rvw, "nitro:/rvwheel.bin")
+        && (!outside || load_model(&L_rvx, "nitro:/rvx.bin"));
+}
+static void rv_free(void) { level_free(&L_rv); level_free(&L_rvw); level_free(&L_rvx); }
 
 static void rv_place(RV *r, int x, int z, int yaw)
 {
@@ -16,7 +22,7 @@ static void rv_place(RV *r, int x, int z, int yaw)
 static void rv_update(RV *r, u32 k, int lock)
 {
     int s = sinLerp(r->yaw), c = cosLerp(r->yaw);
-    int gas = !lock && (k & (KEY_UP | KEY_A)) && !(k & KEY_Y);
+    int gas = !lock && (k & (KEY_UP | KEY_A | KEY_R)) && !(k & KEY_Y);
     int brk = !lock && (k & (KEY_DOWN | KEY_B)) && !(k & KEY_Y);
     int st = lock || (k & KEY_Y) ? 0 : ((k & KEY_LEFT) ? 1 : 0) - ((k & KEY_RIGHT) ? 1 : 0);
     if (k & KEY_Y) {
@@ -74,8 +80,10 @@ static int rv_kmh(const RV *r) { return abs(r->spd) * 20 * 36 / 10 / 4096; }
 /* driver's eye in RV space: (-0.57, 2.05, -2.99) */
 static void rv_eye(const RV *r, int *cx, int *cy, int *cz)
 {
-    int s = sinLerp(r->yaw), c = cosLerp(r->yaw), ex = U(-0.57), ez = U(-2.99);
-    *cx = r->x + ((ex * c + ez * s) >> 12); *cz = r->z + ((-ex * s + ez * c) >> 12); *cy = r->y + U(2.05);
+    int s = sinLerp(r->yaw), c = cosLerp(r->yaw), ex = U(-0.57), ey = U(2.05), ez = U(-2.99);
+    int ps = sinLerp(r->pitch_rv), pc = cosLerp(r->pitch_rv);   /* the seat pitches with the body */
+    int py = (ey * pc + ez * ps) >> 12, pz = (-ey * ps + ez * pc) >> 12;
+    *cx = r->x + ((ex * c + pz * s) >> 12); *cz = r->z + ((-ex * s + pz * c) >> 12); *cy = r->y + py;
 }
 /* camera from the driver's seat, world + RV (+ extra models via draw(pass)) drawn, frame flushed */
 /* sun colour and direction for the drive (world space, set per scene) */
@@ -93,7 +101,7 @@ static void rv_render(RV *r, u16 amb, void (*draw)(int pass))
     glMatrixMode(GL_MODELVIEW); glLoadIdentity();
     glLight(1, RGB15(24, 22, 16), 0, floattov10(-0.15), floattov10(-0.98));      /* headlights */
     int cyaw = r->yaw + r->lookyaw;
-    glRotateXi(r->lookpitch - r->pitch_rv);
+    glRotateXi(r->lookpitch + r->pitch_rv);   /* the camera rides the cab: undo its pitch */
     glRotateYi(-cyaw);
     sky_dome(80);
     glTranslatef32(-camx, -camy, -camz);
@@ -112,6 +120,12 @@ static void rv_render(RV *r, u16 amb, void (*draw)(int pass))
         glLight(1, rv_fill, floattov10(0.2), floattov10(-0.35), floattov10(-0.9));
         u32 a0 = g_amb; g_amb = rv_camb;
         draw_level(&L_rv, pass);
+        /* the wheel turns about its column (hub (-0.57, 1.58, -3.37), tilted ~31 deg back), ~5x the road wheels */
+        glPushMatrix();
+        glTranslatef32(U(-0.569), U(1.583), U(-3.367)); glRotateXi(2785); glRotateYi(r->steer * 5); glRotateXi(-2785);
+        glTranslatef32(U(0.569), U(-1.583), U(3.367));
+        draw_level(&L_rvw, pass);
+        glPopMatrix(1);
         g_amb = a0;
         glPopMatrix(1);
         glLight(0, rv_sun, rv_sdx, rv_sdy, rv_sdz);
