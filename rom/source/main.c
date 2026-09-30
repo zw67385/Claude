@@ -710,7 +710,7 @@ static void fire_event(int id, const char *s, int ok_walk, int *rearm)
     case EV_S3CONVO: if (!ok_walk) { *rearm = 1; break; } G.standup1 = 1; dlg_begin("Seq3Start", NULL); break;
     case EV_S3CONFIRM: if (!ok_walk) { *rearm = 1; break; } G.standup2 = 1; dlg_begin("Confirm", NULL); break;
     case EV_S4STAND: if (!ok_walk) { *rearm = 1; break; } G.standup1 = 1; dlg_begin("Seq4StandUp", NULL); break;
-    case EV_S5WALK: if (!ok_walk) { *rearm = 1; break; } G.cult_walk = 1; sub(S("Seq5VeryStrange"), 6); after(250, EV_S5GONE); break;
+    case EV_S5WALK: if (!ok_walk) { *rearm = 1; break; } G.cult_walk = 1; sub(S("Seq5VeryStrange"), 6); break;   /* tnpc ends the walk */
     case EV_S5GONE: G.cult_walk = 0; G.cult_gone = 1; sub(S("PresenceOutside"), 5); break;
     case EV_S5SUBS2: if (dlg_active) { *rearm = 1; break; } sub(S("ConnorDidntMakeSense"), 5); sub_after(55, "NotMuchElse"); break;
     case EV_S6FLARE: sfx(SFX_FLARE); G.flare = 20; after(40, EV_S6START); break;
@@ -792,6 +792,7 @@ static void vignette(const char *title, const char *const *nodes, int n)
 #include "../inc/trail.inc"
 #include "../inc/camp.inc"
 #include "../inc/trailend.inc"
+#include "../inc/tnpc.inc"
 static int load_tower(void)
 {
     if (!L_in.data && (!load_level(&L_in, "nitro:/tower.bin") || !load_level(&L_out, "nitro:/outside.bin"))) return 0;
@@ -820,6 +821,7 @@ static void campsite(void)
 static void ending(void)
 {
     char k[40];
+    tnpc_free();
     trail_end_scene();
     setBrightness(3, 0);
     for (int i = 1; i <= 15; i++) { snprintf(k, sizeof k, "ep4_intro.Seq8Outro%d", i); if (typed(T(k))) break; }
@@ -898,6 +900,7 @@ static void seq_start(int n, int *px, int *pz, int *fy, int *yaw)
     static const char *const s6[] = { "ep4_intro.Seq6Intro0", "ep4_intro.Seq6Intro1", "ep4_intro.Seq6Intro2", "ep4_intro.Seq6Intro3" };
     static const char *const s7[] = { "ep4_intro.Seq7Intro1", "ep4_intro.Seq7Intro2", "ep4_intro.Seq7Intro3", "ep4_intro.Seq7Intro4" };
     static const char *const s8[] = { "ep4_intro.Seq8Intro1", "ep4_intro.Seq8Intro2", "ep4_intro.Seq8Intro3", "ep4_intro.Seq8Intro4", "ep4_intro.Seq8Intro5" };
+    tnpc_free();
     seq = n;
     memset(&G, 0, sizeof G); memset(evq, 0, sizeof evq);
     G.temp10 = 440 + rand() % 31; G.wind = 17 + rand() % 4; G.flash = 1; G.door_ang = DOOR_CLOSED;
@@ -961,6 +964,7 @@ static void seq_start(int n, int *px, int *pz, int *fy, int *yaw)
     }
     *fy = floor_at(*px, *pz, lim);
     if (*fy == NOFLOOR) *fy = lim ? -60000 : -5800;
+    tnpc_load(n);
     setBrightness(1, 0);
     hud_dirty = 1;
 }
@@ -1038,6 +1042,11 @@ static void run_game(int start)
                 hud_dirty = 1;
             }
             if (kd & KEY_X) { G.flash ^= 1; hud_dirty = 1; }
+#ifdef DEBUG_POS
+            if ((kd & KEY_L) && seq == 6) { G.eaten = G.report_done = 1; G.knock = 1; px = WX(306.5); pz = WZ(311.5); fy = WY(27.2); yaw = yaw_to(WX(306) - px, WZ(305.5) - pz); }
+            else if ((kd & KEY_L) && seq == 8) { G.convo2 = 1; for (int i = 0; i < 11; i++) G.blinds[i] = 0; px = WX(317.3); pz = WZ(329.4); fy = WY(43.72); yaw = yaw_to(CULT_X - px, CULT_Z - pz); pitch = 250; }
+            else if (kd & KEY_L) { px = WX(310.9); pz = WZ(323.2); fy = WY(43.72); yaw = yaw_to(WX(312) - px, WZ(330) - pz); }
+#endif
             /* nearest usable spot in reach and in front of the camera */
             int best = -1; long long bd = (long long)REACH * REACH;
             int ey = fy + EYE;
@@ -1088,6 +1097,7 @@ static void run_game(int start)
         if (pitch > 4000) pitch = 4000; if (pitch < -4000) pitch = -4000;
 
         /* timers */
+        tnpc_update(px, pz);
         if (sub_t > 0 && --sub_t == 0) hud_dirty = 1;
         if (G.cook_t && --G.cook_t == 0) sub(S(G.cass_where == CW_OVEN ? "SmellsGood" : "Seq6FoodHeating"), 4);
         if (G.flare) G.flare--;
@@ -1138,6 +1148,7 @@ static void run_game(int start)
             if (in) draw_level(&L_in, pass);
             draw_level(&L_out, pass);
             if (L_door.data) draw_level_rot(&L_door, pass, G.door_ang);
+            tnpc_draw(pass);
             if (!pass) glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
         }
         while (GFX_STATUS & BIT(27)) ;
