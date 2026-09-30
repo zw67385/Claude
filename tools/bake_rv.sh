@@ -7,5 +7,5 @@ ONLY="RV/" SKIP="Headlight,Beam,Volumetric,Rv Bounds,Collider,RV Windows,Door Wi
 PRI="Steering,Seat,Dashboard,Wiper,Mirror Sunshade,Front seat,RV Interior,Overhead Storage Front" \
 MINTRI="SteeringWheel:80,Dashboard:150,Steering mount:24,RV Seat:50,Mirror Sunshade:60,Wiper:16" \
 PIVOT=608.8,-0.04,274.4 SCALE=2 BUDGET=1350 \
-    PYTHONPATH=. /tmp/venv/bin/python bake_level.py "First Scene" 600 618 -2 6 264 286 /tmp/w/rv 32
+    PYTHONPATH=. /tmp/venv/bin/python bake_level.py "First Scene" 600 618 -2 6 264 286 /tmp/w/rv 64
 cp /tmp/w/rv/level.bin ../rom/nitrofs/rv.bin
