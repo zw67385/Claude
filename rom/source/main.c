@@ -786,8 +786,10 @@ static void vignette(const char *title, const char *const *nodes, int n)
 }
 #include "../inc/world.inc"
 #include "../inc/walk.inc"
+#include "../inc/rv.inc"
 #include "../inc/diner.inc"
 #include "../inc/firstscene.inc"
+#include "../inc/trail.inc"
 static int load_tower(void)
 {
     if (!L_in.data && (!load_level(&L_in, "nitro:/tower.bin") || !load_level(&L_out, "nitro:/outside.bin"))) return 0;
@@ -796,9 +798,10 @@ static int load_tower(void)
 }
 static void prologue(void)
 {
-    static const char *const trail[] = { "TrailStart", "RangerKeys", "RangerAfterKeys", "RangerFlashLight", "RangerAfterFlashLight", "RangerAfterEnd" };
+#ifndef TRAIL_TEST
     first_scene();
-    vignette("Ironbark Trail", trail, 6);
+#endif
+    trail_scene();
     load_tower();
 }
 static void campsite(void)

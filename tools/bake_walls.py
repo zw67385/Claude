@@ -51,6 +51,10 @@ def run(scn, lo, hi, out):
     blk = np.zeros((nz_, nx_), bool)
     m = (h > 0.3) & (h < 1.6)
     blk[iz[m], ix[m]] = True
+    # WCLEAR=x0,x1,z0,z1[;...] (unity): force walkable (door openings behind a solid wall mesh)
+    for r in [r for r in os.environ.get("WCLEAR", "").split(";") if r]:
+        x0, x1, z0, z1 = [float(v) for v in r.split(",")]
+        blk[int((z0 - lo[2]) / C):int(np.ceil((z1 - lo[2]) / C)), int((x0 - lo[0]) / C):int(np.ceil((x1 - lo[0]) / C))] = False
     # DS frame rows: DS z = -(wz - pz); row r covers DS z from gz0 + r*C. Flip unity z order.
     blk_ds = blk[::-1]
     gx0 = lo[0] - piv[0]; gz0 = -(hi[2] - piv[2])

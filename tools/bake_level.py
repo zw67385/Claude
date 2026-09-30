@@ -246,8 +246,9 @@ def collect(scene, lo, hi):
         if "tf" not in g or not scene.active_in_hierarchy(gf): continue
         if only or skip:
             pth = scene.path(gf)
-            if only and not any(o in pth for o in only): continue
-            if any(o in pth for o in skip): continue
+            hit = lambda o: pth.endswith(o[:-1]) if o.endswith("$") else o in pth     # "name$" = exact tail
+            if only and not any(hit(o) for o in only): continue
+            if any(hit(o) for o in skip): continue
         mf = scene.comps(gf, 33); mr = scene.comps(gf, 23); sk = scene.comps(gf, 137)
         if not (mf and mr) and not sk: continue
         r = mr[0][2] if mr and mf else sk[0][2]

@@ -26,6 +26,14 @@ WORLDS = {
                    skip=["UI Manager", "OLD", "Traffic Manager", "Follower (Truck)", "RV/", "INV colliders", "Fell Off Map",
                          "FirstPersonController", "Triggers"],
                    road="Road Network"),
+    # Trail Start: RV start -> Ironbark trailhead guard house (+ the trail past the gate)
+    "trail": dict(scene="Trail Start", terrain="TerrainData/New Terrain 2.asset", tofs=(179.5, 0, 25.1),
+                  start=(584, 153), goal=(622, 420), extra=[(600, 700, 360, 470)],
+                  force=[],
+                  skip=["UI Manager", "Old Scene Stuff", "Game Manager", "RV/", "INV Colliders", "FirstPersonController",
+                        "Triggers", "GuardHouse", "TRAIL GATE", "Particles"],
+                  road="Road Network",
+                  boxskip=["RV$", "RV/", "INV Colliders", "FirstPersonController", "UI Manager", "Triggers", "TRAIL GATE", "GuardHouse/Invisible", "GuardHouse/Door"]),
 }
 
 CS = 32.0            # chunk size (m)
@@ -167,6 +175,7 @@ def main():
     vram = sum(r["w"] * r["h"] for r in texs)
     print("textures", len(texs), "vram %d KB" % (vram // 1024))
     # ---- colliders
+    os.environ["BOXSKIP"] = ",".join(W.get("boxskip", []))
     boxes = collide_boxes(s, lo, hi, cidx)
     # ---- floor heights: 1 m cells, max over upward faces (terrain + meshes) per chunk
     floors = {}
@@ -227,8 +236,11 @@ def tree_lod(pf):
 
 def collide_boxes(s, lo, hi, cidx):
     boxes = []
+    skip = [x for x in os.environ.get("BOXSKIP", "").split(",") if x]
     for gf, g in s.go.items():
         if "tf" not in g or not s.active_in_hierarchy(gf): continue
+        pth = s.path(gf) if skip else ""
+        if any(pth == k[:-1] if k.endswith("$") else k in pth for k in skip): continue
         for cf, c, d in s.comps(gf):
             if c != 65 or d.get("m_IsTrigger", 0) or not d.get("m_Enabled", 1): continue
             p, q, sc = s.world(g["tf"])

@@ -26,14 +26,13 @@ static int trig_update(Trig *t, int n, int x, int z, int *exited)
 
 enum { TR_DRIVESUB = 1, TR_NOTIF1, TR_LOVEJOB, TR_NOTIF2, TR_LOOKDINER, TR_SLOW, TR_CLOSE, TR_TRANSITION, TR_WENTBACK, TR_WENTBACK2 };
 
-static Level L_rv;
-static const char *drive_hint;
+static const char *drive_hint, *drive_title = "On the road to Roseburg";
 
 static int dbg_x, dbg_y, dbg_z;
 static void drive_hud(int speed)
 {
     consoleClear();
-    printf("On the road to Roseburg\n--------------------------------\n\n");
+    printf("%s\n", drive_title); printf("--------------------------------\n\n");
     if (sub_t > 0) wrap_print(subbuf);
     printf("\x1b[12;0H");
     if (prompt) printf("X: %s\n", prompt);
@@ -71,10 +70,8 @@ static void first_scene(void)
 #ifndef YAW0
 #define YAW0 0
 #endif
-    int x = U(608.8), z = U(-274.4), yaw = YAW0, y = 0, spd = 0, steer = 0, pitch_rv = 0;
-    int lookyaw = 0, lookpitch = 250, maxspd = U(16.0) / 20;
+    RV r; rv_place(&r, U(608.8), U(-274.4), YAW0);
     int close = 0, look_t = 0, diner_done = 0;
-    touchPosition t0, t1; int wasTouch = 0;
     memset(sq, 0, sizeof sq);
     sub_t = 0; prompt = NULL;
     drive_hint = "Drive to Roseburg";
@@ -86,66 +83,25 @@ static void first_scene(void)
         scanKeys();
         u32 k = keysHeld(), kd = keysDown();
         if (dlg_active) dlg_input(kd);
-        int s = sinLerp(yaw), c = cosLerp(yaw);
-        /* ---- controls */
-        int gas = !dlg_active && (k & (KEY_UP | KEY_A)) && !(k & KEY_Y);
-        int brk = !dlg_active && (k & (KEY_DOWN | KEY_B)) && !(k & KEY_Y);
-        int st = dlg_active || (k & KEY_Y) ? 0 : ((k & KEY_LEFT) ? 1 : 0) - ((k & KEY_RIGHT) ? 1 : 0);
-        if (k & KEY_Y) {
-            lookyaw += (((k & KEY_LEFT) ? 1 : 0) - ((k & KEY_RIGHT) ? 1 : 0)) * 400;
-            lookpitch += (((k & KEY_DOWN) ? 1 : 0) - ((k & KEY_UP) ? 1 : 0)) * 300;
-        } else if (!(k & KEY_TOUCH)) { lookyaw -= lookyaw / 8; }
-        if (k & KEY_TOUCH) {
-            touchRead(&t1);
-            if (wasTouch) { lookyaw -= (t1.px - t0.px) * 90; lookpitch += (t1.py - t0.py) * 70; }
-            t0 = t1; wasTouch = 1;
-        } else wasTouch = 0;
-        if (lookyaw > 12000) lookyaw = 12000; if (lookyaw < -12000) lookyaw = -12000;
-        if (lookpitch > 3000) lookpitch = 3000; if (lookpitch < -4000) lookpitch = -4000;
-        /* ---- RV physics: speed (DS units / frame), bicycle-model steering */
-        int acc = U(3.0) / 400, dec = U(8.0) / 400, drag = U(0.8) / 400;
-        if (gas) spd += acc; else if (brk) spd -= spd > 0 ? dec : acc / 2; else spd -= spd > drag ? drag : spd < -drag ? -drag : spd;
-        if (spd > maxspd) spd -= dec; if (spd < -U(3.0) / 20) spd = -U(3.0) / 20;
-        steer += st * 110; if (!st) steer -= steer / 5;
-        { int ms = 1800 - (spd > U(6.0) / 20 ? 700 : 0);  /* ~10 deg, ~6 deg above 22 km/h */
-          if (steer > ms) steer = ms; if (steer < -ms) steer = -ms; }
-        /* yaw rate = v * tan(steer) / wheelbase(5 m) */
-        yaw += (int)((long long)spd * tanLerp(steer) * 5215 / (4096LL * 4096 * 5));
-        int ox = x, oz = z;
-        x += (-s * spd) >> 12; z += (-c * spd) >> 12;
-        /* three circles along the body */
-        for (int e = -1; e <= 1; e++) {
-            int bx = x + ((-s * e * U(2.6)) >> 12), bz = z + ((-c * e * U(2.6)) >> 12), qx = bx, qz = bz;
-            world_collide(&qx, &qz, y, y + U(3), U(1.3));
-            if (qx != bx || qz != bz) { x += qx - bx; z += qz - bz; spd = spd * 3 / 4; }
-        }
-        int f = world_floor(x, z);
-        if (f == NOFLOOR) { x = ox; z = oz; spd = 0; f = world_floor(x, z); if (f == NOFLOOR) f = y; }
-        y += (f - y) / 2;
-        {   /* body pitch from the ground 3 m ahead / behind */
-            int ff = world_floor(x + ((-s * U(3)) >> 12), z + ((-c * U(3)) >> 12)), fb = world_floor(x - ((-s * U(3)) >> 12), z - ((-c * U(3)) >> 12));
-            int tgt = (ff != NOFLOOR && fb != NOFLOOR) ? ((ff - fb) * 16384 / U(6) / 10) : 0;   /* small-angle: rad*~5215 */
-            if (tgt > 1500) tgt = 1500; if (tgt < -1500) tgt = -1500;
-            pitch_rv += (tgt - pitch_rv) / 4;
-        }
+        rv_update(&r, k, dlg_active);
         /* ---- triggers */
-        int ex, h = trig_update(tr, NT, x, z, &ex);
+        int ex, h = trig_update(tr, NT, r.x, r.z, &ex);
         if (h >= 0) switch (tr[h].id) {
             case TR_DRIVESUB: sub(S("SolitaryLife"), 7); sq_add(140, "MemoriesAtBay", 6); break;
             case TR_LOVEJOB: sub(S("LovedOutdoors"), 5); sq_add(100, "NatureGaveHappiness", 6); sq_add(220, "WoodsIsHome", 6); break;
             case TR_NOTIF1: case TR_NOTIF2: sfx_play(SFX_RADIO_BEEP, 200); sub("Kayla Nelson: 1 Text Message", 5); break;
             case TR_LOOKDINER: look_t = 60; sub(S("GetFood"), 5); break;
-            case TR_SLOW: maxspd = U(7.0) / 20; break;
+            case TR_SLOW: r.maxspd = U(7.0) / 20; break;
             case TR_CLOSE: close = 1; break;
             case TR_TRANSITION: if (diner_done) goto out; break;
             case TR_WENTBACK: sub(S("SecondGuess"), 5); break;
             case TR_WENTBACK2: sub(S("SecondGuess"), 5); break;
         }
         if (ex >= 0) {
-            if (tr[ex].id == TR_SLOW) { maxspd = U(16.0) / 20; if (!diner_done && !close) sub(S("MissedDiner"), 5); }
+            if (tr[ex].id == TR_SLOW) { r.maxspd = U(16.0) / 20; if (!diner_done && !close) sub(S("MissedDiner"), 5); }
             if (tr[ex].id == TR_CLOSE) close = 0;
         }
-        const char *p = (close && abs(spd) < U(1) / 20) ? "Get up" : NULL;
+        const char *p = (close && abs(r.spd) < U(1) / 20) ? "Get up" : NULL;
         if (p != prompt) { prompt = p; hud_dirty = 1; }
         if ((kd & KEY_X) && prompt && !dlg_active) {
             /* the diner stop: park, walk the diner in 3D, come back to the RV */
@@ -154,8 +110,7 @@ static void first_scene(void)
             diner_scene();
             consoleClear(); printf("\n\n\n   Loading...\n");
             world_load("nitro:/drive1.wld"); load_model(&L_rv, "nitro:/rv.bin");
-            x = U(1107.25); z = U(-960.9); yaw = -8192; spd = 0; steer = 0; lookyaw = 0;
-            y = world_floor(x, z); if (y == NOFLOOR) y = 0;
+            int ml = r.maxspd; rv_place(&r, U(1107.25), U(-960.9), -8192); r.maxspd = ml;
             setBrightness(1, 0);
             diner_done = 1; close = 0; prompt = NULL; hud_dirty = 1;
             drive_hint = "Keep driving";
@@ -163,43 +118,15 @@ static void first_scene(void)
         }
         sq_tick();
         if (sub_t > 0 && --sub_t == 0) hud_dirty = 1;
-        int kmh = abs(spd) * 20 * 36 / 10 / 4096;
+        int kmh = rv_kmh(&r);
         if (++hud_t >= 10) { hud_t = 0; if (kmh != lastkmh) hud_dirty = 1; lastkmh = kmh; }
-        /* ---- render */
-        g_lights = POLY_FORMAT_LIGHT0 | POLY_FORMAT_LIGHT1 | POLY_FOG;
-        g_amb = RGB15(5, 4, 5);
-        glEnable(GL_FOG);
-        glMatrixMode(GL_PROJECTION); glLoadIdentity();
-        gluPerspective(70, 256.0 / 192.0, 0.1, 80);
-        glMatrixMode(GL_MODELVIEW); glLoadIdentity();
-        glLight(1, RGB15(24, 22, 16), 0, floattov10(-0.15), floattov10(-0.98));      /* headlights */
-        /* driver's eye in RV space: (-0.57, 2.05, -2.99) */
-        int ex_ = U(-0.57), ez_ = U(-2.99);
-        int camx = x + ((ex_ * c + ez_ * s) >> 12), camz = z + ((-ex_ * s + ez_ * c) >> 12), camy = y + U(2.05);
-        int cyaw = yaw + lookyaw, cpitch = lookpitch;
         if (look_t > 0) {   /* LookAtDiner: turn toward the diner sign for 3 s */
+            int cx, cy, cz; rv_eye(&r, &cx, &cy, &cz);
             look_t--;
-            int dx = U(1114.91) - camx, dz = U(-960.99) - camz;
-            int want = iatan2(-dx, -dz);   /* yaw whose forward (-sin,-cos) points at (dx,dz) */
-            int d = (short)(want - yaw); lookyaw += (d - lookyaw) / 6;
+            int d = (short)(iatan2(-(U(1114.91) - cx), -(U(-960.99) - cz)) - r.yaw); r.lookyaw += (d - r.lookyaw) / 6;
         }
-        glRotateXi(cpitch - pitch_rv);
-        glRotateYi(-cyaw);
-        glTranslatef32(-camx, -camy, -camz);
-        glLight(0, RGB15(8, 6, 6), floattov10(0.3), floattov10(-0.9), floattov10(-0.3));
-        glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
-        world_draw(camx, camz, cyaw);
-        for (int pass = 0; pass < 2; pass++) {
-            glPushMatrix();
-            glTranslatef32(x, y, z); glRotateYi(yaw); glRotateXi(-pitch_rv);
-            glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | POLY_FORMAT_LIGHT0 | POLY_FORMAT_LIGHT1 | POLY_ID(1));
-            draw_level(&L_rv, pass);
-            glPopMatrix(1);
-        }
-        glFlush(0);
-        stat_vb = vb_count; while (vb_count < 3) swiWaitForVBlank();
-        vb_count = 0;
-        dbg_x = x; dbg_y = y; dbg_z = z;
+        rv_render(&r, RGB15(5, 4, 5), NULL);
+        dbg_x = r.x; dbg_y = r.y; dbg_z = r.z;
         if (hud_dirty && !dlg_active) { drive_hud(kmh); hud_dirty = 0; }
         if ((kd & KEY_START) && !dlg_active) break;
     }

@@ -15,6 +15,8 @@ static int iatan2(int y, int x)
 static int yaw_to(int dx, int dz) { return iatan2(-dx, -dz); }
 
 static u8 *wal; static s32 wgx0, wgz0; static u32 wnx, wnz;
+static int walk_world;                         /* outdoors: the chunked World fills in outside the local grids */
+static int (*walk_block)(int x, int z);        /* scene extras (closed doors, gates) */
 static int load_wal(const char *path)
 {
     if (!(wal = load_file(path, NULL)) || memcmp(wal, "WAL1", 4)) return 0;
@@ -25,13 +27,14 @@ static int wall_at(int x, int z)
 {
     if (!wal) return 0;
     int ix = (x - wgx0) >> 10, iz = (z - wgz0) >> 10;
-    if (ix < 0 || iz < 0 || ix >= (int)wnx || iz >= (int)wnz) return 1;
+    if (ix < 0 || iz < 0 || ix >= (int)wnx || iz >= (int)wnz) return !walk_world;
     int b = iz * wnx + ix;
     return (wal[20 + (b >> 3)] >> (b & 7)) & 1;
 }
 #define WR 700   /* body radius against walls, 0.17 m */
 static int wall_hit(int x, int z)
 {
+    if (walk_block && walk_block(x, z)) return 1;
     return wall_at(x - WR, z - WR) || wall_at(x + WR, z - WR) || wall_at(x - WR, z + WR) || wall_at(x + WR, z + WR);
 }
 static void walk_free(void)
@@ -39,6 +42,13 @@ static void walk_free(void)
     free(wal); wal = NULL;
     free(flr); flr = NULL;
     free(boxes); boxes = NULL; nboxes = 0;
+    walk_world = 0; walk_block = NULL;
+}
+static int wfloor(int x, int z, int top)
+{
+    int f = floor_at(x, z, top);
+    if (f == NOFLOOR && walk_world) f = world_floor(x, z);
+    return f;
 }
 
 typedef struct { int x, z, fy, yaw, pitch; int stepd, stepi, grass, wasTouch; touchPosition t0; } Walker;
@@ -69,13 +79,15 @@ static int walker_update(Walker *w, u32 k)
         if (!wall_hit(nx, oz)) nz = oz; else if (!wall_hit(ox, nz)) nx = ox; else { nx = ox; nz = oz; }
     }
     if (nboxes) collide(&nx, &nz, w->fy, w->fy + 6600);
+    if (walk_world && (!wal || (unsigned)((nx - wgx0) >> 10) >= wnx || (unsigned)((nz - wgz0) >> 10) >= wnz))
+        world_collide(&nx, &nz, w->fy, w->fy + 6600, WR + 300);      /* the local wall grid owns its area */
     if (wall_hit(nx, nz) && !wall_hit(ox, oz)) { nx = ox; nz = oz; }
-    int f = floor_at(nx, nz, w->fy + STEPUP);
+    int f = wfloor(nx, nz, w->fy + STEPUP);
     if (f == NOFLOOR || f < w->fy - 2900) {
-        int fx = floor_at(nx, oz, w->fy + STEPUP), fz = floor_at(ox, nz, w->fy + STEPUP);
+        int fx = wfloor(nx, oz, w->fy + STEPUP), fz = wfloor(ox, nz, w->fy + STEPUP);
         if (fx != NOFLOOR && fx >= w->fy - 2900) { nz = oz; f = fx; }
         else if (fz != NOFLOOR && fz >= w->fy - 2900) { nx = ox; f = fz; }
-        else { nx = ox; nz = oz; f = floor_at(nx, nz, w->fy + STEPUP); }
+        else { nx = ox; nz = oz; f = wfloor(nx, nz, w->fy + STEPUP); }
     }
     w->x = nx; w->z = nz;
     if (f != NOFLOOR) { if (f > w->fy) w->fy = f; else { w->fy -= 800; if (w->fy < f) w->fy = f; } }
