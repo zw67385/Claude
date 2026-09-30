@@ -1,14 +1,6 @@
 /* First Scene: the night drive to Roseburg in the RV, the diner stop. Included from main.c.
    Positions are DS world units (unity x, y, -z; 20.12). */
 
-#define U(v) ((int)((v) * 4096))
-/* angle (32768 per turn) of the vector (x = cos part, y = sin part) */
-static int iatan2(int y, int x)
-{
-    if (!x && !y) return 0;
-    if (abs(x) >= abs(y)) { int a = atanLerp((s32)(((long long)y << 12) / x)); return x > 0 ? a : a + 16384; }
-    int a = atanLerp((s32)(((long long)x << 12) / y)); return y > 0 ? 8192 - a : -8192 - a;
-}
 /* timed subtitles (frames, ep4_subs key, seconds shown) */
 static struct { int t; const char *k; int secs; } sq[8];
 static void sq_add(int frames, const char *k, int secs)
@@ -58,6 +50,9 @@ static void first_scene(void)
     /* free the tower data: this scene needs the texture memory */
     level_free(&L_in); level_free(&L_out); level_free(&L_door);
     glResetTextures();
+#ifdef DINER_TEST
+    diner_scene();
+#endif
     consoleClear(); printf("\n\n\n   Loading...\n");
     if (!world_load("nitro:/drive1.wld") || !load_model(&L_rv, "nitro:/rv.bin")) { printf("drive data missing\n"); for (int i = 0; i < 120; i++) swiWaitForVBlank(); return; }
     Trig tr[] = {
@@ -153,12 +148,16 @@ static void first_scene(void)
         const char *p = (close && abs(spd) < U(1) / 20) ? "Get up" : NULL;
         if (p != prompt) { prompt = p; hud_dirty = 1; }
         if ((kd & KEY_X) && prompt && !dlg_active) {
-            /* the diner stop */
+            /* the diner stop: park, walk the diner in 3D, come back to the RV */
             fade(1);
-            { static const char *const diner[] = { "DinerStart", "DinerOrder", "AfterEating", "Check", "AfterCheck", "Bad_Guy", "ParkingLotGuy" };
-              vignette("Rosebourg Diner", diner, 7); }
+            level_free(&L_rv); world_free(); glResetTextures();
+            diner_scene();
+            consoleClear(); printf("\n\n\n   Loading...\n");
+            world_load("nitro:/drive1.wld"); load_model(&L_rv, "nitro:/rv.bin");
+            x = U(1107.25); z = U(-960.9); yaw = -8192; spd = 0; steer = 0; lookyaw = 0;
+            y = world_floor(x, z); if (y == NOFLOOR) y = 0;
             setBrightness(1, 0);
-            diner_done = 1; close = 0; prompt = NULL; spd = 0;
+            diner_done = 1; close = 0; prompt = NULL; hud_dirty = 1;
             drive_hint = "Keep driving";
             fade(0);
         }

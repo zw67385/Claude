@@ -5,8 +5,10 @@ import numpy as np
 import unity
 from bake_level import quat_mat
 def run(scn, lo, hi, out):
-    lo = np.array(lo); hi = np.array(hi); ctr = np.array([315, 45.25, 327.0]) if os.environ.get("ORIGIN") else (lo + hi) / 2
+    lo = np.array(lo); hi = np.array(hi); ctr = np.array([315, 45.25, 327.0]) if os.environ.get("ORIGIN") else np.array([float(v) for v in os.environ["PIVOT"].split(",")]) if os.environ.get("PIVOT") else (lo + hi) / 2
     s = unity.Scene(scn); boxes = []; nmesh = 0
+    for g in s.go.values():
+        if g.get("name") in os.environ.get("FORCE", "").split(","): g["active"] = 1
     for gf, g in s.go.items():
         if "tf" not in g or not s.active_in_hierarchy(gf): continue
         for cf, c, d in s.comps(gf):

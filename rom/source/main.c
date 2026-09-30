@@ -220,15 +220,28 @@ static int dlg_active, dtype, dsel;
 static void (*dlg_done)(void);
 static int exit_radio;
 
+/* "{0}" -> $total_check (the only substituted value in the story), bare True/False option texts -> Yes/No */
+static const char *dlg_text(const char *t)
+{
+    static char b[2][160]; static int w;
+    if (!strcmp(t, "True")) return "Yes";
+    if (!strcmp(t, "False")) return "No";
+    const char *p = strstr(t, "{0}");
+    if (!p) return t;
+    int v = yarn_get("total_check");
+    char *o = b[w ^= 1];
+    snprintf(o, 160, "%.*s%d.%02d%s", (int)(p - t), t, v / 100, v % 100, p + 3);
+    return o;
+}
 static void dlg_show(void)
 {
     consoleClear();
     if (speaker[0]) printf("[%s]\n", speaker);
-    if (dtype == YE_LINE) { wrap_print(dev.text); printf("\n[A] next"); }
+    if (dtype == YE_LINE) { wrap_print(dlg_text(dev.text)); printf("\n[A] next"); }
     else for (int i = 0; i < dev.nopt; i++) {   /* "^exit+" marks the original's leave-conversation option */
         const char *o = dev.opt[i];
         if (!strncmp(o, "^exit+", 6)) { o += 6; while (*o == ' ') o++; if (!*o) o = "..."; }
-        printf("%c ", i == dsel ? '>' : ' '); wrap_print(o);
+        printf("%c ", i == dsel ? '>' : ' '); wrap_print(dlg_text(o));
     }
 }
 
@@ -407,8 +420,10 @@ static void on_firewood_done(void) { }
 static void on_smoke_done(void) { G.ask_report = 1; }
 
 /* yarn commands with game-side effects */
+static void (*scene_cmd)(const char *c);   /* set by the 3D scenes (diner, trail) */
 static void game_cmd(const char *c)
 {
+    if (scene_cmd) { scene_cmd(c); return; }
     if (!strncmp(c, "AnxiousConvo", 12)) { G.anxious = 1; after(200, EV_ANXIOUS); }
     else if (!strncmp(c, "StartKnocking", 13)) { G.knock = 1; after(30, EV_KNOCK); }
 }
@@ -770,6 +785,8 @@ static void vignette(const char *title, const char *const *nodes, int n)
     for (int i = 0; i < n; i++) { dlg_begin(nodes[i], NULL); play_until_done(); }
 }
 #include "../inc/world.inc"
+#include "../inc/walk.inc"
+#include "../inc/diner.inc"
 #include "../inc/firstscene.inc"
 static int load_tower(void)
 {

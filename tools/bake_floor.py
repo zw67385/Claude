@@ -6,11 +6,13 @@ Format: 'FLR1', s32 gx0, gz0 (20.12, cell (0,0) corner), u32 nx, nz (0.25 m cell
 import sys, os, struct
 import numpy as np
 import unity, bake_level, terrain
-ORIGIN = np.array([315.0, 45.25, 327.0])
+ORIGIN = np.array([float(v) for v in os.environ["PIVOT"].split(",")]) if os.environ.get("PIVOT") else np.array([315.0, 45.25, 327.0])
 
 def run(scn, lo, hi, out):
     lo = np.array(lo); hi = np.array(hi)
     s = unity.Scene(scn)
+    for g in s.go.values():
+        if g.get("name") in os.environ.get("FORCE", "").split(","): g["active"] = 1
     items, _ = bake_level.collect(s, lo, hi)
     tris = [t for _, t, _ in items]
     for _, t, _ in terrain.terrain_tris(lo[0], hi[0], lo[2], hi[2], terrain.SCALE[0]): tris.append(t)

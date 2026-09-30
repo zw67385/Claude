@@ -139,6 +139,103 @@ def cutout(mat):
             or 2450 <= mat["queue"] < 2900 or f.get("_Cutoff", 0) > 0 and f.get("_AlphaClip", 1) != 0 and mat["queue"] >= 2450)
 
 NAMES = []   # GameObject name of each collected item (debug / filters)
+def trs(p, q, s):
+    M = np.eye(4); M[:3, :3] = quat_mat(q) * np.array(s); M[:3, 3] = p; return M
+
+ROLES = {"uarm": ("UpperArm", "Arm"), "farm": ("Forearm", "ForeArm"), "hand": ("Hand", "Hand"),
+         "thigh": ("Thigh", "UpLeg"), "calf": ("Calf", "Leg"), "foot": ("Foot", "Foot"), "hips": ("Pelvis", "Hips")}
+def bone_role(name):
+    """('L'|'R'|'', role) for Bip01 / mixamorig bone names."""
+    n = name.split(":")[-1]
+    if n.startswith("Bip01 "):
+        t = n[6:]; side = t[0] if t[:2] in ("L ", "R ") else ""; t = t[2:] if side else t
+        for k, (b, _) in ROLES.items():
+            if t == b: return side, k
+        return side, None
+    side = "L" if n.startswith("Left") else "R" if n.startswith("Right") else ""
+    t = n[4:] if side == "L" else n[5:] if side == "R" else n
+    for k, (_, mx) in ROLES.items():
+        if t == mx: return side, k
+    return side, None
+
+def rot_from_to(a, b):
+    a = a / np.linalg.norm(a); b = b / np.linalg.norm(b)
+    v = np.cross(a, b); c = float(np.dot(a, b))
+    if c < -0.9999: return -np.eye(3)
+    K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    return np.eye(3) + K + K @ K / (1 + c)
+
+def pose(scene, r, m, mats):
+    """Procedural pose on a T-posed rig: POSE=stand | sit:<seat height m> (arms down / seated)."""
+    bones = [unity.fid(b) for b in r.get("m_Bones", [])]
+    names = [str(scene.go[scene.tf[f]["go"]]["name"]) if f in scene.tf else "" for f in bones]
+    roles = {}
+    for i, n in enumerate(names):
+        sd, ro = bone_role(n)
+        if ro: roles[(sd, ro)] = i
+    B = [mats[i] @ np.linalg.inv(m.bind[i]) for i in range(len(mats))]     # bone world matrices
+    def desc(i):
+        out = []
+        for j, f in enumerate(bones):
+            cur = scene.tf.get(f, {}).get("parent")
+            while cur in scene.tf:
+                if cur == bones[i]: out.append(j); break
+                cur = scene.tf[cur]["parent"]
+        return out
+    P = lambda i: B[i][:3, 3].copy()
+    if ("L", "thigh") not in roles or ("R", "thigh") not in roles: return mats
+    up = np.array([0, 1.0, 0]); rt = P(roles[("R", "thigh")]) - P(roles[("L", "thigh")]); rt[1] = 0; rt /= np.linalg.norm(rt)
+    fw = np.cross(rt, up)
+    spec = os.environ["POSE"].split(":"); kind = spec[0]
+    def aim(sd, ro, child, d):
+        if (sd, ro) not in roles or (sd, child) not in roles: return
+        i = roles[(sd, ro)]; c = P(i); cur = P(roles[(sd, child)]) - c
+        R = rot_from_to(cur, d)
+        T = np.eye(4); T[:3, :3] = R; T[:3, 3] = c - R @ c
+        for j in [i] + desc(i): B[j] = T @ B[j]
+    sg = {"L": -1, "R": 1}
+    feet = min(P(i)[1] for (sd, ro), i in roles.items() if ro == "foot") - 0.08 if any(ro == "foot" for _, ro in roles) else None
+    for sd in "LR":
+        o = rt * sg[sd]
+        if kind == "sit":
+            aim(sd, "uarm", "farm", -up * 0.9 + fw * 0.35 + o * 0.12)
+            aim(sd, "farm", "hand", fw * 0.95 - up * 0.15 - o * 0.2)
+            aim(sd, "thigh", "calf", fw + o * 0.12 - up * 0.05)
+            aim(sd, "calf", "foot", -up + fw * 0.1)
+        else:
+            aim(sd, "uarm", "farm", -up + o * 0.18 + fw * 0.03)
+            aim(sd, "farm", "hand", -up * 0.9 + fw * 0.35)
+    if len(spec) > 2 and feet is not None: feet = float(spec[2])    # absolute floor height
+    if kind == "stand" and len(spec) > 2:
+        dy = feet - (min(P(i)[1] for (sd, ro), i in roles.items() if ro == "foot") - 0.08)
+        for j in range(len(B)): B[j][1, 3] += dy
+    if kind == "sit" and len(spec) > 1 and feet is not None:
+        # drop the body so the pelvis rests at the seat height above the feet's original floor
+        hip = P(roles[("", "hips")])[1] if ("", "hips") in roles else (P(roles[("L", "thigh")])[1])
+        dy = (feet + float(spec[1]) + 0.1) - hip
+        for j in range(len(B)): B[j][1, 3] += dy
+    return np.array([B[i] @ m.bind[i] for i in range(len(mats))])
+
+def skin(scene, r, m, p, q, s):
+    """Skinned mesh in the pose its bones hold in the scene: v' = sum w_i * (Bone_i . BindPose_i) v."""
+    root = trs(p, q, s)
+    mats = []
+    for i, b in enumerate(r.get("m_Bones", [])):
+        f = unity.fid(b)
+        B = trs(*scene.world(f)) if f in scene.tf else root
+        mats.append(B @ m.bind[i] if i < len(m.bind) else root)
+    mats = np.array(mats) if mats else np.array([root])
+    if os.environ.get("POSE") and len(mats) > 1:
+        mats = pose(scene, r, m, mats)
+    v = np.c_[m.pos.astype(np.float64), np.ones(len(m.pos))]
+    out = np.zeros((len(v), 3))
+    bi = np.clip(m.bi.astype(int), 0, len(mats) - 1)
+    for k in range(m.bw.shape[1]):
+        w = m.bw[:, k:k + 1].astype(np.float64)
+        out += w * np.einsum("nij,nj->ni", mats[bi[:, k]], v)[:, :3]
+    ws = m.bw.sum(1, keepdims=True)
+    return out / np.where(ws > 1e-6, ws, 1)
+
 def collect(scene, lo, hi):
     """All active renderer triangles with centroid inside [lo,hi]: list of (key, tris (n,3,3) world, uv (n,3,2))."""
     meshc = {}
@@ -151,11 +248,11 @@ def collect(scene, lo, hi):
             pth = scene.path(gf)
             if only and not any(o in pth for o in only): continue
             if any(o in pth for o in skip): continue
-        mf = scene.comps(gf, 33); mr = scene.comps(gf, 23)
-        if not mf or not mr: continue
-        r = mr[0][2]
+        mf = scene.comps(gf, 33); mr = scene.comps(gf, 23); sk = scene.comps(gf, 137)
+        if not (mf and mr) and not sk: continue
+        r = mr[0][2] if mr and mf else sk[0][2]
         if not r.get("m_Enabled", 1): continue
-        mg = mf[0][2]["m_Mesh"].get("guid")
+        mg = (mf[0][2] if mr and mf else r)["m_Mesh"].get("guid")
         if mg not in G: continue
         if mg not in meshc:
             try: meshc[mg] = meshio.load(os.path.join(unity.ROOT, G[mg]))
@@ -164,7 +261,9 @@ def collect(scene, lo, hi):
         if m is None or m.pos is None: continue
         p, q, s = scene.world(g["tf"])
         batched = r.get("m_StaticBatchInfo", {}).get("subMeshCount", 0) > 0
-        if batched:
+        if sk and not (mr and mf) and m.bind is not None and m.bw is not None:
+            batched = False; sm = range(len(m.subs)); wp = skin(scene, r, m, p, q, s)
+        elif batched:
             sm = range(r["m_StaticBatchInfo"]["firstSubMesh"], r["m_StaticBatchInfo"]["firstSubMesh"] + r["m_StaticBatchInfo"]["subMeshCount"])
             wp = m.pos.astype(np.float64)
         else:
@@ -199,6 +298,9 @@ def main():
     ctr = (lo + hi) / 2
     if os.environ.get("PIVOT"): ctr = np.array([float(v) for v in os.environ["PIVOT"].split(",")])
     scene = unity.Scene(scn)
+    force = [x for x in os.environ.get("FORCE", "").split(",") if x]
+    for g in scene.go.values():
+        if g.get("name") in force: g["active"] = 1
     buckets = collections.defaultdict(lambda: ([], [], [], []))  # key -> (tri lists of (3,3) pos, uv (3,2))
     items, nrend = collect(scene, lo, hi)
     excl = os.environ.get("EXCL")

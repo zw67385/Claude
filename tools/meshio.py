@@ -18,6 +18,7 @@ class Mesh:
         self.uv1 = None
         self.col = None       # (n,4) float 0..1
         self.subs = []        # list of (n,3) int32 triangle index arrays
+        self.bw = self.bi = self.bind = None
 
 
 def _field(txt, key):
@@ -71,6 +72,10 @@ def load(path):
         elif f == 5: arr = np.maximum(arr / 32767.0, -1)
         return arr
     m.pos, m.nrm, m.col, m.uv, m.uv1 = get(CH_POS), get(CH_NRM), get(CH_COL), get(CH_UV0), get(CH_UV1)
+    m.bw, m.bi = get(12), get(13)          # skinning: blend weights / bone indices (up to 4)
+    bp = txt[txt.index("m_BindPose:"):txt.index("m_BoneNameHashes:")] if "m_BindPose:" in txt and "m_BoneNameHashes:" in txt else ""
+    vals = [float(v) for v in re.findall(r"e[0-3][0-3]: (\S+)", bp)]
+    m.bind = np.array(vals, np.float64).reshape(-1, 4, 4) if vals else None   # row-major e_rc
     if m.pos is not None:
         m.pos = m.pos[:, :3]
     if m.nrm is not None:
