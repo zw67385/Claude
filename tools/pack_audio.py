@@ -33,7 +33,7 @@ SFX = [  # name, file, loop seconds (0 = one-shot), max seconds, gain
     # First Scene: RV engine / start, diner jukebox, menu music, till
     ("rv_engine", "van_engine", 1.5, 0, 0.7), ("rv_start", "RV Start", 0, 3.4, 1),
     ("diner_music", "DedLighter Diner_Music_version_1", 45, 0, 0.7), ("menu_music", "menu music", 45, 0, 0.7),
-    ("coins", "diner change sound", 0, 1, 1),
+    ("coins", "diner change sound", 0, 1, 1), ("car_radio", "jazz1_1", 45, 0, 0.6),
 ]
 STEPS = [("step_wood%d" % i, "Carpet-%02d" % i) for i in (1, 2, 3, 4)] + [("step_grass%d" % i, "Grass_%02d" % i) for i in (1, 2, 3, 4)]
 

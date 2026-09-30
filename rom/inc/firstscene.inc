@@ -116,6 +116,7 @@ static void first_scene(void)
     int hud_t = 0, lastkmh = -1; hud_dirty = 1;
     music_set(-1); sfx(SFX_RV_START);
     mm_sfxhand eng = sfx_play(SFX_RV_ENGINE, 110);
+    music_set(SFX_CAR_RADIO);   /* the RV radio */
     fade(0);
     for (;;) {
         scanKeys();
@@ -150,7 +151,7 @@ static void first_scene(void)
             level_free(&L_rv); world_free(); glResetTextures();
             mmEffectCancel(eng);
             diner_scene();
-            sfx(SFX_RV_START); eng = sfx_play(SFX_RV_ENGINE, 110);
+            sfx(SFX_RV_START); eng = sfx_play(SFX_RV_ENGINE, 110); music_set(SFX_CAR_RADIO);
             consoleClear(); printf("\n\n\n   Loading...\n");
             world_load("nitro:/drive1.wld"); load_model(&L_rv, "nitro:/rv.bin");
             int ml = r.maxspd; rv_place(&r, U(1107.25), U(-960.9), -8192); r.maxspd = ml;
@@ -175,7 +176,7 @@ static void first_scene(void)
         if ((kd & KEY_START) && !dlg_active) break;
     }
 out:
-    mmEffectCancel(eng); sfx_free(SFX_RV_ENGINE); sfx_free(SFX_RV_START);
+    music_set(-1); mmEffectCancel(eng); sfx_free(SFX_RV_ENGINE); sfx_free(SFX_RV_START);
     fade(1);
     level_free(&L_rv); world_free(); glResetTextures();
     setBrightness(3, 0);
