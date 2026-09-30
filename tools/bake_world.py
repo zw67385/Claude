@@ -209,6 +209,7 @@ def main():
         X, Z = np.meshgrid(xs_, zs_)
         th = terrain.height(X, Z)
         floors[(i, j)] = np.where(f < -1e8, th, np.maximum(f, th - 5))
+    despike(floors, chunks)
     emit(out, chunks, cidx, buckets, texs, tindex, boxes, floors)
 
 def split_chunks(tp, uv, cidx):
@@ -285,6 +286,20 @@ def collide_boxes(s, lo, hi, cidx):
                 boxes.append((mn[0], mx[0], mn[1], mx[1], -mx[2], -mn[2]))
     print("boxes", len(boxes))
     return boxes
+
+def despike(floors, chunks):
+    """Poles, signs, rails and canopy undersides land in the max-height floor as isolated
+    bumps the RV then rides over. Clamp each cell to the 3x3 median + 0.25 m (twice):
+    bridges and lots are wider than a cell and survive, spikes don't."""
+    I = [c[0] for c in chunks]; J = [c[1] for c in chunks]; i0, j0 = min(I), min(J)
+    G_ = np.full(((max(J) - j0 + 1) * FN, (max(I) - i0 + 1) * FN), np.nan)
+    for (i, j) in chunks: G_[(j - j0) * FN:(j - j0 + 1) * FN, (i - i0) * FN:(i - i0 + 1) * FN] = floors[(i, j)]
+    for _ in range(2):
+        P = np.pad(G_, 1, constant_values=np.nan)
+        st = np.stack([P[dy:dy + G_.shape[0], dx:dx + G_.shape[1]] for dy in range(3) for dx in range(3)])
+        med = np.nanmedian(st, axis=0)
+        G_ = np.where(G_ > med + 0.25, med, G_)
+    for (i, j) in chunks: floors[(i, j)] = G_[(j - j0) * FN:(j - j0 + 1) * FN, (i - i0) * FN:(i - i0 + 1) * FN]
 
 def raster_floor(f, ck, T):
     n = np.cross(T[:, 1] - T[:, 0], T[:, 2] - T[:, 0]); ln = np.linalg.norm(n, axis=1)

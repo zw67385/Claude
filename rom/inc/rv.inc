@@ -47,13 +47,21 @@ static void rv_update(RV *r, u32 k, int lock)
         world_collide(&qx, &qz, r->y, r->y + U(3), U(1.3));
         if (qx != bx || qz != bz) { r->x += qx - bx; r->z += qz - bz; spd = spd * 3 / 4; }
     }
-    int f = world_floor_smooth(r->x, r->z);
+    /* suspension: ground averaged over the body length (5 points, -4..+4 m), pitch from the
+       front pair against the back pair. Averages in space, not time, so there is no lag on hills */
+    int hs[5], nh = 0, sum = 0;
+    for (int e = 0; e < 5; e++) {
+        int d = (e - 2) * U(2);
+        hs[e] = world_floor_smooth(r->x + ((-s * d) >> 12), r->z + ((-c * d) >> 12));
+        if (hs[e] != NOFLOOR) { sum += hs[e]; nh++; }
+    }
+    int f = nh ? sum / nh : NOFLOOR;
     if (f == NOFLOOR && world_floor(ox, oz) == NOFLOOR) f = r->y;   /* spawned on an unbaked cell: drive out of it */
-    if (f == NOFLOOR) { r->x = ox; r->z = oz; spd = 0; f = world_floor(r->x, r->z); if (f == NOFLOOR) f = r->y; }
+    if (f == NOFLOOR) { r->x = ox; r->z = oz; spd = 0; f = r->y; }
     r->y += (f - r->y) / 2;
-    {   /* body pitch from the ground 3 m ahead / behind */
-        int ff = world_floor_smooth(r->x + ((-s * U(3)) >> 12), r->z + ((-c * U(3)) >> 12)), fb = world_floor_smooth(r->x - ((-s * U(3)) >> 12), r->z - ((-c * U(3)) >> 12));
-        int tgt = (ff != NOFLOOR && fb != NOFLOOR) ? ((ff - fb) * 16384 / U(6) / 10) : 0;   /* small-angle: rad*~5215 */
+    {
+        int ok = nh == 5;
+        int tgt = ok ? ((hs[3] + hs[4] - hs[0] - hs[1]) / 2) * 16384 / U(6) / 10 : 0;   /* small-angle, as before */
         if (tgt > 1500) tgt = 1500; if (tgt < -1500) tgt = -1500;
         r->pitch_rv += (tgt - r->pitch_rv) / 4;
     }
