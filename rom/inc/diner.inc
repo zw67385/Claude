@@ -12,9 +12,13 @@ static struct {
     int in, seated, started, ordered, peed, served, eaten, paid, plg_done, leave;
     int wx, wz, wyaw, wstate, wnode, wt, px[3], pz[3], np, wander;
     int bstate, bx, bz, byaw, bt, bpx[3], bpz[3], bnp;
-    int food_t, ae_t, seat_t, pee_t, pee_nag, door, talks[4];
+    int booth, food_t, ae_t, seat_t, pee_t, pee_nag, door, talks[4];
 } DN;
 static Walker dw;
+/* booths: seat (unity x, z), facing yaw, "Waitress Here" (x, z), food tray z */
+static const struct { float sx, sz; int yaw; float wx, wz, tz; } BOOTH[4] = {
+    { 1115.25, 960.46, 16384, 1115.72, 959.57, 959.86 }, { 1115.32, 952.57, 0, 1115.79, 953.08, 953.14 },
+    { 1115.32, 949.54, 0, 1115.78, 950.13, 950.15 }, { 1115.32, 948.56, 16384, 1115.92, 947.81, 947.91 } };
 
 /* route along the aisle so the NPCs don't cut through booths and the counter */
 static int route(int *px, int *pz, int x, int z, int tx, int tz)
@@ -33,7 +37,7 @@ static void w_goto(int tx, int tz, int node)
 }
 static void w_to_player(int node)   /* "Waitress Here" beside booth 1, or next to the player when standing */
 {
-    if (DN.seated) w_goto(DX(1115.95), DZ(959.57), node);
+    if (DN.seated) w_goto(DX(BOOTH[DN.booth].wx + 0.2), DZ(BOOTH[DN.booth].wz), node);
     else w_goto(dw.x + (dw.x > AISLE ? -U(0.8) : U(0.8)), dw.z, node);
 }
 
@@ -49,7 +53,7 @@ static void diner_cmd(const char *c)
     const char *arg = a ? strchr(a + 1, ' ') : NULL;
     if (arg) arg++;
     if (!strncmp(c, "ExitConversation ", 17)) {   /* Waitress [state] */
-        DN.wstate = W_IDLE; DN.wt = 0;
+        DN.wstate = W_IDLE; DN.wt = 0; DN.wander = 0;
         if (!arg) return;
         if (!strcmp(arg, "take_order")) DN.wt = 200;                 /* back in 10 s */
         else if (!strcmp(arg, "kitchen") || !strcmp(arg, "get_check")) {
@@ -73,11 +77,11 @@ static void dn_hud(void)
     if (DN.seated) printf("B: get up\n");
     printf("Pad: walk  R: run\nY+pad / stylus: look");
 #ifdef DEBUG_POS
-    printf("\nvb %d p %d  %d %d", stat_vb, stat_p, dw.x >> 10, dw.z >> 10);
+    printf("\nvb %d %d %d o%d p%d s%d e%d $%d w%d b%d", stat_vb, dw.x >> 10, dw.z >> 10, DN.ordered, DN.peed, DN.served, DN.eaten, DN.paid, DN.wstate, DN.bstate);
 #endif
 }
 
-enum { H_DOOR, H_SEAT, H_TOILET, H_WAIT, H_FOOD, H_SUIT, H_TR1, H_TR2, H_BAD, H_PLG, H_RV };
+enum { H_DOOR, H_SEAT, H_SEAT2, H_SEAT3, H_SEAT4, H_TOILET, H_WAIT, H_FOOD, H_SUIT, H_TR1, H_TR2, H_BAD, H_PLG, H_RV };
 static int dn_walk_to(int x, int z, int yaw) { dw.x = x; dw.z = z; dw.yaw = yaw; dw.pitch = 0; dw.fy = floor_at(x, z, U(3)); if (dw.fy == NOFLOOR) dw.fy = U(0.45); return 0; }
 
 static void diner_use(int id)
@@ -92,8 +96,8 @@ static void diner_use(int id)
             fade(1); DN.in = 0; dn_walk_to(DX(1116.58), DZ(964.6), 0); sfx(SFX_DOOR_CLOSE); fade(0);
         } else sub(S("GetFood"), 3);
         break;
-    case H_SEAT:
-        fade(1); DN.seated = 1; DN.seat_t = 40; dw.yaw = 0; dw.pitch = 0; fade(0);
+    case H_SEAT: case H_SEAT2: case H_SEAT3: case H_SEAT4:
+        fade(1); DN.seated = 1; DN.booth = id - H_SEAT; DN.seat_t = 40; dw.yaw = BOOTH[DN.booth].yaw; dw.pitch = 1400; fade(0);
         if (!DN.peed && !DN.pee_nag) { DN.pee_nag = 1; DN.pee_t = 400; sub_after(30, "HabitPee"); }
         break;
     case H_TOILET:
@@ -144,27 +148,41 @@ static void diner_scene(void)
         scanKeys();
         u32 k = keysHeld(), kd = keysDown();
         dw.grass = !DN.in;
+        int talking = dlg_active;   /* the A press that ends a conversation must not also use a hotspot */
         if (dlg_active) dlg_input(kd);
+#ifdef DINER_TEST
+        { static int at; if (dlg_active && ++at > 12) { at = 0; dlg_input(KEY_A); } }
+#endif
+        if (dlg_active) ;
         else if (DN.seated) {
             walker_update(&dw, k & (KEY_Y | KEY_TOUCH | KEY_UP | KEY_DOWN | KEY_LEFT | KEY_RIGHT) & ((k & KEY_Y) ? ~0u : KEY_TOUCH));
-            dw.x = DX(1115.25); dw.z = DZ(960.46);
-            if (kd & KEY_B) { fade(1); DN.seated = 0; dn_walk_to(DX(1116.36), DZ(960.19), -16384 / 2); fade(0); hud_dirty = 1; }
+            dw.x = DX(BOOTH[DN.booth].sx); dw.z = DZ(BOOTH[DN.booth].sz);
+            if (kd & KEY_B) { fade(1); DN.seated = 0; dn_walk_to(DX(1116.36), DZ(BOOTH[DN.booth].sz), -8192); fade(0); hud_dirty = 1; }
         } else {
             int ox = dw.x, oz = dw.z;
             walker_update(&dw, k);
             if (!DN.in && abs(dw.x - RVX) < U(4.3) && abs(dw.z - RVZ) < U(1.5)) { dw.x = ox; dw.z = oz; }   /* parked RV */
         }
 #ifdef DEBUG_POS
-        if (kd & KEY_SELECT) dn_walk_to(DX(1116.6), DZ(964.6), 16384);   /* in front of the door */
+        if ((kd & KEY_L) && !DN.seated) {   /* washroom facing the toilet / beside booth 1 / by the RV */
+            static int ti;
+            if (ti == 0) dn_walk_to(DX(1120.0), DZ(951.4), -6550);
+            else if (ti == 1) dn_walk_to(DX(1116.4), DZ(960.46), 8192);
+            else { DN.in = 0; dn_walk_to(DX(1110.0), DZ(958.0), 8192); }
+            ti = (ti + 1) % 3;
+        }
 #endif
         /* ---- hotspots */
         int eye = DN.seated ? U(1.76) : dw.fy + EYE;
         Hot H[] = {
             { DX(1116.6), U(1.5), DZ(963.6), DN.in ? "Leave" : "Enter the diner", H_DOOR },
             { DX(1115.25), U(1.1), DZ(960.46), DN.in && !DN.seated ? "Sit down" : NULL, H_SEAT },
+            { DX(1115.32), U(1.1), DZ(952.57), DN.in && !DN.seated ? "Sit down" : NULL, H_SEAT2 },
+            { DX(1115.32), U(1.1), DZ(949.54), DN.in && !DN.seated ? "Sit down" : NULL, H_SEAT3 },
+            { DX(1115.32), U(1.1), DZ(948.56), DN.in && !DN.seated ? "Sit down" : NULL, H_SEAT4 },
             { DX(1121.41), U(0.9), DZ(951.86), DN.in && !DN.seated ? "Use the toilet" : NULL, H_TOILET },
-            { DN.wx, U(1.6), DN.wz, DN.in && DN.wstate == W_IDLE && !DN.wt && !DN.seated ? "Talk to the waitress" : NULL, H_WAIT },
-            { DX(1115.25), U(1.3), DZ(961.03), DN.seated && DN.served && !DN.eaten ? "Eat" : NULL, H_FOOD },
+            { DN.wx, U(1.6), DN.wz, DN.in && DN.wstate == W_IDLE && !DN.wt && DN.wander > 20 && !DN.seated ? "Talk to the waitress" : NULL, H_WAIT },
+            { DX(1115.36), U(1.3), DZ(BOOTH[DN.booth].tz), DN.seated && DN.served && !DN.eaten ? "Eat" : NULL, H_FOOD },
             { DX(1118.73), U(1.4), DZ(960.38), DN.in && !DN.seated ? "Talk" : NULL, H_SUIT },
             { DX(1118.35), U(1.4), DZ(956.81), DN.in && !DN.seated ? "Talk" : NULL, H_TR1 },
             { DX(1115.15), U(1.4), DZ(961.64), DN.in && !DN.seated ? "Talk" : NULL, H_TR2 },
@@ -173,9 +191,9 @@ static void diner_scene(void)
             { RVX, U(1.5), RVZ, !DN.in ? "Get in the RV" : NULL, H_RV },
         };
         int best = -1;
-        if (!dlg_active) {
+        if (!dlg_active && !talking) {
             Walker v = dw; v.fy = eye - EYE;
-            best = hot_pick(&v, H, sizeof H / sizeof *H, DN.in ? U(1.6) : U(4.5));
+            best = hot_pick(&v, H, sizeof H / sizeof *H, DN.in ? U(2.1) : U(4.5));
         }
         prompt = best >= 0 ? H[best].label : NULL;
         if (prompt != last) { last = prompt; hud_dirty = 1; }
@@ -183,7 +201,7 @@ static void diner_scene(void)
 
         /* ---- waitress */
         if (DN.wstate == W_GO) {
-            if (npc_step(&DN.wx, &DN.wz, &DN.wyaw, DN.px[0], DN.pz[0], U(1.2) / 20)) {
+            if (npc_step(&DN.wx, &DN.wz, &DN.wyaw, DN.px[0], DN.pz[0], U(1.8) / 20)) {
                 for (int i = 1; i < DN.np; i++) { DN.px[i - 1] = DN.px[i]; DN.pz[i - 1] = DN.pz[i]; }
                 if (--DN.np <= 0) {
                     int n = DN.wnode; DN.wstate = W_IDLE; DN.wnode = WN_NONE;
@@ -198,7 +216,7 @@ static void diner_scene(void)
             }
         } else if (DN.wstate == W_IDLE && !dlg_active) {
             if (DN.wt && --DN.wt == 0 && DN.seated && !DN.ordered) w_to_player(WN_ORDER);
-            else if (!DN.wt && ++DN.wander > 160) {   /* random walk between the counter end and her stand */
+            else if (!DN.wt && ++DN.wander > 60) {   /* random walk between the counter end and her stand */
                 DN.wander = 0;
                 if (DN.started && !(DN.seated && !DN.ordered)) w_goto(DX(1117.0), DZ((rand() & 1) ? 958.7 : 955.4), WN_NONE);
             }
@@ -207,7 +225,7 @@ static void diner_scene(void)
         /* the order: she asks once seated; the food comes out once you've been to the washroom */
         if (DN.seated && !DN.ordered && !DN.wt && DN.wstate != W_GO && DN.wstate != W_TALK && !dlg_active && DN.seat_t && --DN.seat_t == 0) w_to_player(WN_ORDER);
         if (DN.food_t) DN.food_t--;
-        if (DN.ordered && !DN.served && DN.peed && DN.seated && !DN.food_t && DN.wstate == W_AWAY) w_goto(DX(1115.95), DZ(959.57), WN_SERVE);
+        if (DN.ordered && !DN.served && DN.peed && DN.seated && !DN.food_t && DN.wstate == W_AWAY) w_goto(DX(BOOTH[DN.booth].wx + 0.2), DZ(BOOTH[DN.booth].wz), WN_SERVE);
         if (DN.ae_t && !dlg_active && DN.wstate != W_GO && --DN.ae_t == 0 && DN.seated) w_to_player(WN_AFTEREAT);
         if (DN.seated && !DN.peed && DN.pee_t && --DN.pee_t == 0) { sub(S("ReallyPee"), 4); DN.pee_t = 400; }
         /* ---- bad guy: gets up after you eat, heads to the washroom */
@@ -244,7 +262,7 @@ static void diner_scene(void)
                 draw_model(&D_wait, DN.wstate == W_AWAY ? U(50) : DN.wx, U(0.45), DN.wz, DN.wyaw, pass);
                 if (DN.bstate == 0) draw_level(&D_badsit, pass);
                 else if (DN.bstate == 1) draw_model(&D_bad, DN.bx, U(0.45), DN.bz, DN.byaw, pass);
-                if (DN.served && !DN.eaten) draw_model(&D_food, DX(1115.3), U(1.24), DZ(961.03), 0, pass);
+                if (DN.served && !DN.eaten) draw_model(&D_food, DX(1115.36), U(1.24), DZ(BOOTH[DN.booth].tz), BOOTH[DN.booth].yaw, pass);
             } else {
                 draw_model(&D_rv, RVX, rvy, RVZ, RVYAW, pass);
                 draw_model(&D_plg, DX(1107.2), U(0.27), DZ(939.3), 0, pass);
