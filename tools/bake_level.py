@@ -473,6 +473,16 @@ def main():
             c = tpk.mean(axis=1); ok = ~np.all((c >= elo) & (c <= ehi), axis=1)
             if ok.any(): items2.append((key, tpk[ok], uvk[ok]))
         items = items2
+    if os.environ.get("VISEYE"):   # a fixed camera (the RV driver's seat): drop every triangle it can never see
+        import viscull
+        eye = [float(v) for v in os.environ["VISEYE"].split(",")]
+        allt = np.concatenate([t for _, t, _ in items]); vis = viscull.visible(allt, eye); o = 0; items2 = []
+        for key, tpk, uvk in items:
+            m = vis[o:o + len(tpk)]; o += len(tpk)
+            if m.any():
+                items2.append((key, tpk[m], uvk[m])); NM[id(items2[-1][1])] = NM.get(id(tpk), "?")
+        print("visible tris", int(vis.sum()), "of", len(allt))
+        items = items2
     if os.environ.get("TERRAIN"):
         # ground decals (roads, paths) lying on the terrain: the terrain splat already paints them, drop them
         import terrain; nd = 0; items2 = []
@@ -511,6 +521,16 @@ def main():
     res = [(key, a, b) for key, a, b, _ in allocate(items, BUDGET, NM, SIZEW)]
     for key, a, b in res:
         if len(a): buckets[key][0].append(a); buckets[key][1].append(b)
+    if os.environ.get("VISEYE"):   # polygons the DS would keep (70 deg vfov, 4:3) per view direction
+        allt = np.concatenate([a for _, a, _ in res if len(a)]) - np.array(eye); th = np.tan(np.radians(35)); worst = 0
+        for yw in range(-150, 181, 30):
+            for pt in (-40, -20, 0, 20):
+                cy, sy, cp, sp = np.cos(np.radians(yw)), np.sin(np.radians(yw)), np.cos(np.radians(pt)), np.sin(np.radians(pt))
+                x = allt[:, :, 0] * cy - allt[:, :, 2] * sy; z0 = allt[:, :, 0] * sy + allt[:, :, 2] * cy
+                y = allt[:, :, 1] * cp - z0 * sp; z = allt[:, :, 1] * sp + z0 * cp
+                n = int(((z > 0.1) & (np.abs(y) < z * th) & (np.abs(x) < z * th * 4 / 3)).any(axis=1).sum()); worst = max(worst, n)
+                if yw == 0 and pt in (0, -20): print("on screen yaw 0 pitch", pt, n)
+        print("on screen worst view ~", worst, "of", len(allt))
     if os.environ.get("TERRAIN"):
         import terrain
         for tg, t, uv in terrain.terrain_tris(lo[0], hi[0], lo[2], hi[2], float(os.environ["TERRAIN"])):

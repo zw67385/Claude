@@ -1370,11 +1370,42 @@ static void story_reader(void)
     }
 }
 
+/* some flashcart menus launch homebrew without argv, so NitroFS can't learn where the ROM is:
+   look for it on the SD card (root and one folder deep), matched against the header the loader left in RAM */
+#include <fat.h>
+#include <dirent.h>
+static int nitro_try(const char *path)
+{
+    FILE *f = fopen(path, "rb"); if (!f) return 0;
+    tNDSHeader h; int ok = fread(&h, 1, sizeof h, f) == sizeof h; fclose(f);
+    ok = ok && h.headerCRC16 == __NDSHeader->headerCRC16 && h.arm9binarySize == __NDSHeader->arm9binarySize
+            && !memcmp(h.gameTitle, __NDSHeader->gameTitle, 12);
+    return ok && nitroFSInit(path);
+}
+static int nitro_scan(const char *dir, int depth)
+{
+    DIR *d = opendir(dir); if (!d) return 0;
+    struct dirent *e; char p[256]; int ok = 0;
+    while (!ok && (e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        snprintf(p, sizeof p, "%s%s", dir, e->d_name);
+        int n = strlen(e->d_name);
+        if (e->d_type == DT_DIR) { if (depth) { strcat(p, "/"); ok = nitro_scan(p, depth - 1); } }
+        else if (n > 4 && !strcasecmp(e->d_name + n - 4, ".nds")) ok = nitro_try(p);
+    }
+    closedir(d); return ok;
+}
+static int nitro_find(void)
+{
+    if (!fatInitDefault()) return 0;
+    return nitro_scan("fat:/", 1);
+}
+
 int main(void)
 {
     init_hw();
     irqSet(IRQ_VBLANK, on_vblank); irqEnable(IRQ_VBLANK);
-    if (!nitroFSInit(NULL)) { printf("nitroFS init failed\n"); while (1) swiWaitForVBlank(); }
+    if (!nitroFSInit(NULL) && !nitro_find()) { printf("nitroFS init failed\nput the .nds in the card's root\n"); while (1) swiWaitForVBlank(); }
     mmInitDefault("nitro:/soundbank.bin");
     if (!yarn_load("nitro:/story.bin")) { printf("story.bin missing\n"); while (1) swiWaitForVBlank(); }
     { long sz; txt = (char *)load_file("nitro:/text.bin", &sz); ntxt = txt ? ((u32 *)txt)[1] : 0; }
