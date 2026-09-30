@@ -67,6 +67,8 @@ static void rv_eye(const RV *r, int *cx, int *cy, int *cz)
     *cx = r->x + ((ex * c + ez * s) >> 12); *cz = r->z + ((-ex * s + ez * c) >> 12); *cy = r->y + U(2.05);
 }
 /* camera from the driver's seat, world + RV (+ extra models via draw(pass)) drawn, frame flushed */
+/* sun colour and direction for the drive (world space, set per scene) */
+static u16 rv_sun = RGB15(8, 6, 6); static v10 rv_sdx = floattov10(0.3), rv_sdy = floattov10(-0.9), rv_sdz = floattov10(-0.3);
 static void rv_render(RV *r, u16 amb, void (*draw)(int pass))
 {
     int camx, camy, camz; rv_eye(r, &camx, &camy, &camz);
@@ -81,8 +83,9 @@ static void rv_render(RV *r, u16 amb, void (*draw)(int pass))
     int cyaw = r->yaw + r->lookyaw;
     glRotateXi(r->lookpitch - r->pitch_rv);
     glRotateYi(-cyaw);
+    sky_dome(80);
     glTranslatef32(-camx, -camy, -camz);
-    glLight(0, RGB15(8, 6, 6), floattov10(0.3), floattov10(-0.9), floattov10(-0.3));
+    glLight(0, rv_sun, rv_sdx, rv_sdy, rv_sdz);
     glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
     /* the cab goes first so a polygon-list overflow can only ever cost distant scenery */
     for (int pass = 0; pass < 2; pass++) {

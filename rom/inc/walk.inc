@@ -125,6 +125,7 @@ static void cam_setup(int x, int y, int z, int yaw, int pitch, float far)
     glMatrixMode(GL_MODELVIEW); glLoadIdentity();
     glRotateXi(pitch);
     glRotateYi(-yaw);
+    sky_dome(far);
     glTranslatef32(-x, -y, -z);
 }
 /* smooth approach of an NPC toward (tx, tz) at speed sp per frame; returns 1 when there */

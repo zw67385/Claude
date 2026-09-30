@@ -242,6 +242,60 @@ static void init_hw(void)
 }
 static void sky(int r, int g, int b) { glClearColor(r, g, b, 31); glFogColor(r, g, b, 31); }
 
+/* sky dome: the original skybox cubemaps baked to a 512x64 horizon panorama (tools/make_sky.py),
+   drawn as a textured cylinder around the camera; fog takes the horizon colour so the world
+   dissolves into the sky the way Unity's fog + skybox did. One sky texture in VRAM at a time. */
+static struct { const char *name; int tex, on; u16 hor, zen; } SK;
+#define glResetTextures() (SK.name = NULL, SK.on = 0, glResetTextures())
+static void sky_use(const char *name)
+{
+    if (!name) { SK.on = 0; return; }
+    if (SK.name && !strcmp(SK.name, name)) { SK.on = 1; return; }
+    char path[40]; sprintf(path, "nitro:/sky/%s.sky", name);
+    u8 *d = load_file(path, NULL);
+    if (!d || memcmp(d, "SKY1", 4)) { free(d); SK.on = 0; return; }
+    if (SK.name) glDeleteTextures(1, &SK.tex);
+    u16 *h = (u16 *)(d + 4);
+    glGenTextures(1, &SK.tex); glBindTexture(0, SK.tex);
+    glTexImage2D(0, 0, GL_RGB256, TEXTURE_SIZE_512, TEXTURE_SIZE_64, 0, TEXGEN_TEXCOORD | GL_TEXTURE_WRAP_S, d + 12 + 512);
+    glColorTableEXT(0, 0, 256, 0, 0, (u16 *)(d + 12));
+    SK.hor = h[2]; SK.zen = h[3]; SK.name = name; SK.on = 1;
+    free(d);
+}
+/* clear to the zenith, fog to the horizon */
+static void sky_col(void)
+{
+    glClearColor(SK.zen & 31, (SK.zen >> 5) & 31, SK.zen >> 10, 31);
+    glFogColor(SK.hor & 31, (SK.hor >> 5) & 31, SK.hor >> 10, 31);
+}
+/* call with the camera rotation loaded and the translation not yet applied */
+static void sky_dome(float far)
+{
+    if (!SK.on) return;
+    sky_col();
+    glPushMatrix();
+    int R = floattof32(far * 0.9f);
+    glScalef32(R, R, R);
+    glPolyFmt(POLY_ALPHA(31) | POLY_CULL_NONE | POLY_ID(0));
+    glBindTexture(0, SK.tex);
+    glColor(RGB15(31, 31, 31));
+    /* rings: zenith cap, +55 deg (texture top), -15 deg (texture bottom), below the ground */
+    static const v16 ry[4] = { 20480, 5849, -1097, -8192 };
+    static const int rv[4] = { 0, 0, 64, 64 };
+    glBegin(GL_QUADS);
+    for (int b = 0; b < 3; b++)
+        for (int i = 0; i < 16; i++) {
+            int a0 = i * 2048, a1 = a0 + 2048;
+            v16 x0 = sinLerp(a0), z0 = -cosLerp(a0), x1 = sinLerp(a1), z1 = -cosLerp(a1);
+            glTexCoord2t16(inttot16(i * 32), inttot16(rv[b]));      glVertex3v16(x0, ry[b], z0);
+            glTexCoord2t16(inttot16(i * 32 + 32), inttot16(rv[b])); glVertex3v16(x1, ry[b], z1);
+            glTexCoord2t16(inttot16(i * 32 + 32), inttot16(rv[b + 1])); glVertex3v16(x1, ry[b + 1], z1);
+            glTexCoord2t16(inttot16(i * 32), inttot16(rv[b + 1]));  glVertex3v16(x0, ry[b + 1], z0);
+        }
+    glEnd();
+    glPopMatrix(1);
+}
+
 static void wrap_print(const char *t);
 static void game_cmd(const char *c);
 
@@ -1194,6 +1248,7 @@ static void run_game(int start)
         else if (G.flare) { sun = RGB15(31, 8, 6); amb = RGB15(12, 3, 3); sky(14, 3, 2); }
         else sky(2, 2, 3);
         if (seq == 7) { sun = RGB15(4, 5, 8); amb = RGB15(3, 3, 5); sky(3, 3, 4); }
+        sky_use(seq == 6 || G.flare ? NULL : seq == 3 ? "evening" : seq == 2 ? "cloud" : seq == 4 || seq == 7 ? "moonmid" : "moon");
         g_amb = cabin ? RGB15(13, 12, 10) : amb;
         /* ambience loop + generator hum (louder when close to it) */
         amb_set(seq == 3 ? SFX_AMB_EVENING : seq == 7 ? SFX_AMB_RAIN : seq == 8 && G.cult_seen ? SFX_AMB_DRONE : seq == 6 ? SFX_AMB_WIND : SFX_AMB_NIGHT);
@@ -1215,6 +1270,7 @@ static void run_game(int start)
         if (mode != M_WALK) { cx = SEAT_X; cz = SEAT_Z; cyaw = SEAT_YAW; cpitch = 300; }
         glRotateXi(cpitch);
         glRotateYi(-cyaw);
+        sky_dome(bino ? 200 : 80);
         py = mode != M_WALK ? SEAT_Y : fy + EYE;
         glTranslatef32(-cx, -py, -cz);
         glLight(0, cabin ? RGB15(31, 29, 24) : sun, floattov10(0.4), floattov10(-0.8), floattov10(-0.3));

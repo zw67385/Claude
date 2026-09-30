@@ -317,10 +317,13 @@ static void diner_scene(void)
         if (DN.in) sky(2, 2, 4); else sky(5, 4, 5);   /* outside: the same dusk as the drive in */
         glEnable(GL_FOG);
         g_lights = POLY_FORMAT_LIGHT0 | POLY_FORMAT_LIGHT1 | POLY_FOG;
-        g_amb = DN.in ? RGB15(13, 12, 10) : RGB15(9, 8, 8);
+        g_amb = DN.in ? RGB15(13, 11, 9) : RGB15(9, 6, 9);
+        sky_use("dusk");   /* the windows look out on the sunset */
         cam_setup(dw.x, eye, dw.z, dw.yaw, dw.pitch, 60);
-        glLight(0, DN.in ? RGB15(24, 22, 18) : RGB15(10, 8, 8), floattov10(0.3), floattov10(-0.9), floattov10(-0.3));
-        glLight(1, DN.in ? RGB15(8, 8, 7) : RGB15(15, 12, 7), floattov10(-0.4), floattov10(-0.5), floattov10(0.7));
+        if (DN.in) glFogColor(3, 2, 4, 31);
+        /* inside: the warm ceiling lights (0.88,0.56,0.28); outside: the low orange sun + a violet sky fill */
+        glLight(0, DN.in ? RGB15(26, 20, 13) : RGB15(27, 15, 8), DN.in ? floattov10(0.3) : floattov10(0.12), DN.in ? floattov10(-0.9) : floattov10(-0.3), DN.in ? floattov10(-0.3) : floattov10(0.94));
+        glLight(1, DN.in ? RGB15(9, 7, 6) : RGB15(7, 5, 10), floattov10(-0.4), floattov10(-0.5), floattov10(0.7));
         for (int pass = 0; pass < 2; pass++) {
             glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
             draw_level(&D_lvl, pass);

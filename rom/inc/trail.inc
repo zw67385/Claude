@@ -122,8 +122,9 @@ static void trail_drive(void)
         if (sub_t > 0 && --sub_t == 0) hud_dirty = 1;
         int kmh = rv_kmh(&r);
         if (++hud_t >= 10) { hud_t = 0; if (kmh != lastkmh) hud_dirty = 1; lastkmh = kmh; }
-        sky(9, 8, 10);
-        rv_render(&r, RGB15(8, 7, 8), ts_draw);
+        sky(9, 8, 10); sky_use("cold");
+        rv_sun = RGB15(10, 12, 17); rv_sdx = floattov10(0.4); rv_sdy = floattov10(-0.8); rv_sdz = floattov10(-0.4);
+        rv_render(&r, RGB15(7, 7, 9), ts_draw);
         dbg_x = r.x; dbg_y = r.y; dbg_z = r.z;
         if (hud_dirty) { drive_hud(kmh); hud_dirty = 0; }
     }
@@ -299,14 +300,14 @@ static void trail_scene(void)
         for (int i = 0; i < 12; i++) if (evq[i].id == EV_SUB && --evq[i].t <= 0) { evq[i].id = 0; sub(S(evq[i].s), 4); }
 
         /* ---- render: dusk outside, a lamp in the guard house */
-        sky(9, 8, 10);
+        sky(9, 8, 10); sky_use("cold");
         glEnable(GL_FOG);
         g_lights = POLY_FORMAT_LIGHT0 | POLY_FORMAT_LIGHT1 | POLY_FOG;
-        g_amb = TS.inside ? RGB15(11, 10, 8) : RGB15(8, 7, 8);
+        g_amb = TS.inside ? RGB15(11, 10, 8) : RGB15(7, 7, 9);
         glMatrixMode(GL_MODELVIEW); glLoadIdentity();
         glLight(1, TS.flash_on ? RGB15(26, 25, 20) : RGB15(4, 4, 5), 0, floattov10(-0.15), floattov10(-0.98));   /* flashlight (view space) */
         cam_setup(tw.x, tw.fy + EYE, tw.z, tw.yaw, tw.pitch, 64);
-        glLight(0, RGB15(15, 12, 11), floattov10(0.4), floattov10(-0.8), floattov10(-0.4));
+        glLight(0, TS.inside ? RGB15(18, 14, 10) : RGB15(11, 13, 18), floattov10(0.4), floattov10(-0.8), floattov10(-0.4));
         glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
         w_far = U(60);
         world_draw(tw.x, tw.z, tw.yaw);

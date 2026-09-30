@@ -111,7 +111,7 @@ static int trail_end_run(void)
         if (sub_t > 0 && --sub_t == 0) hud_dirty = 1;
 
         /* ---- render: night at the trailhead */
-        sky(1, 1, 3);
+        sky(1, 1, 3); sky_use(TE.st == TE_SCARE ? NULL : "moon");
         glEnable(GL_FOG);
         g_lights = POLY_FORMAT_LIGHT0 | POLY_FORMAT_LIGHT1 | POLY_FOG;
         g_amb = TE.st == TE_SCARE && (TE.t & 4) ? RGB15(20, 2, 2) : RGB15(4, 4, 5);

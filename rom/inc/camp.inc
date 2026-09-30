@@ -234,7 +234,7 @@ static void camp_scene(void)
         }
 
         /* ---- render: night, flashlight, the fire lights up the site */
-        sky(1, 1, 3);
+        sky(1, 1, 3); sky_use("moon");
         glEnable(GL_FOG);
         g_lights = POLY_FORMAT_LIGHT0 | POLY_FORMAT_LIGHT1 | POLY_FOG;
         {
