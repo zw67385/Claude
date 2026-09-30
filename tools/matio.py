@@ -3,6 +3,7 @@
 import os, yaml, unity
 G = unity.guid_map()
 _cache = {}
+EXTRA = {}   # albedo guid -> (normal map guid, emission map guid, emission colour)
 TEXKEYS = ("_MainTex", "_BaseMap", "_BaseColorMap", "_Albedo", "_MainTexture", "_Diffuse", "_Tex")
 COLKEYS = ("_Color", "_BaseColor", "_TintColor", "_MainColor")
 
@@ -48,6 +49,10 @@ def load(guid):
         for k, v in _items(sp.get("m_Colors")):
             if k in COLKEYS: r["col"] = (v["r"], v["g"], v["b"], v["a"])
             if k == "_EmissionColor": r["emis"] = (v["r"], v["g"], v["b"], v["a"])
+        if r["tex"]:   # detail maps, baked into the albedo on request (the DS has no normal or emission maps)
+            env = dict(_items(sp.get("m_TexEnvs")))
+            g = lambda k: (env.get(k) or {}).get("m_Texture", {}).get("guid")
+            EXTRA.setdefault(r["tex"], (g("_BumpMap"), g("_EmissionMap"), r["emis"]))
         if r["tex"] and max(r["col"][:3]) < 0.02: r["col"] = (1, 1, 1, r["col"][3])   # unused black tint of a custom shader
     _cache[guid] = r
     return r

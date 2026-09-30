@@ -80,6 +80,22 @@ def decimate(tp, uv, target):
     return pos[t].astype(np.float64), out
 
 _tex = {}
+def relief(guid, im):
+    """Bake what the DS can't do per pixel into the albedo: normal-map shading under a fixed key light from
+    above (ridges, stitching, grain) and the emission map (lit gauges, displays)."""
+    import matio
+    bump, emt, ec = matio.EXTRA.get(guid, (None, None, None))
+    a = np.asarray(im, np.float32) / 255
+    if bump and texfile(bump):
+        n = np.asarray(Image.open(texfile(bump)).convert("RGB").resize(im.size, Image.LANCZOS), np.float32) / 127.5 - 1
+        L = np.array([-0.3, 0.55, 0.78]); L /= np.linalg.norm(L)
+        f = (n @ L) / (np.linalg.norm(n, axis=2) * L[2] + 1e-6)
+        a = a * np.clip(1 + float(os.environ["RELIEF"]) * (f - 1), 0.35, 1.6)[:, :, None]
+    if emt and texfile(emt) and ec and max(ec[:3]) > 0.01:
+        e = np.asarray(Image.open(texfile(emt)).convert("RGB").resize(im.size, Image.LANCZOS), np.float32) / 255
+        a = a + e * np.array(ec[:3]) * 1.5
+    return Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8))
+
 def conv_tex(guid, size, allow_cut=True):
     """returns (index-key, w, h, pal(list of 15-bit), data bytes 8bpp) or None"""
     if (guid, size, allow_cut) in _tex: return _tex[(guid, size, allow_cut)]
@@ -93,6 +109,7 @@ def conv_tex(guid, size, allow_cut=True):
         # alpha is low (alpha is often smoothness, not coverage)
         alpha = np.array(Image.fromarray(a).resize((w, h), Image.LANCZOS))
         im = im.convert("RGB").resize((w, h), Image.LANCZOS)
+        if os.environ.get("RELIEF"): im = relief(guid, im)
         rgb = im.quantize(colors=NC, method=Image.MEDIANCUT, dither=Image.NONE)
         pal = rgb.getpalette()[:NC*3]
         idx = np.array(rgb, dtype=np.uint8) + 1  # index 0 reserved
@@ -510,7 +527,7 @@ def main():
         # flipping z reverses winding relative to unity; unity is CW front, flip restores CCW
         tp = tp.astype(np.float64)
         uv = uv.copy(); uv[:, :, 1] = 1 - uv[:, :, 1]
-        tex = conv_tex(key[0], tsize if len(tp) + len(qp) > 150 else max(16, tsize // 2), key[2] == 31 and key[3]) if key[0] else None
+        tex = conv_tex(key[0], tsize if len(tp) + len(qp) > int(os.environ.get("HALFTEX", 150)) else max(16, tsize // 2), key[2] == 31 and key[3]) if key[0] else None
         # degenerate removal
         e1 = tp[:, 1] - tp[:, 0]; e2 = tp[:, 2] - tp[:, 0]
         area = np.linalg.norm(np.cross(e1, e2), axis=1)
