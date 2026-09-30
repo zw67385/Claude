@@ -769,12 +769,20 @@ static void vignette(const char *title, const char *const *nodes, int n)
     card(title, "");
     for (int i = 0; i < n; i++) { dlg_begin(nodes[i], NULL); play_until_done(); }
 }
+#include "../inc/world.inc"
+#include "../inc/firstscene.inc"
+static int load_tower(void)
+{
+    if (!L_in.data && (!load_level(&L_in, "nitro:/tower.bin") || !load_level(&L_out, "nitro:/outside.bin"))) return 0;
+    if (!L_door.data) load_level(&L_door, "nitro:/door.bin");
+    return 1;
+}
 static void prologue(void)
 {
-    static const char *const diner[] = { "DinerStart", "DinerOrder", "AfterEating", "Check", "AfterCheck", "Bad_Guy", "ParkingLotGuy" };
     static const char *const trail[] = { "TrailStart", "RangerKeys", "RangerAfterKeys", "RangerFlashLight", "RangerAfterFlashLight", "RangerAfterEnd" };
-    vignette("Rosebourg Diner", diner, 7);
+    first_scene();
     vignette("Ironbark Trail", trail, 6);
+    load_tower();
 }
 static void campsite(void)
 {
@@ -1233,8 +1241,7 @@ int main(void)
                 }
                 if (!start) continue;
             }
-            if (!L_in.data && (!load_level(&L_in, "nitro:/tower.bin") || !load_level(&L_out, "nitro:/outside.bin"))) { printf("no level\n"); continue; }
-            if (!L_door.data) load_level(&L_door, "nitro:/door.bin");
+            if (!load_tower()) { printf("no level\n"); continue; }
             run_game(start);
         }
     }

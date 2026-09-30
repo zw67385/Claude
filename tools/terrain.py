@@ -4,11 +4,12 @@ terrain_tris(x0,x1,z0,z1,step) -> list of (layer_tex_guid, tile, tris (n,3,3) wo
 import os, re, numpy as np
 import unity
 CACHE = os.environ.get("F2F_CACHE", "/tmp/f2f_cache")
-ASSET = "TerrainData/WatchTower Abhinav.asset"
+ASSET = os.environ.get("TERRAIN_ASSET", "TerrainData/WatchTower Abhinav.asset")
+OFS = np.array([float(v) for v in os.environ.get("TERRAIN_OFS", "0,0,0").split(",")])   # terrain object world position
 
 def _load():
     os.makedirs(CACHE, exist_ok=True)
-    cf = os.path.join(CACHE, "terrain.npz")
+    cf = os.path.join(CACHE, "terrain.npz" if "Abhinav" in ASSET else "terrain_%s.npz" % re.sub(r"\W", "_", os.path.basename(ASSET)))
     if os.path.exists(cf):
         z = np.load(cf, allow_pickle=True)
         return z["h"], z["splat"], list(z["layers"]), z["scale"]
@@ -41,11 +42,12 @@ H, DOM, LAYERS, SCALE = _load()
 RES = H.shape[0]
 
 def height(x, z):
+    x = x - OFS[0]; z = z - OFS[2]
     fx = np.clip(x / SCALE[0], 0, RES - 1.001); fz = np.clip(z / SCALE[2], 0, RES - 1.001)
     ix = fx.astype(int); iz = fz.astype(int); tx = fx - ix; tz = fz - iz
     a = H[iz, ix] * (1 - tx) + H[iz, ix + 1] * tx
     b = H[iz + 1, ix] * (1 - tx) + H[iz + 1, ix + 1] * tx
-    return a * (1 - tz) + b * tz
+    return a * (1 - tz) + b * tz + OFS[1]
 
 def coarse_height(x, z, x0, z0, step):
     """height of the triangulated terrain_tris(x0,..,step) mesh at x,z"""
@@ -57,6 +59,7 @@ def coarse_height(x, z, x0, z0, step):
     return np.where(lo, ha + (hb - ha) * tx + (hc - ha) * tz, hd + (hc - hd) * (1 - tx) + (hb - hd) * (1 - tz))
 
 def layer_at(x, z):
+    x = x - OFS[0]; z = z - OFS[2]
     n = DOM.shape[0]; size = SCALE[0] * (RES - 1)
     ix = np.clip((x / size * n).astype(int), 0, n - 1); iz = np.clip((z / size * n).astype(int), 0, n - 1)
     return DOM[iz, ix]
@@ -81,6 +84,19 @@ def terrain_tris(x0, x1, z0, z1, step):
         uv = np.stack([t[:, :, 0] / tx, t[:, :, 2] / tz], axis=-1)
         uv = uv - np.floor(uv.min(axis=1, keepdims=True))   # keep texcoords small per triangle
         out.append((tg, t, uv))
+    return out
+
+def trees():
+    """terrain tree instances: list of (prefab path, world pos (3,), rotation rad, width scale, height scale)"""
+    txt = open(os.path.join(unity.ROOT, ASSET)).read()
+    a = txt.index("m_TreePrototypes"); b = txt.index("m_PreloadTextureAtlasData")
+    G = unity.guid_map()
+    protos = [G.get(g) for g in re.findall(r"prefab: \{fileID: -?\d+, guid: ([0-9a-f]+)", txt[a:b])]
+    size = SCALE * np.array([RES - 1, 1, RES - 1])
+    out = []
+    for m in re.finditer(r"- position: \{x: ([-\d.e]+), y: ([-\d.e]+), z: ([-\d.e]+)\}\n\s*widthScale: ([-\d.e]+)\n\s*heightScale: ([-\d.e]+)\n\s*rotation: ([-\d.e]+)\n(?:.*\n){6}\s*index: (\d+)", txt):
+        p = np.array([float(m.group(i)) for i in (1, 2, 3)]) * size + OFS
+        out.append((protos[int(m.group(7))], p, float(m.group(6)), float(m.group(4)), float(m.group(5))))
     return out
 
 if __name__ == "__main__":

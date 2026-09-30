@@ -17,6 +17,7 @@ def quat_mat(q):
                      [2*(x*z-y*w), 2*(y*z+x*w), 1-2*(x*x+y*y)]])
 
 def texfile(guid):
+    if guid.startswith("/"): return guid       # generated image (e.g. tree impostor crop)
     p = G.get(guid)
     return os.path.join(unity.ROOT, p) if p else None
 
@@ -47,8 +48,8 @@ def conv_tex(guid, size, allow_cut=True):
     try:
         im = Image.open(p).convert("RGBA")
         a = np.array(im)[:, :, 3]
-        w = h = size
-        NC = 127 if size >= 64 else 63
+        w, h = size if isinstance(size, tuple) else (size, size)
+        NC = 127 if w * h >= 4096 else 63
         im = im.resize((w, h), Image.LANCZOS)
         rgb = im.convert("RGB").quantize(colors=NC, method=Image.MEDIANCUT, dither=Image.NONE)
         pal = rgb.getpalette()[:NC*3]
