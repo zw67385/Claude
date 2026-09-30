@@ -3,10 +3,18 @@
 Branch: `claude/vigilant-ritchie-vkzmfi` (repo `zw67385/claude`). Working dir: `/home/user/Claude`.
 User rules: do everything yourself, **no subagents**; port the whole episode (story, text, systems, layout) to the DS Lite at ~20 fps, using the hardware fully. Keep chat replies short.
 
-## Honest status
-Foundations only. No playable game yet. Nothing is in the ROM except the Makefile skeleton. Done so far:
-toolchain proven, story text and dialogue extracted exactly, scene/mesh/material readers written, source game studied (partly).
-A faithful 1:1 port is not possible (Unity HDRP game vs 4 MB RAM, 2048 polys/frame). The plan is a data-driven reinterpretation that keeps every story beat, text line and system.
+## Current status (latest)
+Playable start to finish, every scene in 3D, built from the Unity assets (models, textures, audio, Yarn story, subtitles):
+- **First Scene** (`rom/inc/rv.inc`, `diner.inc`, `firstscene.inc`): RV drive, diner and parking lot with NPCs.
+- **Trail Start** (`trail.inc`): trailhead, guard house jumpscare, ranger Billy, gate, flashlight.
+- **Watchtower Seq 1-8** (`rom/source/main.c`), plus NPCs (`tnpc.inc`): Seq 5 cultist walks the deck and does the deer skull ritual; Seq 6 Billy at the door and the bad guy at the shack; Seq 8 cult camp (binoculars) and the crowd after the photo.
+- **Camping** (`camp.inc`), **Seq 4 Intro** (text), **Trail End** (`trailend.inc`): chase to the RV, then the outro text.
+- Bake scripts: `tools/bake_diner.sh`, `bake_trail.sh`, `bake_camp.sh`, `bake_tower_npc.sh`, `bake_world.py` (chunked terrain worlds).
+- Debug build: set `DEFINES := -DDEBUG_POS` (Makefile line 43), run `make clean`. The HUD then shows position and stats, and L is a per-scene teleport. Also TRAIL_TEST, CAMP_TEST and END_TEST jump-in hooks. Keep DEFINES empty in commits.
+
+Known gaps and next steps:
+- Not done: the Zombie Game PC minigame, the under-bed jumpscare animation, the Seq 8 run chase, the cultist animations (models are posed statically), and the credits scene.
+- Only verified on DeSmuME, where the poly counters read 0. Check the poly count and 20 fps on real hardware.
 
 ## Environment (EPHEMERAL: rebuild if the container was reset)
 1. Assets: `curl -L -o /tmp/ironbark.rar https://sendit.sh/sxLjD/EFGjc.rar` (**capital D** in `sxLjD`; `sxLjd` is 404). 2.77 GB.
