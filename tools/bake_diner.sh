@@ -11,7 +11,8 @@ NPC="Diner/Waitress,Diner/Trucker,Diner/SuitGuy,Diner/Chef,Diner/BadGuy,Bad Guy 
 BASE="UI Manager,OLD/,Traffic Manager,RV/,Follower"
 lvl() { $PY bake_level.py "First Scene" 1095 1135 -1 9 930 975 $W/$1 ${2:-32} | tail -1; cp $W/$1/level.bin $OUT/$1.bin; }
 # static level (no NPCs, no food)
-PIVOT=1115,0,955 SKIP="$BASE,$NPC,Food Tray,DoorInner_A" BUDGET=3600 lvl diner 64
+PRI="Sofa,Table,Bar,Stool,Chair,Counter,Wall_in,Floor,Ceiling,Jalousie,Door,range,freezer,fridge,Flags,Booth" \
+  PIVOT=1115,0,955 SKIP="$BASE,$NPC,Food Tray,DoorInner_A" BUDGET=3600 lvl diner 64
 PIVOT=1118.98,0,950.99 ONLY="DoorInner_A" SKIP="$BASE" BUDGET=60 lvl wdoor
 # walking data
 PIVOT=1115,0,955 SKIP="$BASE,$NPC,DoorInner_A,Bar Doors" $PY bake_walls.py "First Scene" "${R[@]}" $OUT/diner.wal | tail -1

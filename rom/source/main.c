@@ -1250,6 +1250,9 @@ int main(void)
 #ifdef CAMP_TEST
     campsite();
 #endif
+#ifdef TRAIL_WALK
+    trail_scene();
+#endif
 #ifdef END_TEST
     ending();
 #endif

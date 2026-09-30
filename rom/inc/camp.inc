@@ -79,24 +79,28 @@ static void camp_hud(void)
 #endif
 }
 
-/* flickering flames: a few unlit crossed triangles over the fire pit */
+/* flickering flames: camera-facing tongues of fire over the pit. Each has its own polygon ID: the DS does not
+   blend translucent polygons over others with the same ID, which made the old crossed triangles read as one. */
 static void camp_flames(void)
 {
     static int t; t++;
-    glPolyFmt(POLY_ALPHA(20) | POLY_CULL_NONE | POLY_ID(3));
+    static const s16 ang[7] = { 0, 9000, 18500, 27000, 4500, 14000, 23000 };
+    static const u8 rad[7] = { 0, 30, 34, 28, 14, 16, 18 }, hgt[7] = { 60, 34, 30, 36, 46, 44, 40 }, wid[7] = { 18, 12, 11, 12, 14, 14, 13 };
+    int rx = cosLerp(cw.yaw), rz = -sinLerp(cw.yaw);        /* camera right: the tongues face the viewer */
     glBindTexture(0, 0);
     glPushMatrix();
     glTranslatef32(TX(80.69), U(50.0), TZ(98.84));
-    glBegin(GL_TRIANGLES);
-    for (int i = 0; i < 3; i++) {
-        int a = i * 5461 + t * 97, s = sinLerp(a), c = cosLerp(a);
-        int h = U(0.55) + ((sinLerp(t * 1400 + i * 9000) * U(0.18)) >> 12), w = U(0.3);
-        int ox = (c * w) >> 12, oz = (s * w) >> 12;
-        glColor3b(255, 90, 10); glVertex3v16(-ox, 0, -oz);
-        glColor3b(255, 90, 10); glVertex3v16(ox, 0, oz);
-        glColor3b(255, 220, 90); glVertex3v16((s * U(0.05)) >> 12, h, 0);
+    for (int i = 0; i < 7; i++) {
+        int cx = (cosLerp(ang[i]) * rad[i] * U(0.01)) >> 12, cz = (sinLerp(ang[i]) * rad[i] * U(0.01)) >> 12;
+        int h = hgt[i] * U(0.01) + ((sinLerp(t * (900 + i * 170) + i * 7000) * U(0.12)) >> 12);
+        int w = wid[i] * U(0.01) / 2, sw = (sinLerp(t * 1300 + i * 5000) * U(0.06)) >> 12;
+        glPolyFmt(POLY_ALPHA(i ? 16 : 22) | POLY_CULL_NONE | POLY_ID(8 + i));
+        glBegin(GL_TRIANGLES);
+        glColor3b(255, 70, 0);   glVertex3v16(cx - ((rx * w) >> 12), 0, cz - ((rz * w) >> 12));
+        glColor3b(255, 70, 0);   glVertex3v16(cx + ((rx * w) >> 12), 0, cz + ((rz * w) >> 12));
+        glColor3b(255, 225, 110); glVertex3v16(cx + ((rx * sw) >> 12), h, cz + ((rz * sw) >> 12));
+        glEnd();
     }
-    glEnd();
     glPopMatrix(1);
 }
 

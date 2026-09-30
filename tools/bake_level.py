@@ -3,7 +3,7 @@
 usage: bake_level.py Scene xmin xmax ymin ymax zmin zmax out_dir [texsize]
 Output: out_dir/level.bin (see pack format in README), coordinates in metres relative to bbox centre,
 DS space (z flipped)."""
-import sys, os, struct, collections
+import re, sys, os, struct, collections
 import numpy as np
 from PIL import Image
 import unity, meshio, matio, gx
@@ -43,7 +43,7 @@ def decimate(tp, uv, target):
     pos = np.ascontiguousarray(P[first].astype(np.float32)); idx = inv.astype(np.uint32)
     dst = np.zeros(len(idx), dtype=np.uint32)
     k = meshoptimizer.simplify(dst, idx, pos, target_index_count=int(target*3), target_error=2.0, options=0)
-    if k > target*3*1.5:
+    if k > target*3*3 and os.environ.get("SLOPPY"):
         k = meshoptimizer.simplify_sloppy(dst, idx, pos, target_index_count=int(target*3), target_error=2.0)
     t = dst[:k].reshape(-1,3)
     if len(t)==0: return tp[:0], uv[:0]
@@ -362,6 +362,73 @@ def collect(scene, lo, hi):
         nrend += used
     return items, nrend
 
+def allocate(items, BUDGET, NM, SIZEW=0, verbose=True):
+    """items [(key, tris, uv)] -> [(key, tris, uv, src_tris)] within ~BUDGET triangles. NM: id(tris) -> object name."""
+    if not items or BUDGET <= 0: return []
+    # LOD groups: keep only the coarsest level of each prop (both levels were being baked on top of each other)
+    lodre = re.compile(r"^(.*?)[_ ]?LOD(\d+)")
+    lods = collections.defaultdict(list)
+    for i, (key, tpk, uvk) in enumerate(items):
+        mm = lodre.match(str(NM.get(id(tpk), "")))
+        if mm: lods[mm.group(1)].append((int(mm.group(2)), tpk.reshape(-1, 3).mean(0), i))
+    dropl = set()
+    for L in lods.values():
+        for lv, c, i in L:
+            if any(lv2 > lv and np.linalg.norm(c2 - c) < 0.15 for lv2, c2, _ in L): dropl.add(i)
+    if dropl:
+        items = [it for i, it in enumerate(items) if i not in dropl]; verbose and print("dropped finer LODs", len(dropl))
+    # importance = physical size. Every kept item gets enough triangles to stay recognisable; the smallest
+    # clutter is dropped outright rather than shredded into loose shards. Big structures share the rest.
+    MINSZ = float(os.environ.get("MINSZ", 0.08))
+    # visual size: sqrt of the two largest extents (a long thin blind or wire counts as small)
+    def vsize(t):
+        e = np.sort(t.reshape(-1, 3).max(0) - t.reshape(-1, 3).min(0)); return np.sqrt(e[2] * e[1])
+    diag = np.array([vsize(t) for _, t, _ in items])
+    ns = np.array([len(i[1]) for i in items], dtype=np.float64)
+    # each item's floor: the triangles it needs to stay within ~ERR metres of its real shape (same for all sizes)
+    ERR = float(os.environ.get("ERR", 0.06))
+    def floor_tris(t):
+        if len(t) <= 8: return len(t)
+        ext = (t.reshape(-1, 3).max(0) - t.reshape(-1, 3).min(0)).max()
+        return min(len(t), max(8, min(250 if ext > 4 else 120, ecount(t, float(np.clip(ERR / max(ext, 1e-3), 0.005, 0.25))))))
+    mins = np.array([floor_tris(t) for _, t, _ in items])
+    mins = np.minimum(mins, max(8, int(BUDGET * 0.35)))       # one big mesh never shuts itself (or everything) out
+    pri = [x for x in os.environ.get("PRI", "").split(",") if x]
+    order = sorted(range(len(items)), key=lambda i: (ns[i] > 12, not any(p in str(NM.get(id(items[i][1]), "")) for p in pri), diag[i] < 2.5, -diag[i]))
+    keep = np.zeros(len(items), bool); acc = 0
+    keepall = bool(os.environ.get("POSE") or os.environ.get("KEEPALL"))    # a character: every part (hair, sleeves) stays
+    if keepall: keep[:] = True; mins = np.minimum(ns, 8).astype(int); order = []
+    for i in order:
+        if diag[i] < MINSZ and ns[i] > 12: continue
+        if acc + mins[i] > BUDGET * 0.8: continue
+        keep[i] = True; acc += mins[i]
+    verbose and print("kept items", keep.sum(), "of", len(items))
+    items = [it for it, kp in zip(items, keep) if kp]; mins = mins[keep]; ns = ns[keep]; diag = diag[keep]
+    if not items: return []
+    wt = np.sqrt(ns) * np.maximum(diag, 0.05) ** (SIZEW if keepall else max(SIZEW, 1))
+    spare = BUDGET - mins.sum(); k = spare / wt.sum()
+    for it in range(5):
+        res = []
+        for (key, tpk, uvk), w, mn in zip(items, wt, mins):
+            a, b = decimate(tpk, uvk, int(min(len(tpk), mn + w * k)))
+            res.append((key, a, b))
+        got = sum(len(a) for _, a, _ in res)
+        verbose and print("budget pass", it, "tris", got)
+        if got <= BUDGET * 1.05 or k < 1e-6: break
+        k *= max(0, spare - (got - BUDGET)) / max(spare, 1)
+    if os.environ.get("REPORT"):
+        for (key, tpk, uvk), (_, a, _), d in zip(items, res, diag):
+            verbose and print("ITEM %-40s %5d -> %4d  diag %.2f" % (NM.get(id(tpk), "?")[:40].replace(" ", "_"), len(tpk), len(a), d))
+    return [(key, a, b, t) for (key, a, b), (_, t, _) in zip(res, items)]
+
+def ecount(tp, E):
+    """triangles the position-welded mesh keeps when simplified to relative error E"""
+    P = tp.reshape(-1, 3)
+    _, first, inv = np.unique(np.round(P * 1e4).astype(np.int64), axis=0, return_index=True, return_inverse=True)
+    dst = np.zeros(len(P), dtype=np.uint32)
+    return meshoptimizer.simplify(dst, inv.reshape(-1).astype(np.uint32), np.ascontiguousarray(P[first].astype(np.float32)),
+                                  target_index_count=0, target_error=E, options=0) // 3
+
 def main():
     scn, x0, x1, y0, y1, z0, z1, out = sys.argv[1:9]
     tsize = int(sys.argv[9]) if len(sys.argv) > 9 else 64
@@ -374,6 +441,7 @@ def main():
         if g.get("name") in force: g["active"] = 1
     buckets = collections.defaultdict(lambda: ([], [], [], []))  # key -> (tri lists of (3,3) pos, uv (3,2))
     items, nrend = collect(scene, lo, hi)
+    NM = {id(t): n for (_, t, _), n in zip(items, NAMES)}
     excl = os.environ.get("EXCL")
     if excl:
         e = [float(v) for v in excl.split(",")]; elo = np.array(e[0::2]); ehi = np.array(e[1::2])
@@ -417,18 +485,7 @@ def main():
         diag = np.array([np.linalg.norm(t.reshape(-1, 3).max(0) - t.reshape(-1, 3).min(0)) for _, t, _ in items])
         wt = np.sqrt(ns) * np.maximum(diag, 0.05) ** SIZEW
         k = BUDGET / wt.sum()
-    # the simplifier can't always reach its target: rescale until the sum lands on the budget
-    for it in range(4):
-        res = []
-        for (key, tpk, uvk), w in zip(items, wt):
-            tgt = int(w * k)
-            if tgt < 4 and SIZEW: continue          # too small to matter at this budget
-            a, b = decimate(tpk, uvk, max(6, tgt))
-            res.append((key, a, b))
-        got = sum(len(a) for _, a, _ in res)
-        print("budget pass", it, "tris", got)
-        if got <= BUDGET * 1.05: break
-        k *= BUDGET / got
+    res = [(key, a, b) for key, a, b, _ in allocate(items, BUDGET, NM, SIZEW)]
     for key, a, b in res:
         if len(a): buckets[key][0].append(a); buckets[key][1].append(b)
     if os.environ.get("TERRAIN"):

@@ -40,7 +40,9 @@ WORLDS = {
                  force=[],
                  skip=["UIManager", "UI", "Game Manager", "FirstPersonController", "Trigger/", "Cultist", "Water Pot",
                        "Particles", "Invisible Colliders", "Screenshot", "Lake", "nav"],
-                 road=None,
+                 road=None, cap=850,
+                 pri=["Fireplace", "Tent", "SleepingBag", "LawnChair", "Cooler", "Lantern", "CookingStove", "PicnicTable",
+                      "AirMattress", "Bookbag", "Radio", "sign"],
                  boxskip=["FirstPersonController", "Trigger/", "Cultist", "Water Pot", "UIManager", "Game Manager"]),
 }
 
@@ -111,24 +113,17 @@ def main():
     def chunk_of(p):   # p (n,2) unity x,z -> chunk keys
         return [ (int(a), int(b)) for a, b in np.floor(p / CS).astype(int)]
     # ---- per-renderer decimation, budget by chunk count
-    keep_items = []
-    for key, tp, uv in items:
+    keep_items = []; NM = {}
+    for (key, tp, uv), nmn in zip(items, names):
         c = tp.mean(axis=1)
         m = np.array([k in cidx for k in chunk_of(c[:, [0, 2]])])
-        if m.any(): keep_items.append((key, tp[m], uv[m]))
+        if m.any(): keep_items.append((key, tp[m], uv[m])); NM[id(keep_items[-1][1])] = nmn
     items = keep_items
-    ns = np.array([len(t) for _, t, _ in items], float)
-    wt = np.sqrt(ns)
     budget = TPC * len(chunks) * 0.55
-    k = budget / wt.sum()
+    os.environ["PRI"] = ",".join(W.get("pri", []))
+    res = bake_level.allocate(items, budget, NM, verbose=True)
     buckets = collections.defaultdict(list)   # (chunk, key) -> [(tp, uv)]
     ntri = 0
-    for (key, tp, uv), w in zip(items, wt):
-        a, b = decimate(tp, uv, max(4, int(w * k)))
-        if not len(a): continue
-        for ck, t1, u1 in split_chunks(a, b, cidx):
-            buckets[(ck, key)].append((t1, u1)); ntri += len(t1)
-    print("mesh tris", ntri)
     # ---- terrain: grid per chunk, lowered under the road
     roadh = {}
     for key, tp, uv in ritems:
@@ -160,20 +155,30 @@ def main():
         wp = (ttp.reshape(-1, 3) * np.array([ws, hs, ws])) @ Rm.T + p
         buckets[(ck, tkey)].append((wp.reshape(-1, 3, 3), tuv)); ntree += 1
     print("trees", ntree, "protos", len(protos))
-    # ---- cap each chunk's triangle count (dense town blocks)
-    CAP = int(os.environ.get("CAP", 650))
-    per = collections.defaultdict(list)
-    for (ck, key), lst in buckets.items(): per[ck].append(key)
-    for ck, keys in per.items():
-        n = sum(len(t) for key in keys for t, _ in buckets[(ck, key)])
-        if n <= CAP: continue
-        f = CAP / n
-        for key in keys:
-            if key[0] and key[0].startswith("/"): continue     # impostors are already 4 tris
-            tp = np.concatenate([t for t, _ in buckets[(ck, key)]]); uv = np.concatenate([u for _, u in buckets[(ck, key)]])
-            a, b = decimate(tp, uv, max(2, int(len(tp) * f)))
-            buckets[(ck, key)] = [(a, b)] if len(a) else []
-        print("chunk", ck, n, "->", sum(len(t) for key in keys for t, _ in buckets[(ck, key)]))
+    # ---- cap each chunk's triangle count (dense town blocks): re-allocate the objects centred there with what is
+    # left after terrain + trees, so a crowded block loses its smallest props instead of shredding all of them
+    CAP = int(os.environ.get("CAP", W.get("cap", 650)))
+    other = collections.Counter()
+    for (ck, key), lst in buckets.items(): other[ck] += sum(len(t) for t, _ in lst)
+    home = collections.defaultdict(list)
+    for r in res:
+        c = r[3].reshape(-1, 3).mean(0); home[(int(c[0] // CS), int(c[2] // CS))].append(r)
+    final = []
+    for ck, lst in home.items():
+        n = other[ck] + sum(len(a) for _, a, _, _ in lst)
+        if n > CAP:
+            # map back to the original (undecimated) triangles of these items
+            srcs = {id(t): it for it in items for t in [it[1]]}
+            sub = [srcs[id(t)] for _, _, _, t in lst]
+            lst = bake_level.allocate(sub, max(0, CAP - other[ck]), NM, verbose=False)
+            print("chunk", ck, n, "->", other[ck] + sum(len(a) for _, a, _, _ in lst), [NM.get(id(t)) for _, a, _, t in lst if "Fire" in str(NM.get(id(t)))])
+        final += lst
+    for key, a, b, src in final:
+        if not len(a): continue
+        if NM.get(id(src)) == "Water": key = (None, (0.07, 0.10, 0.12), key[2], False)   # a lake shader: dark water, not its white normal map
+        for ck, t1, u1 in split_chunks(a, b, cidx):
+            buckets[(ck, key)].append((t1, u1)); ntri += len(t1)
+    print("mesh tris", ntri)
     for k_ in [k_ for k_, v in buckets.items() if not v]: del buckets[k_]
     # ---- textures (shared)
     tex_use = collections.Counter()
