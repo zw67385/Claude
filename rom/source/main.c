@@ -791,6 +791,7 @@ static void vignette(const char *title, const char *const *nodes, int n)
 #include "../inc/firstscene.inc"
 #include "../inc/trail.inc"
 #include "../inc/camp.inc"
+#include "../inc/trailend.inc"
 static int load_tower(void)
 {
     if (!L_in.data && (!load_level(&L_in, "nitro:/tower.bin") || !load_level(&L_out, "nitro:/outside.bin"))) return 0;
@@ -819,8 +820,8 @@ static void campsite(void)
 static void ending(void)
 {
     char k[40];
-    card("Trail End", "");
-    typed(S("Seq8MakeARun"));
+    trail_end_scene();
+    setBrightness(3, 0);
     for (int i = 1; i <= 15; i++) { snprintf(k, sizeof k, "ep4_intro.Seq8Outro%d", i); if (typed(T(k))) break; }
     typed(T("ep4_intro.PleaseBeSafe"));
     consoleClear();
@@ -1237,6 +1238,9 @@ int main(void)
     int sel = 0;
 #ifdef CAMP_TEST
     campsite();
+#endif
+#ifdef END_TEST
+    ending();
 #endif
     for (;;) {
         int saved = save_read();

@@ -16,7 +16,7 @@ PIVOT=633,0,440 ONLY="GuardHouse/,TRAIL GATE/entry gate_Baked.001,TRAIL GATE/ent
 PIVOT=634.13,0,440.29 ONLY="GuardHouse/Door$" BUDGET=60 lvl gdoor
 PIVOT=637.51,0,433.68 ONLY="TRAIL GATE/entry gate_Baked$" BUDGET=200 lvl gate
 # walking data (world frame)
-WCLEAR="633.1,634.05,440.0,441.0" PIVOT=0,0,0 ONLY="GuardHouse/,TRAIL GATE/entry gate_Baked.00" SKIP="$MARK,ParkRanger,BadGuy,GuardHouse/Door$" \
+WCLEAR="633.1,634.05,440.0,441.0;637.0,638.1,434.0,439.3" PIVOT=0,0,0 ONLY="GuardHouse/,TRAIL GATE/entry gate_Baked.00" SKIP="$MARK,ParkRanger,BadGuy,GuardHouse/Door$" \
   $PY bake_walls.py "$S" "${R[@]}" $OUT/trail.wal | tail -1
 PIVOT=0,0,0 SKIP="$MARK,ParkRanger,BadGuy,RV/,UI Manager,FirstPersonController" $PY bake_floor.py "$S" "${R[@]}" $OUT/trail.flr | tail -1
 # characters, pivot at the feet
