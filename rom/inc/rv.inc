@@ -66,6 +66,9 @@ static void rv_update(RV *r, u32 k, int lock)
         r->pitch_rv += (tgt - r->pitch_rv) / 4;
     }
     r->spd = spd;
+#ifdef SWEEP
+    { static int t; t++; r->lookyaw = sinLerp(t * 150) * 12000 >> 12; r->lookpitch = 1100 + (cosLerp(t * 90) * 1500 >> 12); }
+#endif
 }
 static int rv_kmh(const RV *r) { return abs(r->spd) * 20 * 36 / 10 / 4096; }
 /* driver's eye in RV space: (-0.57, 2.05, -2.99) */

@@ -47,6 +47,7 @@ WORLDS = {
 }
 
 CS = 32.0            # chunk size (m)
+CELL = float(os.environ.get("CELL", 8))   # draw/cull cell inside a chunk (m)
 FC = 2.0             # floor cell (m)
 FN = int(CS / FC)
 TPC = int(os.environ.get("TPC", 170))    # average triangle budget per chunk (visible budget ~ 10 chunks)
@@ -360,17 +361,24 @@ def emit(out, chunks, cidx, buckets, texs, tindex, boxes, floors):
             if not len(tp): continue
             ti = tindex.get((key[0], key[2] == 31 and key[3]), -1) if key[0] else -1
             w, h = (texs[ti]["w"], texs[ti]["h"]) if ti >= 0 else (1, 1)
-            pos = np.clip(tp / SC, -7.99, 7.99).reshape(-1, 3)
-            tris = np.arange(len(pos)).reshape(-1, 3)[:, ::-1]
             # per-triangle uv recentre keeps texcoords inside the s16 range
             u2 = uv.copy(); u2 -= np.floor(u2.min(axis=1, keepdims=True))
-            cmds = gx.triangles(pos, None, u2.reshape(-1, 2) if ti >= 0 else None, tris, (w, h))
-            dl = gx.encode(cmds)
-            al(); dlo = len(blob); blob.extend(dl)
             c15 = gx.pack_color15(*[min(1, max(0, x)) for x in key[1]])
-            groups.append((ti, c15 | (key[2] << 16), len(dl) // 4 - 1, dlo)); ctri += len(tp)
+            # CELL m sub-cells, each with its own box: the DS box-tests them and draws the nearest first
+            cc = np.floor((tp.mean(axis=1)[:, [0, 2]] + CS / 2) / CELL).astype(int)
+            ckey = cc[:, 0] * 64 + cc[:, 1]
+            for cv in np.unique(ckey):
+                m = ckey == cv
+                pos = np.clip(tp[m] / SC, -7.99, 7.99).reshape(-1, 3)
+                tris = np.arange(len(pos)).reshape(-1, 3)[:, ::-1]
+                cmds = gx.triangles(pos, None, u2[m].reshape(-1, 2) if ti >= 0 else None, tris, (w, h))
+                dl = gx.encode(cmds)
+                al(); dlo = len(blob); blob.extend(dl)
+                q = np.clip(np.round(pos * 4096), -32768, 32767).astype(int)
+                bb = list(q.min(0)) + list(q.max(0))
+                groups.append((ti, c15 | (key[2] << 16), len(pos), dlo, *bb)); ctri += int(m.sum())
         al(); go = len(blob)
-        for g in groups: blob.extend(struct.pack("<iIII", *g))
+        for g in groups: blob.extend(struct.pack("<iIII6h", *g))
         f = floors[ck]
         fq = np.where(f < -1e8, -32768, np.clip(np.round(f * 32), -32767, 32767)).astype("<i2")
         al(); fo = len(blob); blob.extend(fq.tobytes())
@@ -379,7 +387,7 @@ def emit(out, chunks, cidx, buckets, texs, tindex, boxes, floors):
     H = 13 * 4
     grid_off = H; tex_off = grid_off + grid.nbytes; tex_off += (-tex_off) % 4
     chunk_off = tex_off + 20 * len(texs); box_off = chunk_off + 32 * len(chunks); base = box_off + 24 * len(boxes)
-    hdr = b"WLD1" + struct.pack("<3I", len(texs), len(chunks), len(boxes)) + struct.pack("<3i", int(CS * 4096), int(gi0 * CS * 4096), int(gj0 * CS * 4096)) + \
+    hdr = b"WLD2" + struct.pack("<3I", len(texs), len(chunks), len(boxes)) + struct.pack("<3i", int(CS * 4096), int(gi0 * CS * 4096), int(gj0 * CS * 4096)) + \
         struct.pack("<6I", gnx, gnz, grid_off, tex_off, chunk_off, box_off)
     body = bytearray(hdr) + grid.tobytes()
     while len(body) < tex_off: body += b"\0"

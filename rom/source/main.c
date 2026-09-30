@@ -1,4 +1,5 @@
 #include <nds.h>
+#include <nds/arm9/postest.h>
 #include <filesystem.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,11 +124,43 @@ static void collide(int *px, int *pz, int feet, int head)
             if (m == l) *px -= l; else if (m == r) *px += r; else if (m == d) *pz -= d; else *pz += u;
         }
 }
+/* a level group cut into ~2 m cells at load time: each is box-tested against the view on its own */
+typedef struct { u32 *dl; u16 grp, nv; s16 x0, y0, z0, x1, y1, z1; } Cell;
 typedef struct {
     u8 *data; Group *grp; u32 n;
     s32 scale, tx, ty, tz;          /* 20.12: scale, translation from ORIGIN to level centre */
     int tex[160];
+    Cell *cell; u32 *cdl; int ncell;
 } Level;
+/* Per-frame geometry budget. The DS keeps at most 6144 vertices / 2048 polygons a frame (the rest vanish) and
+   can only rasterise so many polygons per scanline (past that, lines show the clear colour): everything that
+   is drawn goes through here, nearest first, and stops at g_vbudget vertices. */
+static int g_vbudget = 5400, g_pbudget = 800;     /* stored vertices / polygons a frame */
+static int g_sv, g_sp, g_since;                    /* hardware counts at the last sync, vertices sent since */
+static u32 g_fmt;
+#define glPolyFmt(x) glPolyFmt(g_fmt = (x))
+/* The polygon budget follows the rasteriser: RDLINES_COUNT is how many of its 48 buffered lines were left at the
+   tightest point of the last frame (0 plus the underflow flag = lines were lost). Near it, far cells go first;
+   with room to spare the budget creeps back up. */
+static void rd_adapt(void)
+{
+    int rl = GFX_RDLINES_COUNT & 63, under = GFX_CONTROL & BIT(12);
+    if (under) GFX_CONTROL |= BIT(12);
+    if (under || rl < 3) g_pbudget -= 120; else if (rl < 8) g_pbudget -= 25; else if (rl > 16) g_pbudget += 5;
+    if (g_pbudget < 200) g_pbudget = 200; if (g_pbudget > 1000) g_pbudget = 1000;
+}
+#define glFlush(x) (rd_adapt(), g_sv = g_sp = g_since = 0, glFlush(x))
+/* The geometry engine drops back faces and off-screen polygons before storing them, so the budget is kept
+   against its own vertex/polygon RAM counters, re-read (after the FIFO drains) every few hundred vertices. */
+static int budget_take(int nv)
+{
+    if (g_since + nv > 240) {
+        while (GFX_STATUS & BIT(27)) ;
+        g_sv = GFX_VERTEX_RAM_USAGE; g_sp = GFX_POLYGON_RAM_USAGE; g_since = 0;
+    }
+    if (g_sv + g_since + nv > g_vbudget || g_sp + (g_since + nv) / 3 > g_pbudget) return 0;
+    g_since += nv; return 1;
+}
 static Level L_in, L_out, L_door;
 static u32 g_amb = RGB15(12, 12, 12), g_lights = POLY_FORMAT_LIGHT0;
 
@@ -153,6 +186,7 @@ static u8 *load_file(const char *path, long *szp)
 #define ORG_X (315 * 4096)
 #define ORG_Y (45 * 4096 + 1024)
 #define ORG_Z (327 * 4096)
+static void level_split(Level *L);
 static int load_level(Level *L, const char *path)
 {
     u8 *d = load_file(path, NULL);
@@ -173,7 +207,123 @@ static int load_level(Level *L, const char *path)
             glColorTableEXT(0, 0, (g->flags >> 8) & 0x1FF, 0, 0, (u16 *)(d + g->paloff));
         }
     }
+    L->cell = NULL; L->cdl = NULL; L->ncell = 0;
+    level_split(L);
     return 1;
+}
+
+static int dl_verts(const u32 *w)
+{
+    u32 n = w[0], i = 1; int v = 0;
+    while (i <= n) {
+        u32 pk = w[i++];
+        for (int j = 0; j < 4; j++) {
+            int op = (pk >> (8 * j)) & 0xFF;
+            if (op == 0x20 || op == 0x21 || op == 0x22 || op == 0x40) i++;
+            else if (op == 0x23) { i += 2; v++; }
+        }
+    }
+    return v;
+}
+
+/* ---- load-time cell split: parse a group's display list into primitives, bucket them by position, re-emit */
+typedef struct { u32 nrm, tc, xy, z; } DVtx;
+typedef struct { u32 key; u16 v, mode; } DPrim;
+static int prim_cmp(const void *a, const void *b) { u32 x = ((const DPrim *)a)->key, y = ((const DPrim *)b)->key; return x < y ? -1 : x > y; }
+static u32 *pk_out; static int pk_n, pk_hdr; static u32 pk_ops;
+static void pk_cmd(int op, int np, u32 a, u32 b)
+{
+    if (pk_n == 0) { pk_hdr = 0; }
+    if (pk_n % 4 == 0) { pk_hdr = pk_ops; pk_out[pk_ops++] = 0; }
+    pk_out[pk_hdr] |= (u32)op << (8 * (pk_n % 4)); pk_n++;
+    if (np > 0) pk_out[pk_ops++] = a;
+    if (np > 1) pk_out[pk_ops++] = b;
+}
+static int dl_parse(const u32 *w, DVtx *vt, int *nvt, DPrim *pr, int *npr, int maxv)
+{
+    u32 n = w[0], i = 1, nrm = 0, tc = 0, mode = 0; int first = *nvt, run = 0;
+    while (i <= n) {
+        u32 pk = w[i++];
+        for (int j = 0; j < 4; j++) {
+            int op = (pk >> (8 * j)) & 0xFF;
+            if (op == 0x20) i++;
+            else if (op == 0x21) nrm = w[i++];
+            else if (op == 0x22) tc = w[i++];
+            else if (op == 0x23) {
+                if (*nvt >= maxv) return 0;
+                vt[*nvt].nrm = nrm; vt[*nvt].tc = tc; vt[*nvt].xy = w[i]; vt[*nvt].z = w[i + 1]; i += 2;
+                (*nvt)++; run++;
+                int k = mode == 1 ? 4 : 3;
+                if (run == k) { pr[*npr].v = *nvt - k; pr[*npr].mode = mode; (*npr)++; run = 0; }
+            }
+            else if (op == 0x40) { mode = w[i++]; run = 0; }
+        }
+    }
+    (void)first; return 1;
+}
+static void level_split(Level *L)
+{
+    int tv = 0, mv = 0;
+    for (u32 g = 0; g < L->n; g++) { int v = dl_verts((u32 *)(L->data + L->grp[g].dloff)); tv += v; if (v > mv) mv = v; }
+    /* worst case per vertex: normal + texcoord + vertex (4 params, 3 command bytes); per cell: size, begin, end */
+    DVtx *vt = malloc(mv * sizeof(DVtx) + 64); DPrim *pr = malloc((mv / 3 + 2) * sizeof(DPrim));
+    Cell *cl = malloc(sizeof(Cell) * (tv / 3 + 8)); u32 *out = malloc(tv * 5 * 4 + (tv / 3 + 8) * 16);
+    if (!vt || !pr || !out || !cl) { free(vt); free(pr); free(out); free(cl); return; }
+    /* 2 m cells: model units are 1/4096, world = model * scale / 4096 */
+    int shift = 10; long long cellm = 2LL * 4096 * 4096 / (L->scale ? L->scale : 4096);
+    while ((1LL << (shift + 1)) <= cellm && shift < 14) shift++;
+    int nc = 0; pk_out = out; pk_ops = 0;
+    for (u32 g = 0; g < L->n; g++) {
+        int nvt = 0, npr = 0;
+        if (!dl_parse((u32 *)(L->data + L->grp[g].dloff), vt, &nvt, pr, &npr, mv)) continue;
+        for (int p = 0; p < npr; p++) {
+            DVtx *v = &vt[pr[p].v]; int k = pr[p].mode == 1 ? 4 : 3; int sx = 0, sy = 0, sz = 0;
+            for (int q = 0; q < k; q++) { sx += (s16)(v[q].xy & 0xFFFF); sy += (s16)(v[q].xy >> 16); sz += (s16)(v[q].z & 0xFFFF); }
+            sx /= k; sy /= k; sz /= k;
+            pr[p].key = ((u32)((sx + 32768) >> shift) << 20) | ((u32)((sy + 32768) >> shift) << 10) | (u32)((sz + 32768) >> shift) | (pr[p].mode << 30);
+        }
+        qsort(pr, npr, sizeof(DPrim), prim_cmp);
+        for (int a = 0; a < npr;) {
+            int b = a; while (b < npr && pr[b].key == pr[a].key) b++;
+            Cell *c = &cl[nc++]; c->grp = g; c->nv = 0;
+            c->x0 = c->y0 = c->z0 = 32767; c->x1 = c->y1 = c->z1 = -32768;
+            u32 start = pk_ops; pk_out[pk_ops++] = 0; pk_n = 0;
+            pk_cmd(0x40, 1, pr[a].mode, 0);
+            u32 lastn = 0xFFFFFFFF; int tex = L->grp[g].flags & 1;
+            for (int p = a; p < b; p++) {
+                int k = pr[p].mode == 1 ? 4 : 3;
+                for (int q = 0; q < k; q++) {
+                    DVtx *v = &vt[pr[p].v + q];
+                    if (v->nrm != lastn) { pk_cmd(0x21, 1, v->nrm, 0); lastn = v->nrm; }
+                    if (tex) pk_cmd(0x22, 1, v->tc, 0);
+                    pk_cmd(0x23, 2, v->xy, v->z);
+                    s16 x = v->xy & 0xFFFF, y = v->xy >> 16, z = v->z & 0xFFFF;
+                    if (x < c->x0) c->x0 = x; if (x > c->x1) c->x1 = x;
+                    if (y < c->y0) c->y0 = y; if (y > c->y1) c->y1 = y;
+                    if (z < c->z0) c->z0 = z; if (z > c->z1) c->z1 = z;
+                }
+                c->nv += k;
+            }
+            pk_cmd(0x41, 0, 0, 0);
+            pk_out[start] = pk_ops - start - 1;
+            c->dl = (u32 *)(uintptr_t)start;          /* offset for now: out may still move */
+            a = b;
+        }
+    }
+    free(vt); free(pr);
+    L->cdl = realloc(out, pk_ops * 4); if (!L->cdl) L->cdl = out;
+    for (int i = 0; i < nc; i++) cl[i].dl = L->cdl + (uintptr_t)cl[i].dl;
+    L->cell = realloc(cl, sizeof(Cell) * (nc ? nc : 1)); if (!L->cell) L->cell = cl;
+    L->ncell = nc;
+}
+
+/* frustum test of a model-space box under the current matrices; also its view depth (for near-to-far order) */
+static int cell_vis(const Cell *c, int *w)
+{
+    if (c->x1 - c->x0 > 32000 || c->y1 - c->y0 > 32000 || c->z1 - c->z0 > 32000) { *w = 0; return 1; }
+    if (!BoxTest(c->x0, c->y0, c->z0, c->x1 - c->x0 + 1, c->y1 - c->y0 + 1, c->z1 - c->z0 + 1)) return 0;
+    PosTest((c->x0 + c->x1) / 2, (c->y0 + c->y1) / 2, (c->z0 + c->z1) / 2);
+    *w = PosTestWresult(); return 1;
 }
 
 /* pass 0: opaque groups, pass 1: translucent groups (drawn after every opaque one) */
@@ -183,16 +333,44 @@ static void draw_level_rot(Level *L, int pass, int rot)
     glTranslatef32(L->tx, L->ty, L->tz);
     if (rot) glRotateYi(rot);
     if (L->scale != 4096) glScalef32(L->scale, L->scale, L->scale);
-    for (u32 i = 0; i < L->n; i++) {
-        Group *g = &L->grp[i];
-        int a = g->flags >> 24;
-        if ((a < 31) != pass) continue;
-        if (pass) glPolyFmt(POLY_ALPHA(a) | POLY_CULL_NONE | g_lights | POLY_ID(2 + (i & 31)));
-        glBindTexture(0, (g->flags & 1) ? L->tex[i] : 0);
-        glMaterialf(GL_DIFFUSE, g->col | BIT(15));
-        glMaterialf(GL_AMBIENT, g_amb);
-        glCallList((u32 *)(L->data + g->dloff));
+    if (!L->cell) {
+        for (u32 i = 0; i < L->n; i++) {
+            Group *g = &L->grp[i];
+            int a = g->flags >> 24;
+            if ((a < 31) != pass) continue;
+            if (pass) glPolyFmt(POLY_ALPHA(a) | POLY_CULL_NONE | g_lights | POLY_ID(2 + (i & 31)));
+            glBindTexture(0, (g->flags & 1) ? L->tex[i] : 0);
+            glMaterialf(GL_DIFFUSE, g->col | BIT(15));
+            glMaterialf(GL_AMBIENT, g_amb);
+            glCallList((u32 *)(L->data + g->dloff));
+        }
+        glPopMatrix(1);
+        return;
     }
+    static u16 vis[1024]; static int vw[1024]; int nv = 0; u32 fmt = g_fmt;
+    for (int i = 0; i < L->ncell && nv < 1024; i++) {
+        Cell *c = &L->cell[i];
+        if (((L->grp[c->grp].flags >> 24) < 31) != pass) continue;
+        int w; if (!cell_vis(c, &w)) continue;
+        int b = nv++;
+        while (b > 0 && vw[b - 1] > w) { vw[b] = vw[b - 1]; vis[b] = vis[b - 1]; b--; }
+        vw[b] = w; vis[b] = i;
+    }
+    int last = -1;
+    for (int n = 0; n < nv; n++) {
+        Cell *c = &L->cell[vis[n]];
+        if (!budget_take(c->nv)) continue;
+        Group *g = &L->grp[c->grp]; int a = g->flags >> 24;
+        if (c->grp != last) {
+            last = c->grp;
+            glPolyFmt(pass ? (u32)(POLY_ALPHA(a) | POLY_CULL_NONE | g_lights | POLY_ID(2 + (c->grp & 31))) : fmt);
+            glBindTexture(0, (g->flags & 1) ? L->tex[c->grp] : 0);
+            glMaterialf(GL_DIFFUSE, g->col | BIT(15));
+            glMaterialf(GL_AMBIENT, g_amb);
+        }
+        glCallList(c->dl);
+    }
+    g_fmt = fmt;
     glPopMatrix(1);
 }
 #define draw_level(L, p) draw_level_rot(L, p, 0)

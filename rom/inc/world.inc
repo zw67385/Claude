@@ -3,7 +3,7 @@
 
 typedef struct { u32 w, h, npal, paloff, texoff; } WTex;
 typedef struct { s32 cx, cy, cz, scale; u32 ng, grpoff, flooroff, radius; } WChunk;
-typedef struct { s32 tex; u32 colalpha, dlwords, dloff; } WGroup;
+typedef struct { s32 tex; u32 colalpha, nv, dloff; s16 x0, y0, z0, x1, y1, z1; } WGroup;   /* one 8 m cell of one material */
 typedef struct {
     u8 *d; u32 ntex, nchunk, nbox; s32 cs, gx0, gz0; u32 gnx, gnz;
     u16 *grid; WTex *tex; WChunk *ch; Box *box;
@@ -25,7 +25,7 @@ static int world_load(const char *path)
 {
     world_free();
     u8 *d = load_file(path, NULL);
-    if (!d || memcmp(d, "WLD1", 4)) { free(d); return 0; }
+    if (!d || memcmp(d, "WLD2", 4)) { free(d); return 0; }
     u32 *h = (u32 *)d;
     W.d = d; W.ntex = h[1]; W.nchunk = h[2]; W.nbox = h[3]; W.cs = h[4]; W.gx0 = h[5]; W.gz0 = h[6]; W.gnx = h[7]; W.gnz = h[8];
     W.grid = (u16 *)(d + h[9]); W.tex = (WTex *)(d + h[10]); W.ch = (WChunk *)(d + h[11]); W.box = (Box *)(d + h[12]);
@@ -122,25 +122,44 @@ static void world_draw(int cx, int cz, int yaw)
         while (b > 0 && vd[b - 1] > d) { vd[b] = vd[b - 1]; vis[b] = vis[b - 1]; b--; }
         vd[b] = d; vis[b] = v;
     }
+    /* every visible cell of every chunk, nearest first, until the geometry budget is spent */
+    typedef struct { u16 ch, g; int w; } Unit;
+    static Unit un[640]; int nu = 0;
+    u32 fmt = g_fmt;
+    for (int n = 0; n < nv; n++) {
+        WChunk *ch = &W.ch[vis[n]];
+        WGroup *g = (WGroup *)(W.d + ch->grpoff);
+        glPushMatrix();
+        glTranslatef32(ch->cx, ch->cy, ch->cz);
+        glScalef32(ch->scale, ch->scale, ch->scale);
+        for (u32 q = 0; q < ch->ng && nu < 640; q++, g++) {
+            if (!BoxTest(g->x0, g->y0, g->z0, g->x1 - g->x0 + 1, g->y1 - g->y0 + 1, g->z1 - g->z0 + 1)) continue;
+            PosTest((g->x0 + g->x1) / 2, (g->y0 + g->y1) / 2, (g->z0 + g->z1) / 2);
+            int w = PosTestWresult(), b = nu++;
+            while (b > 0 && un[b - 1].w > w) { un[b] = un[b - 1]; b--; }
+            un[b].ch = vis[n]; un[b].g = q; un[b].w = w;
+        }
+        glPopMatrix(1);
+    }
     for (int pass = 0; pass < 2; pass++)
-        for (int n = 0; n < nv; n++) {
-            WChunk *ch = &W.ch[vis[n]];
-            WGroup *g = (WGroup *)(W.d + ch->grpoff);
+        for (int n = 0; n < nu; n++) {
+            WChunk *ch = &W.ch[un[n].ch];
+            WGroup *g = (WGroup *)(W.d + ch->grpoff) + un[n].g;
+            int a = g->colalpha >> 16;
+            if ((a < 31) != pass) continue;
+            if (!budget_take(g->nv)) continue;
             glPushMatrix();
             glTranslatef32(ch->cx, ch->cy, ch->cz);
             glScalef32(ch->scale, ch->scale, ch->scale);
-            for (u32 q = 0; q < ch->ng; q++, g++) {
-                int a = g->colalpha >> 16;
-                if ((a < 31) != pass) continue;
-                int cut = g->tex >= 0 && (W.tex[g->tex].npal >> 16);
-                glPolyFmt(POLY_ALPHA(a) | (cut || a < 31 ? POLY_CULL_NONE : POLY_CULL_BACK) | g_lights | POLY_ID(a < 31 ? 2 + (q & 31) : 1));
-                glBindTexture(0, g->tex >= 0 ? W.texid[g->tex] : 0);
-                glMaterialf(GL_DIFFUSE, (g->colalpha & 0x7FFF) | BIT(15));
-                glMaterialf(GL_AMBIENT, g_amb);
-                glCallList((u32 *)(W.blob + g->dloff));
-            }
+            int cut = g->tex >= 0 && (W.tex[g->tex].npal >> 16);
+            glPolyFmt(POLY_ALPHA(a) | (cut || a < 31 ? POLY_CULL_NONE : POLY_CULL_BACK) | g_lights | POLY_ID(a < 31 ? 2 + (un[n].g & 31) : 1));
+            glBindTexture(0, g->tex >= 0 ? W.texid[g->tex] : 0);
+            glMaterialf(GL_DIFFUSE, (g->colalpha & 0x7FFF) | BIT(15));
+            glMaterialf(GL_AMBIENT, g_amb);
+            glCallList((u32 *)(W.blob + g->dloff));
             glPopMatrix(1);
         }
+    g_fmt = fmt;
 }
 
 /* ---- models: LVL1 files drawn at a transform (RV, NPCs, props). Geometry is relative to the bake pivot. */
@@ -153,6 +172,7 @@ static int load_model(Level *L, const char *path)
 static void level_free(Level *L)
 {
     if (!L->data) return;
+    free(L->cell); free(L->cdl);
     for (u32 i = 0; i < L->n && i < 160; i++) if (L->tex[i]) glDeleteTextures(1, &L->tex[i]);
     free(L->data); memset(L, 0, sizeof *L);
 }
