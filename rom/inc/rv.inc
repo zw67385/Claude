@@ -77,6 +77,7 @@ static void rv_eye(const RV *r, int *cx, int *cy, int *cz)
 /* camera from the driver's seat, world + RV (+ extra models via draw(pass)) drawn, frame flushed */
 /* sun colour and direction for the drive (world space, set per scene) */
 static u16 rv_sun = RGB15(8, 6, 6); static v10 rv_sdx = floattov10(0.3), rv_sdy = floattov10(-0.9), rv_sdz = floattov10(-0.3);
+static u16 rv_fill = RGB15(6, 6, 9), rv_camb = RGB15(7, 7, 8);   /* cab bounce light and ambient */
 static void rv_render(RV *r, u16 amb, void (*draw)(int pass))
 {
     int camx, camy, camz; rv_eye(r, &camx, &camy, &camz);
@@ -102,8 +103,16 @@ static void rv_render(RV *r, u16 amb, void (*draw)(int pass))
         glTranslatef32(r->x, r->y, r->z); glRotateYi(r->yaw); glRotateXi(-r->pitch_rv);
         /* the RV body is a single-sided shell facing out: from the driver seat both sides must draw */
         glPolyFmt(POLY_ALPHA(31) | POLY_CULL_NONE | POLY_FORMAT_LIGHT0 | POLY_FORMAT_LIGHT1 | POLY_ID(1));
+        /* cab lighting in RV space: the sky's light falls in through the windscreen onto the dash top,
+           a soft cool bounce comes from behind the seats, so nothing in the cab reads as a flat slab */
+        glLight(0, rv_sun, 0, floattov10(-0.75), floattov10(0.66));
+        glLight(1, rv_fill, floattov10(0.2), floattov10(-0.35), floattov10(-0.9));
+        u32 a0 = g_amb; g_amb = rv_camb;
         draw_level(&L_rv, pass);
+        g_amb = a0;
         glPopMatrix(1);
+        glLight(0, rv_sun, rv_sdx, rv_sdy, rv_sdz);
+        glLight(1, RGB15(24, 22, 16), 0, floattov10(-0.15), floattov10(-0.98));
         if (draw) draw(pass);
     }
     while (GFX_STATUS & BIT(27)) ;

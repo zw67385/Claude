@@ -123,7 +123,7 @@ static void trail_drive(void)
         int kmh = rv_kmh(&r);
         if (++hud_t >= 10) { hud_t = 0; if (kmh != lastkmh) hud_dirty = 1; lastkmh = kmh; }
         sky(9, 8, 10); sky_use("cold");
-        rv_sun = RGB15(10, 12, 17); rv_sdx = floattov10(0.4); rv_sdy = floattov10(-0.8); rv_sdz = floattov10(-0.4);
+        rv_sun = RGB15(10, 12, 17); rv_sdx = floattov10(0.4); rv_sdy = floattov10(-0.8); rv_sdz = floattov10(-0.4); rv_fill = RGB15(6, 7, 12); rv_camb = RGB15(6, 6, 8);
         rv_render(&r, RGB15(7, 7, 9), ts_draw);
         dbg_x = r.x; dbg_y = r.y; dbg_z = r.z;
         if (hud_dirty) { drive_hud(kmh); hud_dirty = 0; }

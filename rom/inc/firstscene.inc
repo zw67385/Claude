@@ -113,7 +113,7 @@ static void first_scene(void)
     drive_hint = "Drive to Roseburg";
     w_far = U(72);
     sky(5, 4, 5);
-    rv_sun = RGB15(27, 15, 8); rv_sdx = floattov10(0.12); rv_sdy = floattov10(-0.3); rv_sdz = floattov10(0.94);
+    rv_sun = RGB15(27, 15, 8); rv_sdx = floattov10(0.12); rv_sdy = floattov10(-0.3); rv_sdz = floattov10(0.94); rv_fill = RGB15(10, 9, 10); rv_camb = RGB15(11, 10, 8);
     int hud_t = 0, lastkmh = -1; hud_dirty = 1;
     music_set(-1); sfx(SFX_RV_START);
     mm_sfxhand eng = sfx_play(SFX_RV_ENGINE, 110);
