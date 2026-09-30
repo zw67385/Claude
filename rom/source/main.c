@@ -790,6 +790,7 @@ static void vignette(const char *title, const char *const *nodes, int n)
 #include "../inc/diner.inc"
 #include "../inc/firstscene.inc"
 #include "../inc/trail.inc"
+#include "../inc/camp.inc"
 static int load_tower(void)
 {
     if (!L_in.data && (!load_level(&L_in, "nitro:/tower.bin") || !load_level(&L_out, "nitro:/outside.bin"))) return 0;
@@ -806,14 +807,14 @@ static void prologue(void)
 }
 static void campsite(void)
 {
-    static const char *const s4[] = { "ep4_intro.Seq4Intro0\n", "ep4_intro.Seq4Intro1", "ep4_intro.Seq4Intro2", "ep4_intro.Seq4Intro3",
+    static const char *const s4[] = { "ep4_intro.Seq4Intro0", "ep4_intro.Seq4Intro1", "ep4_intro.Seq4Intro2", "ep4_intro.Seq4Intro3",
                                       "ep4_intro.Seq4Intro4", "ep4_intro.Seq4Intro5", "ep4_intro.Seq4Intro6" };
-    static const char *const camp[] = { "Campfire" };
     card(T("ep3_controls.SmokeWoods"), "Lacey Trail");
-    typed(S("ScentWoodFire")); typed(S("CheckSource"));
-    vignette("the campsite", camp, 1);
-    typed(S("PutOutCampfire"));
+    camp_scene();
     story(s4, 7);
+    load_tower();
+    if (!nboxes) load_col("nitro:/tower.col");
+    if (!flr) load_floor("nitro:/tower.flr");
 }
 static void ending(void)
 {
@@ -893,7 +894,7 @@ static void save_write(int n)
 static void seq_start(int n, int *px, int *pz, int *fy, int *yaw)
 {
     save_write(n);
-    static const char *const s6[] = { "ep4_intro.Seq6Intro0\n", "ep4_intro.Seq6Intro1\n", "ep4_intro.Seq6Intro2", "ep4_intro.Seq6Intro3" };
+    static const char *const s6[] = { "ep4_intro.Seq6Intro0", "ep4_intro.Seq6Intro1", "ep4_intro.Seq6Intro2", "ep4_intro.Seq6Intro3" };
     static const char *const s7[] = { "ep4_intro.Seq7Intro1", "ep4_intro.Seq7Intro2", "ep4_intro.Seq7Intro3", "ep4_intro.Seq7Intro4" };
     static const char *const s8[] = { "ep4_intro.Seq8Intro1", "ep4_intro.Seq8Intro2", "ep4_intro.Seq8Intro3", "ep4_intro.Seq8Intro4", "ep4_intro.Seq8Intro5" };
     seq = n;
@@ -1234,6 +1235,9 @@ int main(void)
     if (!yarn_load("nitro:/story.bin")) { printf("story.bin missing\n"); while (1) swiWaitForVBlank(); }
     { long sz; txt = (char *)load_file("nitro:/text.bin", &sz); ntxt = txt ? ((u32 *)txt)[1] : 0; }
     int sel = 0;
+#ifdef CAMP_TEST
+    campsite();
+#endif
     for (;;) {
         int saved = save_read();
         consoleClear();

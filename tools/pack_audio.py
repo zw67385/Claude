@@ -28,6 +28,7 @@ SFX = [  # name, file, loop seconds (0 = one-shot), max seconds, gain
     ("eat", "Eating MainFood", 0, 4, 1), ("pee", "Pee Outside", 0, 4, 1), ("click", "Click 1", 0, 1, 1),
     ("scare", "Ambient_50__Seen_By_Evil_", 0, 7, 1), ("harp", "Harp_Noise_Number_2", 0, 4, 1), ("gasp", "Gasp_instant", 0, 2, 1),
     ("gas", "Gas Can Hit", 0, 1.5, 1), ("pickup", "Keys catch", 0, 1, 1), ("typing", "KeyHit1", 0, 0.5, 0.7),
+    ("shout", "Man Shout", 0, 3, 1), ("whistle", "Whistle Amb", 0, 5, 0.9), ("splash", "Water Splash", 0, 2, 1), ("sizzle", "Fire Sizzle", 0, 3, 1),
 ]
 STEPS = [("step_wood%d" % i, "Carpet-%02d" % i) for i in (1, 2, 3, 4)] + [("step_grass%d" % i, "Grass_%02d" % i) for i in (1, 2, 3, 4)]
 

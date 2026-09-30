@@ -34,6 +34,14 @@ WORLDS = {
                         "Triggers", "GuardHouse", "TRAIL GATE", "Particles"],
                   road="Road Network",
                   boxskip=["RV$", "RV/", "INV Colliders", "FirstPersonController", "UI Manager", "Triggers", "TRAIL GATE", "GuardHouse/Invisible", "GuardHouse/Door"]),
+    # Camping (Lacey Trail campsite): trail from the tower side -> campfire -> fenced area
+    "camp": dict(scene="Camping", terrain="TerrainData/LaceyTrailCampsite.asset", tofs=(0, 0, 0),
+                 start=(40, 45), goal=(92, 101), extra=[(20, 125, 25, 130)],
+                 force=[],
+                 skip=["UIManager", "UI", "Game Manager", "FirstPersonController", "Trigger/", "Cultist", "Water Pot",
+                       "Particles", "Invisible Colliders", "Screenshot", "Lake", "nav"],
+                 road=None,
+                 boxskip=["FirstPersonController", "Trigger/", "Cultist", "Water Pot", "UIManager", "Game Manager"]),
 }
 
 CS = 32.0            # chunk size (m)
@@ -64,8 +72,14 @@ def main():
     R = 16.0
     road = set()
     # road renderers: those under the road root; recollect with ONLY
-    os.environ["ONLY"] = W["road"]; os.environ.pop("SKIP")
-    bake_level.NAMES.clear(); ritems, _ = collect(s, lo, hi); os.environ.pop("ONLY"); os.environ["SKIP"] = ",".join(W["skip"])
+    ritems = []
+    if W.get("road"):
+        os.environ["ONLY"] = W["road"]; os.environ.pop("SKIP")
+        bake_level.NAMES.clear(); ritems, _ = collect(s, lo, hi); os.environ.pop("ONLY"); os.environ["SKIP"] = ",".join(W["skip"])
+    else:   # walking areas: every cell of the extra boxes is "road"
+        for (x0, x1, z0, z1) in W["extra"]:
+            for x in range(int(x0 // R), int(x1 // R) + 1):
+                for z in range(int(z0 // R), int(z1 // R) + 1): road.add((x, z))
     for key, tp, uv in ritems:
         c = tp.mean(axis=1)
         for x, z in np.unique(np.floor(c[:, [0, 2]] / R).astype(int), axis=0): road.add((int(x), int(z)))
@@ -246,13 +260,24 @@ def collide_boxes(s, lo, hi, cidx):
             p, q, sc = s.world(g["tf"])
             cen = np.array([d["m_Center"][k] for k in "xyz"], float); size = np.array([d["m_Size"][k] for k in "xyz"], float)
             Rm = quat_mat(q)
-            wc = np.array([Rm @ ((cen + size * np.array(sg) / 2) * np.array(sc)) + np.array(p) for sg in itertools.product((-1, 1), repeat=3)])
-            mn, mx = wc.min(0), wc.max(0)
-            if np.any(mx < lo) or np.any(mn > hi): continue
-            ck = (int((mn[0] + mx[0]) / 2 // CS), int((mn[2] + mx[2]) / 2 // CS))
-            if ck not in cidx: continue
-            if (mx - mn).max() > 200: continue
-            boxes.append((mn[0], mx[0], mn[1], mx[1], -mx[2], -mn[2]))
+            ext = np.abs(size * np.array(sc))
+            # long rotated walls: split along the long horizontal axis so each AABB stays tight
+            ax = 0 if ext[0] >= ext[2] else 2
+            n = max(1, int(np.ceil(ext[ax] / 1.0))) if ext[ax] > 3 * max(0.3, ext[2 - ax]) else 1
+            for k in range(n):
+                a0, a1 = -0.5 + k / n, -0.5 + (k + 1) / n
+                cs_ = []
+                for sg in itertools.product((-1, 1), repeat=3):
+                    v = np.array(sg, float) / 2
+                    v[ax] = a0 if sg[ax] < 0 else a1
+                    cs_.append(Rm @ ((cen + size * v) * np.array(sc)) + np.array(p))
+                wc = np.array(cs_)
+                mn, mx = wc.min(0), wc.max(0)
+                if np.any(mx < lo) or np.any(mn > hi): continue
+                ck = (int((mn[0] + mx[0]) / 2 // CS), int((mn[2] + mx[2]) / 2 // CS))
+                if ck not in cidx: continue
+                if (mx - mn).max() > 200: continue
+                boxes.append((mn[0], mx[0], mn[1], mx[1], -mx[2], -mn[2]))
     print("boxes", len(boxes))
     return boxes
 
