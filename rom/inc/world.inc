@@ -65,6 +65,17 @@ static int world_floor(int x, int z)
     return hgt == -32768 ? NOFLOOR : hgt * 128;
 }
 
+/* bilinear between the 2 m cell centres: no stair steps under the RV's wheels */
+static int world_floor_smooth(int x, int z)
+{
+    int fx = (x - W.gx0 - 4096) & 8191, fz = (-z - W.gz0 - 4096) & 8191;
+    int bx = x - fx, bz = z + fz;
+    int h00 = world_floor(bx, bz), h10 = world_floor(bx + 8192, bz), h01 = world_floor(bx, bz - 8192), h11 = world_floor(bx + 8192, bz - 8192);
+    if (h00 == NOFLOOR || h10 == NOFLOOR || h01 == NOFLOOR || h11 == NOFLOOR) return world_floor(x, z);
+    int a = h00 + (int)((long long)(h10 - h00) * fx >> 13), b = h01 + (int)((long long)(h11 - h01) * fx >> 13);
+    return a + (int)((long long)(b - a) * fz >> 13);
+}
+
 static void world_collide(int *px, int *pz, int feet, int head, int rad)
 {
     for (int it = 0; it < 2; it++)

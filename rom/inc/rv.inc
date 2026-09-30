@@ -47,12 +47,12 @@ static void rv_update(RV *r, u32 k, int lock)
         world_collide(&qx, &qz, r->y, r->y + U(3), U(1.3));
         if (qx != bx || qz != bz) { r->x += qx - bx; r->z += qz - bz; spd = spd * 3 / 4; }
     }
-    int f = world_floor(r->x, r->z);
+    int f = world_floor_smooth(r->x, r->z);
     if (f == NOFLOOR && world_floor(ox, oz) == NOFLOOR) f = r->y;   /* spawned on an unbaked cell: drive out of it */
     if (f == NOFLOOR) { r->x = ox; r->z = oz; spd = 0; f = world_floor(r->x, r->z); if (f == NOFLOOR) f = r->y; }
     r->y += (f - r->y) / 2;
     {   /* body pitch from the ground 3 m ahead / behind */
-        int ff = world_floor(r->x + ((-s * U(3)) >> 12), r->z + ((-c * U(3)) >> 12)), fb = world_floor(r->x - ((-s * U(3)) >> 12), r->z - ((-c * U(3)) >> 12));
+        int ff = world_floor_smooth(r->x + ((-s * U(3)) >> 12), r->z + ((-c * U(3)) >> 12)), fb = world_floor_smooth(r->x - ((-s * U(3)) >> 12), r->z - ((-c * U(3)) >> 12));
         int tgt = (ff != NOFLOOR && fb != NOFLOOR) ? ((ff - fb) * 16384 / U(6) / 10) : 0;   /* small-angle: rad*~5215 */
         if (tgt > 1500) tgt = 1500; if (tgt < -1500) tgt = -1500;
         r->pitch_rv += (tgt - r->pitch_rv) / 4;
