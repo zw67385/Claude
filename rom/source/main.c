@@ -1374,13 +1374,14 @@ static void story_reader(void)
    look for it on the SD card (root and one folder deep), matched against the header the loader left in RAM */
 #include <fat.h>
 #include <dirent.h>
+static int nitro_nds;   /* .nds files looked at, for the error message */
 static int nitro_try(const char *path)
 {
-    FILE *f = fopen(path, "rb"); if (!f) return 0;
-    tNDSHeader h; int ok = fread(&h, 1, sizeof h, f) == sizeof h; fclose(f);
-    ok = ok && h.headerCRC16 == __NDSHeader->headerCRC16 && h.arm9binarySize == __NDSHeader->arm9binarySize
-            && !memcmp(h.gameTitle, __NDSHeader->gameTitle, 12);
-    return ok && nitroFSInit(path);
+    nitro_nds++;
+    if (!nitroFSInit(path)) return 0;
+    FILE *f = fopen("nitro:/rv.bin", "rb");   /* it's this game if its filesystem has our files */
+    if (f) { fclose(f); return 1; }
+    nitroFSExit(); return 0;
 }
 static int nitro_scan(const char *dir, int depth)
 {
@@ -1397,8 +1398,9 @@ static int nitro_scan(const char *dir, int depth)
 }
 static int nitro_find(void)
 {
-    if (!fatInitDefault()) return 0;
-    return nitro_scan("fat:/", 1);
+    if (!fatInitDefault()) { printf("SD card not readable (DLDI)\n"); return 0; }
+    if (nitro_scan("fat:/", 1)) return 1;
+    printf("checked %d .nds files\n", nitro_nds); return 0;
 }
 
 int main(void)
