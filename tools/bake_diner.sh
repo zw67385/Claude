@@ -24,7 +24,7 @@ PIVOT=1115,0,955 POSE=sit:0.75:0.45 ONLY="Diner/SuitGuy" BUDGET=300 lvl suitguy
 PIVOT=1115,0,955 POSE=stand:0:0.45 ONLY="Diner/Chef" BUDGET=300 lvl chef
 PIVOT=1115,0,955 POSE=sit:0.5:0.45 ONLY="Diner/BadGuy/" BUDGET=300 lvl badguy_sit
 # movable NPCs, pivot at their feet (drawn at a position + yaw)
-PIVOT=1117.0,0.45,958.7 SKIP="Food Tray" ONLY="Diner/Waitress" BUDGET=350 lvl waitress
+PIVOT=1117.0,0.45,958.7 POSE=stand SKIP="Food Tray,Old Tray,Tray (3)" ONLY="Diner/Waitress" BUDGET=350 lvl waitress
 PIVOT=1114.9,0.45,955.6 POSE=stand:0:0.45 ONLY="Diner/BadGuy/" BUDGET=300 lvl badguy
 PIVOT=1107.2,0.27,939.3 POSE=stand ONLY="ParkingLotGuy" BUDGET=300 lvl plg
 PIVOT=1115.11,1.24,962.08 ONLY="Diner/Food Tray/" SKIP="Food Tray (1)" BUDGET=200 lvl food

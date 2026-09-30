@@ -24,21 +24,60 @@ def texfile(guid):
 
 import meshoptimizer
 def decimate(tp, uv, target):
-    """tp (n,3,3), uv (n,3,2) triangle soup -> decimated soup."""
+    """tp (n,3,3), uv (n,3,2) triangle soup -> decimated soup. Simplifies the position-welded mesh (UV seams
+    would otherwise pin the edges and force the sloppy fallback, which shreds characters), then gives every
+    corner the UV, among those its position had, that keeps the triangle's UVs tightest."""
     n = len(tp)
     if n <= target: return tp, uv
-    flat = np.concatenate([tp.reshape(-1,3), uv.reshape(-1,2)], axis=1)
-    key = np.round(flat*np.array([1e3,1e3,1e3,1e2,1e2])).astype(np.int64)
-    _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True)
-    verts = flat[first].astype(np.float32); idx = inv.reshape(-1).astype(np.uint32)
-    pos = np.ascontiguousarray(verts[:, :3])
+    P = tp.reshape(-1, 3); Q = uv.reshape(-1, 2)
+    # first try with UV seams kept: exact texturing, fine whenever the mesh can reach the target that way
+    _, first, inv = np.unique(np.round(np.hstack([P * 1e4, Q * 1e4])).astype(np.int64), axis=0, return_index=True, return_inverse=True)
+    inv = inv.reshape(-1); dst = np.zeros(len(inv), dtype=np.uint32)
+    k = meshoptimizer.simplify(dst, inv.astype(np.uint32), np.ascontiguousarray(P[first].astype(np.float32)),
+                               target_index_count=int(target*3), target_error=2.0, options=0)
+    if 0 < k <= target*3*1.3:
+        t = dst[:k].reshape(-1, 3)
+        return P[first][t].astype(np.float64), Q[first][t].astype(np.float64)
+    _, first, inv = np.unique(np.round(P * 1e4).astype(np.int64), axis=0, return_index=True, return_inverse=True)
+    inv = inv.reshape(-1)
+    pos = np.ascontiguousarray(P[first].astype(np.float32)); idx = inv.astype(np.uint32)
     dst = np.zeros(len(idx), dtype=np.uint32)
     k = meshoptimizer.simplify(dst, idx, pos, target_index_count=int(target*3), target_error=2.0, options=0)
     if k > target*3*1.5:
         k = meshoptimizer.simplify_sloppy(dst, idx, pos, target_index_count=int(target*3), target_error=2.0)
     t = dst[:k].reshape(-1,3)
     if len(t)==0: return tp[:0], uv[:0]
-    return verts[t][:,:,:3].astype(np.float64), verts[t][:,:,3:]
+    # each corner's UV candidates remember the normal of the face they came from; a new triangle takes, per
+    # corner, the candidate from faces facing its own way (a box's front keeps the front's UVs), then the tightest
+    fn = np.cross(tp[:, 1] - tp[:, 0], tp[:, 2] - tp[:, 0]); fn /= np.maximum(np.linalg.norm(fn, axis=1, keepdims=True), 1e-12)
+    cand = {}
+    for c, pid in enumerate(inv):
+        l = cand.setdefault(int(pid), [])
+        q = Q[c]; nn = fn[c // 3]
+        for o in l:
+            if abs(q[0]-o[0][0]) < 1e-4 and abs(q[1]-o[0][1]) < 1e-4: o[1] += nn; break
+        else: l.append([q, nn.copy()])
+    tn = np.cross(pos[t[:, 1]] - pos[t[:, 0]], pos[t[:, 2]] - pos[t[:, 0]])
+    tn /= np.maximum(np.linalg.norm(tn, axis=1, keepdims=True), 1e-12)
+    out = np.zeros((len(t), 3, 2))
+    for ti, tri in enumerate(t):
+        L = []
+        for v in tri:
+            cs = cand[int(v)]
+            if len(cs) > 1:
+                sc = [np.dot(o[1] / max(np.linalg.norm(o[1]), 1e-12), tn[ti]) for o in cs]
+                m = max(sc); cs = [o for o, x in zip(cs, sc) if x >= m - 0.3]
+            L.append([o[0] for o in cs[:4]])
+        A, B, C = L
+        if len(A) == len(B) == len(C) == 1: out[ti] = (A[0], B[0], C[0]); continue
+        best = None
+        for x in A:
+            for y in B:
+                for z in C:
+                    d = np.abs(x-y).sum() + np.abs(y-z).sum() + np.abs(z-x).sum()
+                    if best is None or d < best[0]: best = (d, x, y, z)
+        out[ti] = best[1:]
+    return pos[t].astype(np.float64), out
 
 _tex = {}
 def conv_tex(guid, size, allow_cut=True):
@@ -50,11 +89,13 @@ def conv_tex(guid, size, allow_cut=True):
         a = np.array(im)[:, :, 3]
         w, h = size if isinstance(size, tuple) else (size, size)
         NC = 127 if w * h >= 4096 else 63
-        im = im.resize((w, h), Image.LANCZOS)
-        rgb = im.convert("RGB").quantize(colors=NC, method=Image.MEDIANCUT, dither=Image.NONE)
+        # resize colour and alpha apart: PIL premultiplies RGBA on resize, which blackens every texel whose
+        # alpha is low (alpha is often smoothness, not coverage)
+        alpha = np.array(Image.fromarray(a).resize((w, h), Image.LANCZOS))
+        im = im.convert("RGB").resize((w, h), Image.LANCZOS)
+        rgb = im.quantize(colors=NC, method=Image.MEDIANCUT, dither=Image.NONE)
         pal = rgb.getpalette()[:NC*3]
         idx = np.array(rgb, dtype=np.uint8) + 1  # index 0 reserved
-        alpha = np.array(im)[:, :, 3]
         cut = alpha < 128
         has_cut = allow_cut and bool(cut.any()) and (a < 128).mean() > 0.02
         idx[cut & has_cut] = 0
@@ -165,36 +206,42 @@ def rot_from_to(a, b):
     K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
     return np.eye(3) + K + K @ K / (1 + c)
 
-def pose(scene, r, m, mats):
-    """Procedural pose on a T-posed rig: POSE=stand | sit:<seat height m> (arms down / seated)."""
-    bones = [unity.fid(b) for b in r.get("m_Bones", [])]
-    names = [str(scene.go[scene.tf[f]["go"]]["name"]) if f in scene.tf else "" for f in bones]
+_POSED = {}
+def rig_pose(scene, root):
+    """Procedural pose of a whole T-posed rig (every bone under 'root'): POSE=stand | sit:<seat m>[:<floor y>].
+    Returns {bone fid: posed world matrix}; cached so every renderer of a character gets the same pose."""
+    key = (root, os.environ["POSE"])
+    if key in _POSED: return _POSED[key]
+    kids = {}
+    for f, t in scene.tf.items(): kids.setdefault(t.get("parent"), []).append(f)
+    sub, st = [], [root]
+    while st: f = st.pop(); sub.append(f); st += kids.get(f, [])
+    name = lambda f: str(scene.go[scene.tf[f]["go"]]["name"]) if scene.tf[f].get("go") in scene.go else ""
+    B = {f: trs(*scene.world(f)) for f in sub}
     roles = {}
-    for i, n in enumerate(names):
-        sd, ro = bone_role(n)
-        if ro: roles[(sd, ro)] = i
-    B = [mats[i] @ np.linalg.inv(m.bind[i]) for i in range(len(mats))]     # bone world matrices
-    def desc(i):
-        out = []
-        for j, f in enumerate(bones):
-            cur = scene.tf.get(f, {}).get("parent")
-            while cur in scene.tf:
-                if cur == bones[i]: out.append(j); break
-                cur = scene.tf[cur]["parent"]
+    for f in sub:
+        sd, ro = bone_role(name(f))
+        if ro and (sd, ro) not in roles: roles[(sd, ro)] = f
+    def desc(f):
+        out, st = [], list(kids.get(f, []))
+        while st: g = st.pop(); out.append(g); st += kids.get(g, [])
         return out
-    P = lambda i: B[i][:3, 3].copy()
-    if ("L", "thigh") not in roles or ("R", "thigh") not in roles: return mats
+    P = lambda f: B[f][:3, 3].copy()
+    _POSED[key] = B
+    if ("L", "thigh") not in roles or ("R", "thigh") not in roles: return B
     up = np.array([0, 1.0, 0]); rt = P(roles[("R", "thigh")]) - P(roles[("L", "thigh")]); rt[1] = 0; rt /= np.linalg.norm(rt)
     fw = np.cross(rt, up)
     spec = os.environ["POSE"].split(":"); kind = spec[0]
     def aim(sd, ro, child, d):
         if (sd, ro) not in roles or (sd, child) not in roles: return
-        i = roles[(sd, ro)]; c = P(i); cur = P(roles[(sd, child)]) - c
+        f = roles[(sd, ro)]; c = P(f); cur = P(roles[(sd, child)]) - c
         R = rot_from_to(cur, d)
         T = np.eye(4); T[:3, :3] = R; T[:3, 3] = c - R @ c
-        for j in [i] + desc(i): B[j] = T @ B[j]
+        for g in [f] + desc(f): B[g] = T @ B[g]
     sg = {"L": -1, "R": 1}
-    feet = min(P(i)[1] for (sd, ro), i in roles.items() if ro == "foot") - 0.08 if any(ro == "foot" for _, ro in roles) else None
+    footy = lambda: min(P(f)[1] for (sd, ro), f in roles.items() if ro == "foot") - 0.08
+    has_feet = any(ro == "foot" for _, ro in roles)
+    feet = footy() if has_feet else None
     for sd in "LR":
         o = rt * sg[sd]
         if kind == "sit":
@@ -206,15 +253,27 @@ def pose(scene, r, m, mats):
             aim(sd, "uarm", "farm", -up + o * 0.18 + fw * 0.03)
             aim(sd, "farm", "hand", -up * 0.9 + fw * 0.35)
     if len(spec) > 2 and feet is not None: feet = float(spec[2])    # absolute floor height
-    if kind == "stand" and len(spec) > 2:
-        dy = feet - (min(P(i)[1] for (sd, ro), i in roles.items() if ro == "foot") - 0.08)
-        for j in range(len(B)): B[j][1, 3] += dy
+    if kind == "stand" and len(spec) > 2 and has_feet:
+        dy = feet - footy()
+        for f in B: B[f][1, 3] += dy
     if kind == "sit" and len(spec) > 1 and feet is not None:
         # drop the body so the pelvis rests at the seat height above the feet's original floor
-        hip = P(roles[("", "hips")])[1] if ("", "hips") in roles else (P(roles[("L", "thigh")])[1])
+        hip = P(roles[("", "hips")])[1] if ("", "hips") in roles else P(roles[("L", "thigh")])[1]
         dy = (feet + float(spec[1]) + 0.1) - hip
-        for j in range(len(B)): B[j][1, 3] += dy
-    return np.array([B[i] @ m.bind[i] for i in range(len(mats))])
+        for f in B: B[f][1, 3] += dy
+    return B
+
+def pose(scene, r, m, mats):
+    """Pose a skinned renderer with its whole rig's procedural pose (see rig_pose)."""
+    bones = [unity.fid(b) for b in r.get("m_Bones", [])]
+    rigname = lambda f: (lambda n: n.startswith("mixamorig") or n.startswith("Bip01") or n in ("Hips", "Root", "Armature"))(
+        str(scene.go[scene.tf[f]["go"]]["name"]) if scene.tf[f].get("go") in scene.go else "")
+    f0 = next((f for f in bones if f in scene.tf), None)
+    if f0 is None: return mats
+    root = f0
+    while scene.tf[root].get("parent") in scene.tf and rigname(scene.tf[root]["parent"]): root = scene.tf[root]["parent"]
+    B = rig_pose(scene, root)
+    return np.array([B[f] @ m.bind[i] if f in B and i < len(m.bind) else mats[i] for i, f in enumerate(bones)])
 
 def skin(scene, r, m, p, q, s):
     """Skinned mesh in the pose its bones hold in the scene: v' = sum w_i * (Bone_i . BindPose_i) v."""
@@ -270,7 +329,18 @@ def collect(scene, lo, hi):
         else:
             sm = range(len(m.subs))
             wp = (m.pos.astype(np.float64) * np.array(s)) @ quat_mat(q).T + np.array(p)
-            wp[:, 0] *= 1  # unity left-handed -> keep
+            if os.environ.get("POSE"):   # rigid prop held by a posed bone (a gun in the hand): follow the bone
+                anc = scene.tf[g["tf"]].get("parent")
+                isbone = lambda f: (lambda n: n.startswith("mixamorig") or n.startswith("Bip01"))(
+                    str(scene.go[scene.tf[f]["go"]]["name"]) if scene.tf[f].get("go") in scene.go else "")
+                while anc in scene.tf and not isbone(anc): anc = scene.tf[anc].get("parent")
+                if anc in scene.tf:
+                    root = anc
+                    while scene.tf[root].get("parent") in scene.tf and isbone(scene.tf[root]["parent"]): root = scene.tf[root]["parent"]
+                    Bp = rig_pose(scene, root)
+                    if anc in Bp:
+                        D = Bp[anc] @ np.linalg.inv(trs(*scene.world(anc)))
+                        wp = wp @ D[:3, :3].T + D[:3, 3]
         mats = r.get("m_Materials", [])
         used = False
         for k, si in enumerate(sm):
@@ -347,11 +417,19 @@ def main():
         diag = np.array([np.linalg.norm(t.reshape(-1, 3).max(0) - t.reshape(-1, 3).min(0)) for _, t, _ in items])
         wt = np.sqrt(ns) * np.maximum(diag, 0.05) ** SIZEW
         k = BUDGET / wt.sum()
-    for (key, tpk, uvk), w in zip(items, wt):
-        tgt = int(w * k)
-        if tgt < 4 and SIZEW: continue          # too small to matter at this budget
-        tgt = max(6, tgt)
-        a, b = decimate(tpk, uvk, tgt)
+    # the simplifier can't always reach its target: rescale until the sum lands on the budget
+    for it in range(4):
+        res = []
+        for (key, tpk, uvk), w in zip(items, wt):
+            tgt = int(w * k)
+            if tgt < 4 and SIZEW: continue          # too small to matter at this budget
+            a, b = decimate(tpk, uvk, max(6, tgt))
+            res.append((key, a, b))
+        got = sum(len(a) for _, a, _ in res)
+        print("budget pass", it, "tris", got)
+        if got <= BUDGET * 1.05: break
+        k *= BUDGET / got
+    for key, a, b in res:
         if len(a): buckets[key][0].append(a); buckets[key][1].append(b)
     if os.environ.get("TERRAIN"):
         import terrain
