@@ -1377,8 +1377,8 @@ static void story_reader(void)
 static int nitro_nds;   /* .nds files looked at, for the error message */
 static int nitro_try(const char *path)
 {
-    nitro_nds++;
     if (!nitroFSInit(path)) return 0;
+    nitro_nds++;
     FILE *f = fopen("nitro:/rv.bin", "rb");   /* it's this game if its filesystem has our files */
     if (f) { fclose(f); return 1; }
     nitroFSExit(); return 0;
@@ -1391,7 +1391,7 @@ static int nitro_scan(const char *dir, int depth)
         if (e->d_name[0] == '.') continue;
         snprintf(p, sizeof p, "%s%s", dir, e->d_name);
         int n = strlen(e->d_name);
-        if (e->d_type == DT_DIR) { if (depth) { strcat(p, "/"); ok = nitro_scan(p, depth - 1); } }
+        if (e->d_type == DT_DIR) { if (depth && strcasecmp(e->d_name, "moonshl2") && strcasecmp(e->d_name, "R4iMenu")) { strcat(p, "/"); ok = nitro_scan(p, depth - 1); } }
         else if (n > 4 && !strcasecmp(e->d_name + n - 4, ".nds")) ok = nitro_try(p);
     }
     closedir(d); return ok;
@@ -1399,6 +1399,8 @@ static int nitro_scan(const char *dir, int depth)
 static int nitro_find(void)
 {
     if (!fatInitDefault()) { printf("SD card not readable (DLDI)\n"); return 0; }
+    static const char *const guess[] = { "fat:/IronbarkLookout.nds", "fat:/rom.nds", "fat:/ironbark.nds" };
+    for (int i = 0; i < 3; i++) if (nitro_try(guess[i])) return 1;
     if (nitro_scan("fat:/", 1)) return 1;
     printf("checked %d .nds files\n", nitro_nds); return 0;
 }
