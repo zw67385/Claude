@@ -744,6 +744,10 @@ static int typed(const char *t)   /* typewriter text on the sub screen; 1 = Star
         if (keysDown() & KEY_START) return 1;
     }
     consoleClear(); printf("\n\n"); wrap_print(t); printf("\n\n            [A]");
+#ifdef AUTOPLAY
+    for (int w = 0; w < 50; w++) swiWaitForVBlank();   /* recording build: advance on its own */
+    return 0;
+#endif
     do { swiWaitForVBlank(); scanKeys(); } while (!(keysDown() & (KEY_A | KEY_START)));
     return (keysDown() & KEY_START) != 0;
 }
@@ -801,11 +805,14 @@ static int load_tower(void)
 }
 static void prologue(void)
 {
+    walk_free();   /* the tower's collision boxes and floor must not follow us into the 3D scenes */
 #ifndef TRAIL_TEST
     first_scene();
 #endif
     trail_scene();
     load_tower();
+    if (!nboxes) load_col("nitro:/tower.col");
+    if (!flr) load_floor("nitro:/tower.flr");
 }
 static void campsite(void)
 {

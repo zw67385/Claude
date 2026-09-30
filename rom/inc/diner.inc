@@ -15,6 +15,9 @@ static struct {
     int booth, food_t, ae_t, seat_t, pee_t, pee_nag, door, talks[4];
 } DN;
 static Walker dw;
+#ifdef AUTOPLAY
+static int bot_st;
+#endif
 /* booths: seat (unity x, z), facing yaw, "Waitress Here" (x, z), food tray z */
 static const struct { float sx, sz; int yaw; float wx, wz, tz; } BOOTH[4] = {
     { 1115.25, 960.46, 16384, 1115.72, 959.57, 959.86 }, { 1115.32, 952.57, 0, 1115.79, 953.08, 953.14 },
@@ -78,6 +81,9 @@ static void dn_hud(void)
     printf("Pad: walk  R: run\nY+pad / stylus: look");
 #ifdef DEBUG_POS
     printf("\nvb %d %d %d o%d p%d s%d e%d $%d w%d b%d", stat_vb, dw.x >> 10, dw.z >> 10, DN.ordered, DN.peed, DN.served, DN.eaten, DN.paid, DN.wstate, DN.bstate);
+#ifdef AUTOPLAY
+    printf(" st%d", bot_st);
+#endif
 #endif
 }
 
@@ -93,7 +99,7 @@ static void diner_use(int id)
             if (!DN.started) { DN.started = 1; DN.wx = DX(1117.0); DN.wz = DZ(958.7); w_goto(DX(1116.6), DZ(962.0), WN_START); }
             fade(0);
         } else if (DN.paid) {
-            fade(1); DN.in = 0; dn_walk_to(DX(1116.58), DZ(964.6), 0); sfx(SFX_DOOR_CLOSE); fade(0);
+            fade(1); DN.in = 0; dn_walk_to(DX(1116.58), DZ(965.9), 0);   /* outside the porch walls */ sfx(SFX_DOOR_CLOSE); fade(0);
         } else sub(S("GetFood"), 3);
         break;
     case H_SEAT: case H_SEAT2: case H_SEAT3: case H_SEAT4:
@@ -122,14 +128,17 @@ static void diner_use(int id)
 
 #ifdef AUTOPLAY
 /* recording build only: plays the diner stop the way the original intends */
+
 static void bot_diner(u32 *k, u32 *kd)
 {
     static int st, t, dt, saw;
+    bot_st = st;
+    /* routes planned on the diner wall grid */
     static const struct { float x, z; } P[] = {
-        { 1112.5, 959.2 }, { 1116.58, 965.3 },                     /* 0-1 to the door */
-        { 1116.8, 951.4 }, { 1120.0, 951.4 },                      /* 2-3 washroom */
-        { 1116.8, 951.4 }, { 1116.4, 960.46 },                     /* 4-5 back to booth 1 */
-        { 1116.5, 962.6 }, { 1112.5, 959.0 } };                    /* 6-7 out to the RV */
+        { 1115.12, 966.12 }, { 1116.58, 965.3 },                                        /* 0-1 RV -> door */
+        { 1117.62, 952.38 }, { 1118.88, 951.12 }, { 1120.12, 951.38 },                  /* 2-4 washroom */
+        { 1118.88, 951.12 }, { 1117.38, 952.62 }, { 1116.38, 960.46 },                  /* 5-7 back to booth 1 */
+        { 1116.6, 962.6 }, { 1113.5, 965.9 }, { 1109.0, 963.0 } };                     /* 8-10 out to the RV */
     #define PRESS(lbl) do { if (prompt && !strcmp(prompt, lbl) && ++t > 15) { *kd |= KEY_A; t = 0; st++; } } while (0)
     #define WALK(i) do { static int lx, lz, still; \
         if (bot_walk(&dw, k, DX(P[i].x), DZ(P[i].z)) || still > 20) { st++; still = 0; } \
@@ -149,19 +158,22 @@ static void bot_diner(u32 *k, u32 *kd)
     case 5: if (saw && ++t > 30) { t = 0; st++; } break;           /* the waitress greets you */
     case 6: WALK(2); break;
     case 7: WALK(3); break;
-    case 8: if (FACE(1121.41, 951.86)) PRESS("Use the toilet"); break;
-    case 9: WALK(4); break;
+    case 8: WALK(4); break;
+    case 9: if (FACE(1121.41, 951.86)) PRESS("Use the toilet"); break;
     case 10: WALK(5); break;
-    case 11: if (FACE(1115.25, 960.46)) PRESS("Sit down"); break;
-    case 12: if (DN.served && ++t > 30) { t = 0; st++; } break;    /* order, wait for the food */
-    case 13: if (FACE(1115.36, BOOTH[DN.booth].tz)) PRESS("Eat"); break;
-    case 14: if (DN.paid && ++t > 60) { t = 0; st++; } break;      /* after eating, the check */
-    case 15: *kd = KEY_B; st++; break;
-    case 16: WALK(6); break;
-    case 17: if (FACE(1116.6, 963.6)) PRESS("Leave"); break;
-    case 18: if (++t > 20) { t = 0; st++; } break;
-    case 19: WALK(7); break;
-    case 20: if (FACE(1107.25, 960.9)) PRESS("Get in the RV"); break;
+    case 11: WALK(6); break;
+    case 12: WALK(7); break;
+    case 13: if (FACE(1115.25, 960.46)) PRESS("Sit down"); break;
+    case 14: if (DN.served && ++t > 30) { t = 0; st++; } break;    /* order, wait for the food */
+    case 15: if (FACE(1115.36, BOOTH[DN.booth].tz)) PRESS("Eat"); break;
+    case 16: if (DN.paid && ++t > 60) { t = 0; st++; } break;      /* after eating, the check */
+    case 17: *kd = KEY_B; st++; break;
+    case 18: WALK(8); break;
+    case 19: if (FACE(1116.6, 963.6)) PRESS("Leave"); break;
+    case 20: if (++t > 20) { t = 0; st++; } break;
+    case 21: WALK(9); break;
+    case 22: WALK(10); break;
+    case 23: if (FACE(1107.25, 960.9)) PRESS("Get in the RV"); break;
     }
     #undef PRESS
     #undef WALK
