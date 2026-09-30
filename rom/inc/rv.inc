@@ -9,7 +9,7 @@ static Level L_rv;
 static void rv_place(RV *r, int x, int z, int yaw)
 {
     memset(r, 0, sizeof *r);
-    r->x = x; r->z = z; r->yaw = yaw; r->lookpitch = 250; r->maxspd = U(16.0) / 20;
+    r->x = x; r->z = z; r->yaw = yaw; r->lookpitch = 1100; r->maxspd = U(16.0) / 20;
     r->y = world_floor(x, z); if (r->y == NOFLOOR) r->y = 0;
 }
 /* controls + physics for one frame (lock = dialogue up: no driving input) */
@@ -82,8 +82,9 @@ static void rv_render(RV *r, u16 amb, void (*draw)(int pass))
     glTranslatef32(-camx, -camy, -camz);
     glLight(0, RGB15(8, 6, 6), floattov10(0.3), floattov10(-0.9), floattov10(-0.3));
     glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
-    world_draw(camx, camz, cyaw);
+    /* the cab goes first so a polygon-list overflow can only ever cost distant scenery */
     for (int pass = 0; pass < 2; pass++) {
+        if (pass) world_draw(camx, camz, cyaw);
         glPushMatrix();
         glTranslatef32(r->x, r->y, r->z); glRotateYi(r->yaw); glRotateXi(-r->pitch_rv);
         /* the RV body is a single-sided shell facing out: from the driver seat both sides must draw */
@@ -92,7 +93,9 @@ static void rv_render(RV *r, u16 amb, void (*draw)(int pass))
         glPopMatrix(1);
         if (draw) draw(pass);
     }
-    glFlush(0);
+    while (GFX_STATUS & BIT(27)) ;
+    stat_v = GFX_VERTEX_RAM_USAGE; stat_p = GFX_POLYGON_RAM_USAGE;
+    glFlush(GL_WBUFFERING);   /* linear depth: distant walls and their trim no longer z-fight */
     stat_vb = vb_count; while (vb_count < 3) swiWaitForVBlank();
     vb_count = 0;
 }

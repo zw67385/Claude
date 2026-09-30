@@ -30,6 +30,10 @@ SFX = [  # name, file, loop seconds (0 = one-shot), max seconds, gain
     ("gas", "Gas Can Hit", 0, 1.5, 1), ("pickup", "Keys catch", 0, 1, 1), ("typing", "KeyHit1", 0, 0.5, 0.7),
     ("shout", "Man Shout", 0, 3, 1), ("whistle", "Whistle Amb", 0, 5, 0.9), ("splash", "Water Splash", 0, 2, 1), ("sizzle", "Fire Sizzle", 0, 3, 1),
     ("crack", "Cracking snapping", 0, 3, 1),
+    # First Scene: RV engine / start, diner jukebox, menu music, till
+    ("rv_engine", "van_engine", 1.5, 0, 0.7), ("rv_start", "RV Start", 0, 3.4, 1),
+    ("diner_music", "DedLighter Diner_Music_version_1", 45, 0, 0.7), ("menu_music", "menu music", 45, 0, 0.7),
+    ("coins", "diner change sound", 0, 1, 1),
 ]
 STEPS = [("step_wood%d" % i, "Carpet-%02d" % i) for i in (1, 2, 3, 4)] + [("step_grass%d" % i, "Grass_%02d" % i) for i in (1, 2, 3, 4)]
 
@@ -52,10 +56,11 @@ def load(path, gain=1.0):
 def write(name, d, loop=False):
     pcm = np.clip(d * 127 + 128, 0, 255).astype(np.uint8).tobytes()
     fmt = struct.pack("<HHIIHH", 1, 1, RATE, RATE, 1, 8)
-    chunks = b"fmt " + struct.pack("<I", len(fmt)) + fmt + b"data" + struct.pack("<I", len(pcm)) + pcm + (b"\0" if len(pcm) & 1 else b"")
-    if loop:
+    chunks = b"fmt " + struct.pack("<I", len(fmt)) + fmt
+    if loop:   # before 'data': mmutil stops reading chunks once it has the samples
         smpl = struct.pack("<9I", 0, 0, 1000000000 // RATE, 60, 0, 0, 0, 1, 0) + struct.pack("<6I", 0, 0, 0, len(pcm) - 1, 0, 0)
         chunks += b"smpl" + struct.pack("<I", len(smpl)) + smpl
+    chunks += b"data" + struct.pack("<I", len(pcm)) + pcm + (b"\0" if len(pcm) & 1 else b"")
     open(os.path.join(OUT, name + ".wav"), "wb").write(b"RIFF" + struct.pack("<I", 4 + len(chunks)) + b"WAVE" + chunks)
     return len(pcm)
 
@@ -66,7 +71,7 @@ def main():
         d = load(find(stem), gain)
         if loop:   # take 'loop' seconds from the middle, crossfade the tail into the head
             L = int(loop * RATE); X = RATE // 2
-            st = max(0, len(d) // 2 - (L + X) // 2); seg = d[st:st + L + X]
+            st = 0 if loop >= 20 else max(0, len(d) // 2 - (L + X) // 2); seg = d[st:st + L + X]   # music: from the top
             if len(seg) < L + X: seg = np.resize(d, L + X)
             fade = np.linspace(0, 1, X)
             out = seg[:L].copy(); out[:X] = seg[:X] * fade + seg[L:L + X] * (1 - fade)

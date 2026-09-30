@@ -86,7 +86,7 @@ static void world_draw(int cx, int cz, int yaw)
     int ux = cx, uz = -cz;
     int r = w_far / W.cs + 1;
     int ci = (ux - W.gx0) / W.cs, cj = (uz - W.gz0) / W.cs;
-    static u16 vis[96]; int nv = 0;
+    static u16 vis[96]; static int vd[96]; int nv = 0;
     for (int j = cj - r; j <= cj + r; j++) {
         if (j < 0 || j >= (int)W.gnz) continue;
         for (int i = ci - r; i <= ci + r; i++) {
@@ -100,10 +100,16 @@ static void world_draw(int cx, int cz, int yaw)
             int along = (dx * -s + dz * -c) >> 12, side = (dx * c - dz * s) >> 12;
             if (along < -rad) continue;
             if (abs(side) > along + rad + (rad >> 1)) continue;      /* ~90 deg horizontal view */
-            if (nv < 96) vis[nv++] = k;
+            if (nv < 96) { vd[nv] = dx * dx + dz * dz; vis[nv++] = k; }
         }
     }
     w_drawn = nv;
+    /* near to far: past the hardware's 2048-polygon list the last ones sent are dropped, so let that be the fogged distance */
+    for (int a = 1; a < nv; a++) {
+        int d = vd[a]; u16 v = vis[a], b = a;
+        while (b > 0 && vd[b - 1] > d) { vd[b] = vd[b - 1]; vis[b] = vis[b - 1]; b--; }
+        vd[b] = d; vis[b] = v;
+    }
     for (int pass = 0; pass < 2; pass++)
         for (int n = 0; n < nv; n++) {
             WChunk *ch = &W.ch[vis[n]];

@@ -34,6 +34,13 @@ static void amb_set(int id)
     if (amb_cur >= 0) { mmEffectCancel(amb_h); sfx_free(amb_cur); }
     amb_cur = id; amb_h = id >= 0 ? sfx_play(id, 150) : 0;
 }
+static int mus_cur = -1; static mm_sfxhand mus_h;
+static void music_set(int id)   /* one looping music track at a time */
+{
+    if (id == mus_cur) return;
+    if (mus_cur >= 0) { mmEffectCancel(mus_h); sfx_free(mus_cur); }
+    mus_cur = id; mus_h = id >= 0 ? sfx_play(id, 190) : 0;
+}
 static void gen_snd(int on, int vol)
 {
     if (on && !gen_on_snd) { gen_h = sfx_play(SFX_GEN_RUN, vol); gen_on_snd = 1; }
@@ -978,6 +985,7 @@ static void seq_start(int n, int *px, int *pz, int *fy, int *yaw)
 
 static void run_game(int start)
 {
+    if (start > 1) music_set(-1);   /* night 1 keeps the menu music through the intro letter */
     if (!nboxes) load_col("nitro:/tower.col");
     if (!flr) load_floor("nitro:/tower.flr");
     srand(REG_VCOUNT ^ (TIMER0_DATA << 3));
@@ -1264,6 +1272,7 @@ int main(void)
     ending();
 #endif
     for (;;) {
+        music_set(SFX_MENU_MUSIC);
         int saved = save_read();
         consoleClear();
         printf("FEARS TO FATHOM\nIRONBARK LOOKOUT (DS)\n\n%c New game\n%c Chapter select\n%c Read story nodes\n", sel == 0 ? '>' : ' ', sel == 1 ? '>' : ' ', sel == 2 ? '>' : ' ');

@@ -62,7 +62,7 @@ static void diner_cmd(const char *c)
         else if (!strcmp(arg, "kitchen") || !strcmp(arg, "get_check")) {
             DN.np = route(DN.px, DN.pz, DN.wx, DN.wz, DX(1119.63), DZ(954.41));
             DN.wstate = W_GO; DN.wnode = WN_KITCHEN; DN.wt = !strcmp(arg, "get_check") ? 80 : 0;
-        } else if (!strcmp(arg, "Check_paid")) { DN.paid = 1; sub(S("LookAtParking"), 4); }
+        } else if (!strcmp(arg, "Check_paid")) { DN.paid = 1; sfx(SFX_COINS); sub(S("LookAtParking"), 4); }
     }
     else if (!strncmp(c, "SetOrder", 8)) { DN.ordered = 1; DN.food_t = 200; }
     else if (!strncmp(c, "HeStared", 8)) { sub(S("HeStared"), 4); sfx_play(SFX_SCARE, 90); }
@@ -135,10 +135,10 @@ static void bot_diner(u32 *k, u32 *kd)
     bot_st = st;
     /* routes planned on the diner wall grid */
     static const struct { float x, z; } P[] = {
-        { 1115.12, 966.12 }, { 1116.58, 965.3 },                                        /* 0-1 RV -> door */
-        { 1117.62, 952.38 }, { 1118.88, 951.12 }, { 1120.12, 951.38 },                  /* 2-4 washroom */
-        { 1118.88, 951.12 }, { 1117.38, 952.62 }, { 1116.38, 960.46 },                  /* 5-7 back to booth 1 */
-        { 1116.6, 962.6 }, { 1113.5, 965.9 }, { 1109.0, 963.0 } };                     /* 8-10 out to the RV */
+        { 1112.5, 958.8 }, { 1113.5, 965.9 }, { 1116.3, 966.0 },   /* 0-2 RV -> door, round the parked RV's nose */
+        { 1117.62, 952.38 }, { 1118.88, 951.12 }, { 1120.12, 951.38 },                  /* 3-5 washroom */
+        { 1118.88, 951.12 }, { 1117.38, 952.62 }, { 1116.38, 960.46 },                  /* 6-8 back to booth 1 */
+        { 1116.6, 962.6 }, { 1113.5, 965.9 }, { 1109.0, 963.0 } };                     /* 9-11 out to the RV */
     #define PRESS(lbl) do { if (prompt && !strcmp(prompt, lbl) && ++t > 15) { *kd |= KEY_A; t = 0; st++; } } while (0)
     #define WALK(i) do { static int lx, lz, still; \
         if (bot_walk(&dw, k, DX(P[i].x), DZ(P[i].z)) || still > 20) { st++; still = 0; } \
@@ -146,34 +146,35 @@ static void bot_diner(u32 *k, u32 *kd)
         lx = dw.x; lz = dw.z; } while (0)
     #define FACE(x, z) bot_face(&dw, DX(x), DZ(z))
     *k = 0; *kd = 0;
-    if (!DN.in && !DN.started) { if (st > 3) st = 0; }
+    if (!DN.in && !DN.started) { if (st > 4) st = 0; }
     if (dlg_active) { saw = 1; if (++dt > 55) { dt = 0; *kd = KEY_A; } return; }
     dt = 0;
     switch (st) {
     case 0: if (++t > 40) { t = 0; st++; } break;
     case 1: WALK(0); break;
     case 2: WALK(1); break;
-    case 3: if (FACE(1116.6, 963.6)) PRESS("Enter the diner"); break;
-    case 4: saw = 0; st++; break;
-    case 5: if (saw && ++t > 30) { t = 0; st++; } break;           /* the waitress greets you */
-    case 6: WALK(2); break;
+    case 3: WALK(2); break;
+    case 4: if (FACE(1116.6, 963.6)) PRESS("Enter the diner"); break;
+    case 5: saw = 0; st++; break;
+    case 6: if (saw && ++t > 30) { t = 0; st++; } break;           /* the waitress greets you */
     case 7: WALK(3); break;
     case 8: WALK(4); break;
-    case 9: if (FACE(1121.41, 951.86)) PRESS("Use the toilet"); break;
-    case 10: WALK(5); break;
+    case 9: WALK(5); break;
+    case 10: if (FACE(1121.41, 951.86)) PRESS("Use the toilet"); break;
     case 11: WALK(6); break;
     case 12: WALK(7); break;
-    case 13: if (FACE(1115.25, 960.46)) PRESS("Sit down"); break;
-    case 14: if (DN.served && ++t > 30) { t = 0; st++; } break;    /* order, wait for the food */
-    case 15: if (FACE(1115.36, BOOTH[DN.booth].tz)) PRESS("Eat"); break;
-    case 16: if (DN.paid && ++t > 60) { t = 0; st++; } break;      /* after eating, the check */
-    case 17: *kd = KEY_B; st++; break;
-    case 18: WALK(8); break;
-    case 19: if (FACE(1116.6, 963.6)) PRESS("Leave"); break;
-    case 20: if (++t > 20) { t = 0; st++; } break;
-    case 21: WALK(9); break;
+    case 13: WALK(8); break;
+    case 14: if (FACE(1115.25, 960.46)) PRESS("Sit down"); break;
+    case 15: if (DN.served && ++t > 30) { t = 0; st++; } break;    /* order, wait for the food */
+    case 16: if (FACE(1115.36, BOOTH[DN.booth].tz)) PRESS("Eat"); break;
+    case 17: if (DN.paid && ++t > 60) { t = 0; st++; } break;      /* after eating, the check */
+    case 18: *kd = KEY_B; st++; break;
+    case 19: WALK(9); break;
+    case 20: if (FACE(1116.6, 963.6)) PRESS("Leave"); break;
+    case 21: if (++t > 20) { t = 0; st++; } break;
     case 22: WALK(10); break;
-    case 23: if (FACE(1107.25, 960.9)) PRESS("Get in the RV"); break;
+    case 23: WALK(11); break;
+    case 24: if (FACE(1107.25, 960.9)) PRESS("Get in the RV"); break;
     }
     #undef PRESS
     #undef WALK
@@ -307,15 +308,16 @@ static void diner_scene(void)
         if (sub_t > 0 && --sub_t == 0) hud_dirty = 1;
         for (int i = 0; i < 12; i++) if (evq[i].id == EV_SUB && --evq[i].t <= 0) { evq[i].id = 0; sub(S(evq[i].s), 4); }
         amb_set(DN.in ? -1 : SFX_AMB_NIGHT);
+        music_set(DN.in ? SFX_DINER_MUSIC : -1);   /* the jukebox */
 
         /* ---- render */
-        sky(2, 2, 4);
+        if (DN.in) sky(2, 2, 4); else sky(5, 4, 5);   /* outside: the same dusk as the drive in */
         glEnable(GL_FOG);
         g_lights = POLY_FORMAT_LIGHT0 | POLY_FORMAT_LIGHT1 | POLY_FOG;
-        g_amb = DN.in ? RGB15(13, 12, 10) : RGB15(5, 5, 7);
+        g_amb = DN.in ? RGB15(13, 12, 10) : RGB15(9, 8, 8);
         cam_setup(dw.x, eye, dw.z, dw.yaw, dw.pitch, 60);
-        glLight(0, DN.in ? RGB15(24, 22, 18) : RGB15(7, 7, 10), floattov10(0.3), floattov10(-0.9), floattov10(-0.3));
-        glLight(1, DN.in ? RGB15(8, 8, 7) : RGB15(10, 9, 6), floattov10(-0.4), floattov10(-0.5), floattov10(0.7));
+        glLight(0, DN.in ? RGB15(24, 22, 18) : RGB15(10, 8, 8), floattov10(0.3), floattov10(-0.9), floattov10(-0.3));
+        glLight(1, DN.in ? RGB15(8, 8, 7) : RGB15(15, 12, 7), floattov10(-0.4), floattov10(-0.5), floattov10(0.7));
         for (int pass = 0; pass < 2; pass++) {
             glPolyFmt(POLY_ALPHA(31) | POLY_CULL_BACK | g_lights | POLY_ID(1));
             draw_level(&D_lvl, pass);
@@ -333,7 +335,7 @@ static void diner_scene(void)
         }
         while (GFX_STATUS & BIT(27)) ;
         stat_v = GFX_VERTEX_RAM_USAGE; stat_p = GFX_POLYGON_RAM_USAGE;
-        glFlush(0);
+        glFlush(GL_WBUFFERING);
         stat_vb = vb_count; while (vb_count < 3) swiWaitForVBlank();
         vb_count = 0;
 #ifdef DEBUG_POS
@@ -342,7 +344,7 @@ static void diner_scene(void)
         if (hud_dirty && !dlg_active) { dn_hud(); hud_dirty = 0; }
     }
     fade(1);
-    scene_cmd = NULL; prompt = NULL; amb_set(-1);
+    scene_cmd = NULL; prompt = NULL; amb_set(-1); music_set(-1);
     level_free(&D_lvl); level_free(&D_door); level_free(&D_wait); level_free(&D_bad); level_free(&D_badsit);
     level_free(&D_food); level_free(&D_plg); level_free(&D_rv);
     for (int i = 0; i < 4; i++) level_free(&D_npc[i]);

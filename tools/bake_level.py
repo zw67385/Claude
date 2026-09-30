@@ -393,6 +393,10 @@ def allocate(items, BUDGET, NM, SIZEW=0, verbose=True):
         return min(len(t), max(8, min(250 if ext > 4 else 120, ecount(t, float(np.clip(ERR / max(ext, 1e-3), 0.005, 0.25))))))
     mins = np.array([floor_tris(t) for _, t, _ in items])
     mins = np.minimum(mins, max(8, int(BUDGET * 0.35)))       # one big mesh never shuts itself (or everything) out
+    for spec in [x for x in os.environ.get("MINTRI", "").split(",") if x]:   # name:tris floor for parts seen up close
+        nm, c = spec.split(":")
+        for i in range(len(items)):
+            if nm in str(NM.get(id(items[i][1]), "")): mins[i] = min(ns[i], max(mins[i], int(c)))
     pri = [x for x in os.environ.get("PRI", "").split(",") if x]
     order = sorted(range(len(items)), key=lambda i: (ns[i] > 12, not any(p in str(NM.get(id(items[i][1]), "")) for p in pri), diag[i] < 2.5, -diag[i]))
     keep = np.zeros(len(items), bool); acc = 0
@@ -403,6 +407,8 @@ def allocate(items, BUDGET, NM, SIZEW=0, verbose=True):
         if acc + mins[i] > BUDGET * 0.8: continue
         keep[i] = True; acc += mins[i]
     verbose and print("kept items", keep.sum(), "of", len(items))
+    if os.environ.get("LISTALL"):
+        for i in range(len(items)): print("ALL %-45s %5d diag %.2f keep %d" % (str(NM.get(id(items[i][1]), "?"))[:45], ns[i], diag[i], keep[i]))
     items = [it for it, kp in zip(items, keep) if kp]; mins = mins[keep]; ns = ns[keep]; diag = diag[keep]
     if not items: return []
     wt = np.sqrt(ns) * np.maximum(diag, 0.05) ** (SIZEW if keepall else max(SIZEW, 1))

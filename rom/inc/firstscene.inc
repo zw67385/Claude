@@ -40,7 +40,7 @@ static void drive_hud(int speed)
     if (drive_hint) printf("%s\n", drive_hint);
     printf("Up/A: gas  Down/B: brake\nLeft/Right: steer  Y+pad: look\n%3d km/h", speed);
 #ifdef DEBUG_POS
-    printf("  ch %d vb %d\n%d %d %d", w_drawn, stat_vb, dbg_x >> 12, dbg_y >> 12, dbg_z >> 12);
+    printf("  ch %d vb %d p %d v %d\n%d %d %d", w_drawn, stat_vb, stat_p, stat_v, dbg_x >> 12, dbg_y >> 12, dbg_z >> 12);
 #endif
 }
 
@@ -109,6 +109,8 @@ static void first_scene(void)
     w_far = U(72);
     sky(5, 4, 5);
     int hud_t = 0, lastkmh = -1; hud_dirty = 1;
+    music_set(-1); sfx(SFX_RV_START);
+    mm_sfxhand eng = sfx_play(SFX_RV_ENGINE, 110);
     fade(0);
     for (;;) {
         scanKeys();
@@ -141,7 +143,9 @@ static void first_scene(void)
             /* the diner stop: park, walk the diner in 3D, come back to the RV */
             fade(1);
             level_free(&L_rv); world_free(); glResetTextures();
+            mmEffectCancel(eng);
             diner_scene();
+            sfx(SFX_RV_START); eng = sfx_play(SFX_RV_ENGINE, 110);
             consoleClear(); printf("\n\n\n   Loading...\n");
             world_load("nitro:/drive1.wld"); load_model(&L_rv, "nitro:/rv.bin");
             int ml = r.maxspd; rv_place(&r, U(1107.25), U(-960.9), -8192); r.maxspd = ml;
@@ -153,6 +157,7 @@ static void first_scene(void)
         sq_tick();
         if (sub_t > 0 && --sub_t == 0) hud_dirty = 1;
         int kmh = rv_kmh(&r);
+        mmEffectRate(eng, 1024 + kmh * 14); mmEffectVolume(eng, 90 + kmh);   /* engine note follows the speed */
         if (++hud_t >= 10) { hud_t = 0; if (kmh != lastkmh) hud_dirty = 1; lastkmh = kmh; }
         if (look_t > 0) {   /* LookAtDiner: turn toward the diner sign for 3 s */
             int cx, cy, cz; rv_eye(&r, &cx, &cy, &cz);
@@ -165,6 +170,7 @@ static void first_scene(void)
         if ((kd & KEY_START) && !dlg_active) break;
     }
 out:
+    mmEffectCancel(eng); sfx_free(SFX_RV_ENGINE); sfx_free(SFX_RV_START);
     fade(1);
     level_free(&L_rv); world_free(); glResetTextures();
     setBrightness(3, 0);
