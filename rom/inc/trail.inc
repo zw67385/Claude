@@ -64,7 +64,6 @@ static void trail_cmd(const char *c)
     else if (!strncmp(c, "TakeKeys", 8)) dlg_done = ts_after_keys;
     else if (!strncmp(c, "TakeFlashLight", 14)) dlg_done = ts_after_flash;
     else if (!strncmp(c, "EnableBadGuy", 12)) TS.bad_t = 400;               /* the bag guy stands out back for 20 s */
-    else if (!strncmp(c, "WhatWereYouDoing", 16)) sfx_play(SFX_SCARE, 70);
 }
 
 static void trail_hud(void)
@@ -147,7 +146,7 @@ static void trail_scene(void)
     memset(&TS, 0, sizeof TS); memset(&tw, 0, sizeof tw);
     TS.rx = TX(635.28); TS.rz = TZ(441.40); TS.ryaw = RANGER_F0;
     walk_world = 1; walk_block = ts_block;
-    amb_set(SFX_AMB_EVENING);
+    amb_set(SFX_AMB_BELL); amb2_set(SFX_CRICKETS);
 #ifdef TRAIL_WALK
     TS.rvx = TX(621.2); TS.rvz = TZ(420.47); TS.rvyaw = -7163; TS.rvy = world_floor(TS.rvx, TS.rvz);
 #else
@@ -235,12 +234,12 @@ static void trail_scene(void)
         if (prompt != last) { last = prompt; hud_dirty = 1; }
         if ((kd & KEY_A) && best >= 0) {
             if (H[best].id == H_BAG) { sfx(SFX_PICKUP); TS.bag = 1; sub("Got the bag.", 2); }
-            else { TS.door_open ^= 1; sfx(TS.door_open ? SFX_DOOR_OPEN : SFX_DOOR_CLOSE); }
+            else { TS.door_open ^= 1; sfx(TS.door_open ? SFX_IDOOR_OPEN : SFX_IDOOR_SHUT); }
             hud_dirty = 1;
         }
         /* ---- jumpscare: stepping into the guard house */
         if (!TS.scared && TS.inside) {
-            TS.scared = 1; TS.rs = R_RUSH; TS.rt = 0; sfx_play(SFX_SCARE, 127);
+            TS.scared = 1; TS.rs = R_RUSH; TS.rt = 0; sfx(SFX_JUMPSCARE); sfx(SFX_GASP); sting(SFX_HEARTBEAT);
             TS.np = 0; TS.px[TS.np] = TX(634.57); TS.pz[TS.np++] = TZ(441.83);
         }
         switch (TS.rs) {
@@ -287,7 +286,7 @@ static void trail_scene(void)
         }
         /* he opens the guard house door when he walks through it */
         if ((TS.rs == R_GOCHAIR || TS.rs == R_GOPLAYER || TS.rs == R_GOGATE || TS.rs == R_GOCHAIRFINAL) && !TS.door_open
-            && abs(TS.rx - TX(633.55)) < U(1.2) && abs(TS.rz - TZ(440.29)) < U(0.9)) { TS.door_open = 1; sfx(SFX_DOOR_OPEN); }
+            && abs(TS.rx - TX(633.55)) < U(1.2) && abs(TS.rz - TZ(440.29)) < U(0.9)) { TS.door_open = 1; sfx(SFX_IDOOR_OPEN); }
         { int tgt = TS.door_open ? -8192 : 0, d = tgt - TS.door; TS.door += d > 1400 ? 1400 : d < -1400 ? -1400 : d; }
         if (TS.bad_t) TS.bad_t--;
         if (TS.serious_t && !dlg_active && --TS.serious_t == 0) sub(S("LookedSerious"), 5);
@@ -327,6 +326,6 @@ done:
     fade(1);
     scene_cmd = NULL; prompt = NULL; amb_set(-1);
     level_free(&T_guard); level_free(&T_door); level_free(&T_gate); level_free(&T_ranger); level_free(&T_rsit); level_free(&T_bagguy);
-    level_free(&L_rv); world_free(); walk_free(); glResetTextures();
+    level_free(&L_rv); world_free(); walk_free(); glResetTextures(); sfx_flush();
     setBrightness(3, 0);
 }

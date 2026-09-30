@@ -32,7 +32,8 @@ static int trail_end_run(void)
     tw.fy = wfloor(tw.x, tw.z, U(50)); if (tw.fy == NOFLOOR) tw.fy = U(0.88);
     TE.cx = TX(659.91); TE.cz = TZ(436.35); TE.cyaw = -8192;
     walk_world = 1; walk_block = ts_block;
-    amb_set(SFX_AMB_NIGHT);
+    amb_set(SFX_AMB_BELL); amb2_set(SFX_CRICKETS);
+    mm_sfxhand run_h = 0;
     prompt = NULL; sub_t = 0; hud_dirty = 1;
     sub(S("Seq8MakeARun"), 4);
     const char *last = NULL;
@@ -52,7 +53,7 @@ static int trail_end_run(void)
         case TE_WALK:   /* the chase trigger west of the guard house */
             if (tw.x < TX(629.6) && abs(tw.z - TZ(436.8)) < U(6.15)) {
                 TE.st = TE_LOOK; TE.t = 0; TE.yaw0 = tw.yaw; amb_set(-1); music_set(SFX_CHASE);
-                sfx_play(SFX_SCARE, 127);
+                sting(SFX_HUNT); run_h = sfx_play(SFX_RUN_GRASS, 150);   /* TrailEndManager: he runs, the chase music starts */
             }
             break;
         case TE_LOOK: {  /* the camera turns to him for a moment */
@@ -63,17 +64,17 @@ static int trail_end_run(void)
             break; }
         case TE_CHASE:
             npc_step(&TE.cx, &TE.cz, &TE.cyaw, tw.x, tw.z, U(3.6) / 20);
-            if ((++TE.t & 7) == 0) { static const short GR[] = { SFX_STEP_GRASS1, SFX_STEP_GRASS2, SFX_STEP_GRASS3, SFX_STEP_GRASS4 }; sfx_play(GR[(TE.t >> 3) & 3], 100); }
+            ++TE.t;
             if (te_dist() < U(5.5)) { TE.st = TE_STARE; TE.t = 0; }
             break;
         case TE_STARE:   /* he stops, stares, then draws the sickle */
             TE.cyaw = yaw_to(tw.x - TE.cx, tw.z - TE.cz);
-            if (++TE.t == 20) sfx_play(SFX_HARP, 127);
+            if (++TE.t == 2) { mmEffectCancel(run_h); sfx(SFX_REALIZE); }
             if (TE.t > 20) TE.st = TE_HUNT;
             break;
         case TE_HUNT:
             npc_step(&TE.cx, &TE.cz, &TE.cyaw, tw.x, tw.z, U(6.0) / 20);
-            if (te_dist() < U(1.5)) { TE.st = TE_SCARE; TE.t = 0; sfx_play(SFX_SCARE, 127); }
+            if (te_dist() < U(1.5)) { TE.st = TE_SCARE; TE.t = 0; music_set(-1); sfx(SFX_GLITCH); sting(SFX_FHEART); sfx(SFX_STAB); sfx(SFX_SCREAM); }
             break;
         case TE_SCARE: {
             int dx = TE.cx - tw.x, dz = TE.cz - tw.z;
@@ -83,7 +84,7 @@ static int trail_end_run(void)
             if (++TE.t > 60) { setBrightness(1, 0); fade(1); goto out; }
             break; }
         case TE_SAFE:
-            if (++TE.t == 20 || TE.t == 34 || TE.t == 44) sfx_play(SFX_KNOCK, 127);
+            if (++TE.t == 10) sting(SFX_RISER);
             for (int i = 0; i < 3; i++) swiWaitForVBlank();
             if (TE.t > 60) goto out;
             continue;
@@ -100,9 +101,9 @@ static int trail_end_run(void)
         prompt = best >= 0 ? H[best].label : NULL;
         if (prompt != last) { last = prompt; hud_dirty = 1; }
         if ((kd & KEY_A) && best >= 0) {
-            if (H[best].id == H_GDOOR) sub(S("ItWasLocked"), 3);
+            if (H[best].id == H_GDOOR) { sfx(SFX_JAMMED); sub(S("ItWasLocked"), 3); }
             else if (TE.st == TE_CHASE || TE.st == TE_WALK) {   /* in, door slammed and locked */
-                sfx(SFX_DOOR_CLOSE); sfx(SFX_KNOCKS); music_set(-1); TE.st = TE_SAFE; TE.t = 0; prompt = NULL;
+                mmEffectCancel(run_h); sfx(SFX_DOOR_CLOSE); sfx(SFX_KNOCKS); music_set(-1); TE.st = TE_SAFE; TE.t = 0; prompt = NULL;
                 amb_set(-1); fade(1);   /* the outro fades in the dark while he pounds on the door */
             }
             hud_dirty = 1;
@@ -144,7 +145,7 @@ static int trail_end_run(void)
         if (hud_dirty) { te_hud(); hud_dirty = 0; }
     }
 out:
-    amb_set(-1); music_set(-1);
+    mmEffectCancel(run_h); amb_set(-1); music_set(-1); sting(-1);
     return TE.st == TE_SAFE;
 }
 
@@ -164,5 +165,5 @@ static void trail_end_scene(void)
     }
     prompt = NULL;
     level_free(&T_guard); level_free(&T_door); level_free(&T_gate); level_free(&C_cult);
-    level_free(&L_rv); world_free(); walk_free(); glResetTextures();
+    level_free(&L_rv); world_free(); walk_free(); glResetTextures(); sfx_flush();
 }

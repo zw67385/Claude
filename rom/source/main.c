@@ -28,11 +28,26 @@ static void vo_play(int id)   /* one radio line at a time; the previous one is f
     if (vo_cur >= 0) { mmEffectCancel(vo_h); sfx_free(vo_cur); }
     vo_cur = id; vo_h = id >= 0 ? sfx_play(id, 255) : 0;
 }
+static int amb2_cur = -1; static mm_sfxhand amb2_h;   /* second ambience layer (crickets) */
+static void amb2_set(int id)
+{
+    if (id == amb2_cur) return;
+    if (amb2_cur >= 0) { mmEffectCancel(amb2_h); sfx_free(amb2_cur); }
+    amb2_cur = id; amb2_h = id >= 0 ? sfx_play(id, 110) : 0;
+}
+static int sting_cur = -1; static mm_sfxhand sting_h;   /* one music stinger at a time; the previous one is freed */
+static void sting(int id)
+{
+    if (sting_cur >= 0) { mmEffectCancel(sting_h); if (sting_cur != id) sfx_free(sting_cur); }
+    sting_cur = id; sting_h = id >= 0 ? sfx_play(id, 230) : 0;
+}
+static int static_on; static mm_sfxhand static_h;
 static void amb_set(int id)
 {
     if (id == amb_cur) return;
     if (amb_cur >= 0) { mmEffectCancel(amb_h); sfx_free(amb_cur); }
     amb_cur = id; amb_h = id >= 0 ? sfx_play(id, 150) : 0;
+    if (id < 0) amb2_set(-1);
 }
 static int mus_cur = -1; static mm_sfxhand mus_h;
 static void music_set(int id)   /* one looping music track at a time */
@@ -49,10 +64,19 @@ static void radio_start(const short *pl, const short *len, int n)
     if (rad_pl == pl) return;
     rad_pl = pl; rad_len = len; rad_n = n; rad_i = 0; rad_t0 = vb_total; music_set(pl[0]); if (rad_mute) mmEffectVolume(mus_h, 0);
 }
+/* scene change: free every one-shot still in RAM (loops, music and the current VO stay) */
+static void sfx_flush(void)
+{
+    if (static_on) { static_on = 0; mmEffectCancel(static_h); }
+    if (sting_cur >= 0) { mmEffectCancel(sting_h); sting_cur = -1; }
+    for (int i = 0; i < MSL_NSAMPS; i++)
+        if (i != amb_cur && i != amb2_cur && i != mus_cur && i != vo_cur && i != SFX_GEN_RUN && i != SFX_GEN_ON) sfx_free(i);
+}
 static void radio_stop(void) { rad_pl = NULL; music_set(-1); }
 static void radio_tick(u32 kd)
 {
     if (!rad_pl) return;
+    if (kd & KEY_L) sfx(SFX_HORN);
     if (kd & KEY_SELECT) { rad_mute ^= 1; sfx(SFX_CLICK); mmEffectVolume(mus_h, rad_mute ? 0 : 190); }
     if (mus_cur >= 0 && vb_total - rad_t0 > (u32)rad_len[rad_i] * 60) {   /* song over: next one */
         rad_t0 = vb_total;
@@ -302,11 +326,22 @@ static void dlg_advance(void)
                 for (unsigned j = 0; j < sizeof VS / sizeof *VS; j++)
                     if ((int)strlen(VS[j].k) == kl && !strncmp(VS[j].k, dev.text, kl) && i >= 0 && i < VS[j].n) vo_play(VS[j].v[i]);
             }
-            else if (!strncmp(dev.text, "PlayStatic", 10)) sfx(SFX_RADIO_BEEP);
-            else game_cmd(dev.text);
+            else if (!strncmp(dev.text, "PlayStatic", 10) || !strncmp(dev.text, "TestStatic", 10)) { if (!static_on) { static_on = 1; static_h = sfx_play(SFX_STATIC, 140); } }
+            else if (!strncmp(dev.text, "StopStatic", 10)) { if (static_on) { static_on = 0; mmEffectCancel(static_h); } }
+            else {   /* dialogueSFX.cs / WatchTowerManager stingers, then the scene's own handler */
+                static const struct { const char *k; short id; } ST[] = {
+                    { "RadioOutOfService", SFX_CREEPIES }, { "WhatWereYouDoing", SFX_HAUNT }, { "SubtleTension", SFX_TENSION },
+                    { "ScaryViolin", SFX_VIOLIN_S }, { "EerieStrings", SFX_EERIE }, { "LowAndDeep", SFX_LOWDEEP },
+                    { "PlayCreepySFX", SFX_HAUNT }, { "PlayMid", SFX_CREEPIES }, { "PlayMysteryBuilder", SFX_MYSTERY },
+                    { "PlaySpookySiren", SFX_SIREN }, { "PlayScaryViolin", SFX_VIOLIN_S } };
+                for (unsigned j = 0; j < sizeof ST / sizeof *ST; j++) if (!strncmp(dev.text, ST[j].k, strlen(ST[j].k))) sting(ST[j].id);
+                if (!strncmp(dev.text, "PlaySFX1", 8)) sfx(SFX_WALKIE1);
+                else if (!strncmp(dev.text, "PlaySFX2", 8)) sfx(SFX_WALKIE2);
+                game_cmd(dev.text);
+            }
             continue;
         }
-        dtype = t; dsel = 0; dlg_show(); return;
+        dtype = t; dsel = 0; if (t == YE_LINE) sfx_play(SFX_POP, 150); dlg_show(); return;
     }
 }
 static void dlg_begin(const char *node, void (*done)(void))
@@ -471,10 +506,10 @@ static void use_spot(int id)
     char b[64];
     if (id >= I_BLIND) { sfx(SFX_BLIND); G.blinds[id - I_BLIND] ^= 1; return; }
     {   /* interaction sound (the action itself may still refuse below) */
-        static const short SND[I_BLIND] = { SFX_GEN_ON, SFX_CLICK, SFX_CLICK, -2, SFX_WOOD, SFX_STOVE, -1, SFX_CLICK, SFX_MATCH, -1, -1,
-                                            SFX_PEE, SFX_DOOR_CLOSE, SFX_FRIDGE, SFX_PICKUP, SFX_OVEN, SFX_MICRO_END, SFX_PICKUP, SFX_GAS, SFX_SHUTTER };
+        static const short SND[I_BLIND] = { SFX_GEN_ON, SFX_SWITCH, SFX_SWITCH, -2, SFX_WOOD, SFX_STOVE, -1, -1, SFX_MATCH, -1, -1,
+                                            SFX_PEE, SFX_DOOR_CLOSE, SFX_FRIDGE, SFX_PICKUP, SFX_OVEN, SFX_MIC_OPEN, SFX_PICKUP, SFX_GAS, SFX_SHUTTER };
         int s = SND[id];
-        if (s == -2) s = G.locked ? SFX_CLICK : G.door_open ? SFX_DOOR_CLOSE : SFX_DOOR_OPEN;
+        if (s == -2) s = G.locked ? SFX_KEYTURN : G.door_open ? SFX_DOOR_CLOSE : SFX_DOOR_OPEN;
         if (id == I_GEN && G.gen && !(seq == 7 && G.power_out)) s = -1;
         if (s >= 0) sfx(s);
     }
@@ -567,6 +602,7 @@ static void use_spot(int id)
         }
         break;
     case I_DESK:
+        { static int on_seq; if (on_seq != seq) { on_seq = seq; sfx(SFX_STARTUP); } }   /* the computer boots once a night */
         fade(1); mode = M_SEAT; hud_dirty = 1;
         if (seq == 1 && !G.radio_hint) { G.radio_hint = 1; after(10, EV_RADIOHINT); }
         fade(0);
@@ -706,11 +742,11 @@ static void form_input(u32 d, u32 held)
     if (d & KEY_A) {
         int want_w = seq == 6 ? 2 : 2;
         if (G.report_done) { sub("Report already submitted.", 3); mode = M_SEAT; }
-        else if (f_temp != G.temp10 || f_wind != G.wind) sub(S("MistakeReport"), 4);
-        else if (f_weather != want_w) sub(S("RightWeatherCondition"), 4);
-        else if (f_campers < 0) sub(S("MistakeReport"), 4);
+        else if (f_temp != G.temp10 || f_wind != G.wind) { sfx(SFX_ERROR); sub(S("MistakeReport"), 4); }
+        else if (f_weather != want_w) { sfx(SFX_ERROR); sub(S("RightWeatherCondition"), 4); }
+        else if (f_campers < 0) { sfx(SFX_ERROR); sub(S("MistakeReport"), 4); }
         else {
-            G.report_done = 1; yarn_set("reportDone", 100);
+            G.report_done = 1; yarn_set("reportDone", 100); sfx(SFX_FORM);
             sub("Report submitted.", 3); mode = M_SEAT;
             if (seq == 1 && G.fire) after(30, EV_REPORTDONE2);
         }
@@ -1008,6 +1044,7 @@ static void seq_start(int n, int *px, int *pz, int *fy, int *yaw)
 
 static void run_game(int start)
 {
+    sfx_flush();
     if (start > 1) music_set(-1);   /* night 1 keeps the menu music through the intro letter */
     if (!nboxes) load_col("nitro:/tower.col");
     if (!flr) load_floor("nitro:/tower.flr");
@@ -1124,7 +1161,7 @@ static void run_game(int start)
                 int dx = CULT_X - px, dz = CULT_Z - pz;
                 long long dot = (long long)dx * (-s) + (long long)dz * (-c);
                 long long len = (long long)(abs(dx) + abs(dz));
-                if (dot * 10 > len * 4096LL * 8) { sfx(SFX_SCARE); G.cult_seen = 1; after(10, EV_S8SUBS); }
+                if (dot * 10 > len * 4096LL * 8) { sfx(SFX_SCARE); sfx(SFX_CULT_NOTICED); G.cult_seen = 1; after(10, EV_S8SUBS); }
             }
         }
         if ((k & KEY_TOUCH) && mode == M_WALK && !dlg_active) {
@@ -1160,6 +1197,7 @@ static void run_game(int start)
         g_amb = cabin ? RGB15(13, 12, 10) : amb;
         /* ambience loop + generator hum (louder when close to it) */
         amb_set(seq == 3 ? SFX_AMB_EVENING : seq == 7 ? SFX_AMB_RAIN : seq == 8 && G.cult_seen ? SFX_AMB_DRONE : seq == 6 ? SFX_AMB_WIND : SFX_AMB_NIGHT);
+        amb2_set(seq == 7 || seq == 6 || seq == 3 ? -1 : SFX_CRICKETS);
         {
             int dx = (px + 12970) >> 12, dz = (pz - 11000) >> 12, d = abs(dx) + abs(dz) + (in ? 6 : 0);
             gen_snd(G.gen, d > 40 ? 20 : 180 - d * 4);

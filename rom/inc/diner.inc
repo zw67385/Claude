@@ -65,7 +65,7 @@ static void diner_cmd(const char *c)
         } else if (!strcmp(arg, "Check_paid")) { DN.paid = 1; sfx(SFX_COINS); sub(S("LookAtParking"), 4); }
     }
     else if (!strncmp(c, "SetOrder", 8)) { DN.ordered = 1; DN.food_t = 200; }
-    else if (!strncmp(c, "HeStared", 8)) { sub(S("HeStared"), 4); sfx_play(SFX_SCARE, 90); }
+    else if (!strncmp(c, "HeStared", 8)) { sub(S("HeStared"), 4); }
     else if (!strncmp(c, "PayCheck", 8)) dlg_done = dn_after_check;
 }
 
@@ -95,11 +95,11 @@ static void diner_use(int id)
     switch (id) {
     case H_DOOR:
         if (!DN.in) {
-            fade(1); DN.in = 1; dn_walk_to(DX(1116.58), DZ(962.88), 16384); amb_set(-1); sfx(SFX_DOOR_OPEN);
+            fade(1); DN.in = 1; dn_walk_to(DX(1116.58), DZ(962.88), 16384); amb_set(-1); sfx(SFX_IDOOR_OPEN);
             if (!DN.started) { DN.started = 1; DN.wx = DX(1117.0); DN.wz = DZ(958.7); w_goto(DX(1116.6), DZ(962.0), WN_START); }
             fade(0);
         } else if (DN.paid) {
-            fade(1); DN.in = 0; dn_walk_to(DX(1116.58), DZ(965.9), 0);   /* outside the porch walls */ sfx(SFX_DOOR_CLOSE); fade(0);
+            fade(1); DN.in = 0; dn_walk_to(DX(1116.58), DZ(965.9), 0);   /* outside the porch walls */ sfx(SFX_IDOOR_OPEN); fade(0);
         } else sub(S("GetFood"), 3);
         break;
     case H_SEAT: case H_SEAT2: case H_SEAT3: case H_SEAT4:
@@ -108,12 +108,15 @@ static void diner_use(int id)
         break;
     case H_TOILET:
         if (DN.peed) { sub(S("IWasDoneWithIt"), 3); break; }
-        fade(1); sfx(SFX_PEE); for (int i = 0; i < 180; i++) swiWaitForVBlank();
+        fade(1); sfx(SFX_TOILET); for (int i = 0; i < 180; i++) swiWaitForVBlank();
+        sfx(SFX_FLUSH); for (int i = 0; i < 150; i++) swiWaitForVBlank();
+        sfx(SFX_HANDWASH); for (int i = 0; i < 120; i++) swiWaitForVBlank();
         DN.peed = 1; fade(0);
         break;
-    case H_WAIT: DN.wstate = W_TALK; dlg_begin(DN.started ? "General" : "DinerStart", NULL); DN.started = 1; break;
+    case H_WAIT: sfx_play(SFX_QUESTION, 200); DN.wstate = W_TALK; dlg_begin(DN.started ? "General" : "DinerStart", NULL); DN.started = 1; break;
     case H_FOOD:
         fade(1); sfx(SFX_EAT); for (int i = 0; i < 150; i++) swiWaitForVBlank();
+        sfx(SFX_DRINK); for (int i = 0; i < 90; i++) swiWaitForVBlank();
         DN.eaten = 1; DN.bt = 40; DN.ae_t = 80; fade(0);   /* FinishEating: bad guy gets up in 2 s, waitress in 4 s */
         break;
     case H_SUIT: { static const char *const n[] = { "SuitGuy_1", "SuitGuy_2", "SuitGuy_3" }; dlg_begin(n[DN.talks[0]], NULL); if (DN.talks[0] < 2) DN.talks[0]++; break; }
@@ -270,7 +273,7 @@ static void diner_scene(void)
                 if (--DN.np <= 0) {
                     int n = DN.wnode; DN.wstate = W_IDLE; DN.wnode = WN_NONE;
                     if (n == WN_KITCHEN) DN.wstate = W_AWAY;
-                    else if (n == WN_SERVE) { DN.served = 1; sfx_play(SFX_PICKUP, 160); }
+                    else if (n == WN_SERVE) { DN.served = 1; sfx(SFX_PLATE); }
                     else if (n) {
                         static const char *const NODE[] = { "", "DinerStart", "DinerOrder", "", "AfterEating", "Check" };
                         DN.wstate = W_TALK; DN.wyaw = yaw_to(dw.x - DN.wx, dw.z - DN.wz);
@@ -307,7 +310,7 @@ static void diner_scene(void)
         }
         if (sub_t > 0 && --sub_t == 0) hud_dirty = 1;
         for (int i = 0; i < 12; i++) if (evq[i].id == EV_SUB && --evq[i].t <= 0) { evq[i].id = 0; sub(S(evq[i].s), 4); }
-        amb_set(DN.in ? -1 : SFX_AMB_NIGHT);
+        amb_set(DN.in ? -1 : SFX_AMB_EVENING); amb2_set(DN.in ? -1 : SFX_CRICKETS);
         music_set(DN.in ? SFX_DINER_MUSIC : -1);   /* the jukebox */
 
         /* ---- render */

@@ -59,8 +59,7 @@ static void camp_text(int n)
 
 static void camp_cmd(const char *c)
 {
-    if (!strncmp(c, "PlayMid", 7)) sfx_play(SFX_SCARE, 90);
-    else if (!strncmp(c, "ExitConversationCamp", 20)) CS.convo = 2;
+    if (!strncmp(c, "ExitConversationCamp", 20)) CS.convo = 2;
 }
 
 static void camp_hud(void)
@@ -127,7 +126,7 @@ static void camp_scene(void)
     cw.x = TX(40.24); cw.z = TZ(45.61); cw.yaw = -1702; cw.grass = 1;
     cw.fy = world_floor(cw.x, cw.z); if (cw.fy == NOFLOOR) cw.fy = U(56.9);
     walk_world = 1;
-    amb_set(SFX_AMB_NIGHT);
+    amb_set(SFX_AMB_EERIE); amb2_set(SFX_CRICKETS);
     scene_cmd = camp_cmd;
     prompt = NULL; sub_t = 0; hud_dirty = 1;
     sub(S("ScentWoodFire"), 5);
@@ -167,22 +166,21 @@ static void camp_scene(void)
             if (i == CT_NEXT && !CS.next_on) continue;
             CS.fired[i] = 1;
             switch (i) {
-            case CT_SCREAM: sfx_play(SFX_SHOUT, 127); break;
+            case CT_SCREAM: sfx_play(SFX_SHOUT, 127); sting(SFX_VIOLIN); sfx(SFX_HEARTBEAT); break;
             case CT_TEXTS: CS.seen = 1; CS.texts_t = 1; break;
-            case CT_WHISTLE: sfx_play(SFX_WHISTLE, 100); CS.whistle_t = 200; break;
-            case CT_LOWDEEP: sfx_play(SFX_SCARE, 50); break;
+            case CT_WHISTLE: sfx_play(SFX_WHISTLE2, 100); CS.whistle_t = 200; break;
+            case CT_LOWDEEP: sting(SFX_LOWDEEP); break;
             case CT_RUN: if (!CS.cult_run) CS.cult_run = 1; break;
             case CT_NEXT: CS.done = 1; break;
             }
         }
-        if (CS.fired[CT_SCREAM] && CS.fired[CT_SCREAM] < 80 && ++CS.fired[CT_SCREAM] == 60) sfx_play(SFX_SCARE, 60);
         if (CS.texts_t > 0) {   /* SorryGotHome, Attachment +0.5 s, ReachYet +0.4, YouOkay +0.5, ReplyBack +0.4 */
             static const int at[] = { 1, 11, 19, 29, 37 };
             CS.texts_t++;
-            for (int i = 0; i < 5; i++) if (CS.texts_t == at[i]) { camp_text(i + 1); sfx(SFX_RADIO_BEEP); }
+            for (int i = 0; i < 5; i++) if (CS.texts_t == at[i]) { camp_text(i + 1); sfx(SFX_NOTIF2); }
             if (CS.texts_t > 240) { CS.texts_t = 0; hud_dirty = 1; }
         }
-        if (CS.whistle_t && --CS.whistle_t == 100) sfx_play(SFX_WHISTLE, 80);
+        if (CS.whistle_t && --CS.whistle_t == 100) sfx_play(SFX_WHISTLE2, 80);
 
         /* ---- the cultist slips behind a tree once you get close to the fence */
         if (CS.cult_run == 1) {
@@ -211,12 +209,12 @@ static void camp_scene(void)
             switch (H[best].id) {
             case H_FIRE:
                 if (CS.filled) {
-                    fade(1); sfx(SFX_SIZZLE); for (int i = 0; i < 40; i++) swiWaitForVBlank();
+                    fade(1); sfx(SFX_SPLASH); sfx(SFX_SIZZLE); for (int i = 0; i < 40; i++) swiWaitForVBlank();
                     CS.fire_on = 0; CS.filled = 0; CS.next_on = 1; fade(0);
                 } else sub(S(CS.pot ? "GetWater" : "PutOutFire"), 4);
                 break;
             case H_POT: CS.pot = 1; sfx(SFX_PICKUP); break;
-            case H_WATER: fade(1); sfx(SFX_SPLASH); for (int i = 0; i < 30; i++) swiWaitForVBlank(); CS.filled = 1; fade(0); break;
+            case H_WATER: fade(1); sfx(SFX_FILL); for (int i = 0; i < 30; i++) swiWaitForVBlank(); CS.filled = 1; fade(0); break;
             case H_BARRIER:
                 if (!CS.convo) { CS.convo = 1; dlg_begin("Campfire", NULL); }
                 else if (CS.convo == 2) sub(S("AreaClosed"), 4);
@@ -265,6 +263,6 @@ done:
     fade(1);
     scene_cmd = NULL; prompt = NULL; amb_set(-1);
     level_free(&C_cult); level_free(&C_pot);
-    world_free(); walk_free(); glResetTextures();
+    world_free(); walk_free(); glResetTextures(); sfx_flush();
     setBrightness(3, 0);
 }
